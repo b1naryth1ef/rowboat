@@ -1,0 +1,27 @@
+whitelist_roles:
+  - 41771983423143936
+  - 232930153943138324
+  - 180036462832648192
+  - 203287359125585920
+  - 231560987508080650
+
+filter_invites: true
+
+filter_invites_whitelist:
+  - discord-developers
+  - discord-api
+  - discord-testers
+
+filter_nicknames: true
+
+filter_nicknames_words:
+  slut: ''
+
+filter_nicknames_prefixes:
+  '!': ''
+
+mention_tracker: true
+
+mention_threshold: 20
+
+mention_reset_time: 60
