@@ -1,15 +1,14 @@
 import json
 
-from disco.bot.plugin import Plugin
+from disco.bot import Plugin, Config
 
 
-class UtilPluginConfig(object):
+class UtilPluginConfig(Config):
     admins = []
 
 
+@Plugin.with_config(UtilPluginConfig)
 class UtilPlugin(Plugin):
-    CONFIG_CLS = UtilPluginConfig
-
     def __init__(self, bot, config, *args, **kwargs):
         super(UtilPlugin, self).__init__(bot, config or UtilPluginConfig(), *args, **kwargs)
 

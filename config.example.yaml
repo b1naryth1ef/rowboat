@@ -1,0 +1,11 @@
+manhole_enable: true
+manhole_bind: 127.0.0.1:7171
+
+bot:
+  plugins:
+    - plugins.mod
+    - plugins.util
+  levels:
+    80351110224678912: owner
+    103559217914318848: trusted
+    108598213681922048: trusted
