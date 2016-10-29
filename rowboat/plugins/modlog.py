@@ -25,8 +25,8 @@ ACTION_DATA = {
     Actions.CHANNEL_DELETE: (':heavy_minus_sign', 'channel #{e.name} (`{e.id}`) was deleted'),
     Actions.GUILD_BAN_ADD: (':no_entry_sign:', 'user {e} (`{e.id}`) was banned'),
     Actions.GUILD_BAN_REMOVE: (':white_check_mark:', 'user {e} (`{e.id}`) was unbanned'),
-    Actions.GUILD_MEMBER_ADD: (':heavy_plus_sign:', 'user {e} (`{e.id}`) joined the server'),
-    Actions.GUILD_MEMBER_REMOVE: (':heavy_minus_sign:', 'user {e} (`{e.id}`) left the server'),
+    Actions.GUILD_MEMBER_ADD: (':inbox_tray:', 'user {e} (`{e.id}`) joined the server'),
+    Actions.GUILD_MEMBER_REMOVE: (':outbox_tray:', 'user {e} (`{e.id}`) left the server'),
     Actions.GUILD_ROLE_CREATE: (':heavy_plus_sign:', 'role {e.role} (`{e.id}`) was created'),
     Actions.GUILD_ROLE_DELETE: (':heavy_minus_sign:', 'role {pre_role} (`{e.role_id}`) was deleted'),
     Actions.CHANGE_NICK:
