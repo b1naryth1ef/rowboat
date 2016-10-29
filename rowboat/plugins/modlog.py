@@ -1,11 +1,15 @@
-from disco.bot import Plugin
+import json
 
+from disco.bot import Plugin
 from holster.enum import Enum
 from holster.emitter import Priority
 
+from rowboat.redis import db
 from rowboat.types import Field, channel
 from rowboat.types.plugin import PluginConfig
 
+# 7 days
+MESSAGE_CACHE_TIME = 60 * 60 * 24 * 7
 
 Actions = Enum(
     'CHANNEL_CREATE',
@@ -18,6 +22,8 @@ Actions = Enum(
     'GUILD_ROLE_DELETE',
     'CHANGE_NICK',
     'CHANGE_USERNAME',
+    'MESSAGE_EDIT',
+    'MESSAGE_DELETE',
 )
 
 ACTION_DATA = {
@@ -33,6 +39,12 @@ ACTION_DATA = {
         (':pencil:', 'user {e.user} (`{e.user.id}`) changed their nick from `{before}` to `{after}`'),
     Actions.CHANGE_USERNAME:
         (':pencil:', 'user {e.user} (`{e.user.id}`) changed their username from `{before}` to `{after}`'),
+    Actions.MESSAGE_EDIT:
+        (':pencil:', '\
+{e.author} (`{e.author.id}`) edited their message in {e.channel} (`{e.channel.id}`):\
+\n\t**Before:** {before}\n\t**After:** {after}'),
+    Actions.MESSAGE_DELETE: (':fire:', '\
+{author} (`{author_id}`) deleted their message in {channel} (`{channel.id}`):\n{msg}')
 }
 
 
@@ -49,6 +61,8 @@ class ModLogConfig(PluginConfig):
     guild_role_delete = Field(bool, default=True)
     change_nick = Field(bool, default=True)
     change_username = Field(bool, default=True)
+    message_edit = Field(bool, default=True)
+    message_delete = Field(bool, default=True)
 
 
 class ModLogPlugin(Plugin):
@@ -116,6 +130,49 @@ class ModLogPlugin(Plugin):
                 event,
                 before=pre_member.user.username,
                 after=event.user.username)
+
+        # TODO: avatar change
+
         if set(pre_member.roles) != set(event.roles):
             # TODO: calculate diff and emit add/remove events
             pass
+
+    @Plugin.listen('MessageCreate')
+    def on_message_create(self, event):
+        if not (event.config.message_edit or event.config.message_delete):
+            return
+
+        db.setex('messages:{}'.format(event.id), json.dumps([
+            str(event.author), event.author.id, event.channel.id, event.content, event.pinned
+        ]),  MESSAGE_CACHE_TIME)
+
+    @Plugin.listen('MessageUpdate')
+    def on_message_update(self, event):
+        if not event.config.message_edit:
+            return
+
+        if not db.exists('messages:{}'.format(event.id)):
+            return
+
+        content = json.loads(db.get('messages:{}'.format(event.id)))[3]
+
+        if content != event.content:
+            self.log_action(Actions.MESSAGE_EDIT, event, before=content, after=event.content)
+
+    @Plugin.listen('MessageDelete')
+    def on_message_delete(self, event):
+        if not event.config.message_delete:
+            return
+
+        if not db.exists('messages:{}'.format(event.id)):
+            return
+
+        data = json.loads(db.get('messages:{}'.format(event.id)))
+
+        channel = self.state.channels.get(data[2])
+
+        self.log_action(Actions.MESSAGE_DELETE, event,
+                author=data[0],
+                author_id=data[1],
+                channel=channel,
+                msg=data[3])
