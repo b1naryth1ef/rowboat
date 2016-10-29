@@ -1,21 +1,11 @@
 import yaml
 
-from disco.types.base import SlottedModel, Field, text, snowflake
-
-
-def channel(raw):
-    if isinstance(raw, basestring) and raw:
-        if raw[0] == '#':
-            return raw
-    return snowflake(raw)
-
-
-class ModLogConfig(SlottedModel):
-    channel = Field(channel)
+from rowboat.types import SlottedModel, Field, text
+from rowboat.plugins.modlog import ModLogConfig
 
 
 class PluginsConfig(SlottedModel):
-    modlog = Field(ModLogConfig)
+    modlog = Field(ModLogConfig, default=None)
 
 
 class GuildConfig(SlottedModel):
