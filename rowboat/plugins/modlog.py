@@ -1,83 +1,78 @@
 import json
+import yaml
+import operator
 
 from disco.bot import Plugin
+from disco.util.functional import cached_property
 from holster.enum import Enum
 from holster.emitter import Priority
 
 from rowboat.redis import db
-from rowboat.types import Field, channel
+from rowboat.types import ListField, DictField, ChannelField
 from rowboat.types.plugin import PluginConfig
 
 # 7 days
 MESSAGE_CACHE_TIME = 60 * 60 * 24 * 7
 
-Actions = Enum(
-    'CHANNEL_CREATE',
-    'CHANNEL_DELETE',
-    'GUILD_BAN_ADD',
-    'GUILD_BAN_REMOVE',
-    'GUILD_MEMBER_ADD',
-    'GUILD_MEMBER_REMOVE',
-    'GUILD_ROLE_CREATE',
-    'GUILD_ROLE_DELETE',
-    'CHANGE_NICK',
-    'CHANGE_USERNAME',
-    'MESSAGE_EDIT',
-    'MESSAGE_DELETE',
-)
-
-ACTION_DATA = {
-    Actions.CHANNEL_CREATE: (':heavy_plus_sign:', 'channel {e.mention} (`{e.id}`) was created'),
-    Actions.CHANNEL_DELETE: (':heavy_minus_sign', 'channel #{e.name} (`{e.id}`) was deleted'),
-    Actions.GUILD_BAN_ADD: (':no_entry_sign:', 'user {e} (`{e.id}`) was banned'),
-    Actions.GUILD_BAN_REMOVE: (':white_check_mark:', 'user {e} (`{e.id}`) was unbanned'),
-    Actions.GUILD_MEMBER_ADD: (':inbox_tray:', 'user {e} (`{e.id}`) joined the server'),
-    Actions.GUILD_MEMBER_REMOVE: (':outbox_tray:', 'user {e} (`{e.id}`) left the server'),
-    Actions.GUILD_ROLE_CREATE: (':heavy_plus_sign:', 'role {e.role} (`{e.id}`) was created'),
-    Actions.GUILD_ROLE_DELETE: (':heavy_minus_sign:', 'role {pre_role} (`{e.role_id}`) was deleted'),
-    Actions.CHANGE_NICK:
-        (':pencil:', 'user {e.user} (`{e.user.id}`) changed their nick from `{before}` to `{after}`'),
-    Actions.CHANGE_USERNAME:
-        (':pencil:', 'user {e.user} (`{e.user.id}`) changed their username from `{before}` to `{after}`'),
-    Actions.MESSAGE_EDIT:
-        (':pencil:', '\
-{e.author} (`{e.author.id}`) edited their message in {e.channel} (`{e.channel.id}`):\
-\n\t**Before:** {before}\n\t**After:** {after}'),
-    Actions.MESSAGE_DELETE: (':fire:', '\
-{author} (`{author_id}`) deleted their message in {channel} (`{channel.id}`):\n{msg}')
-}
+Actions = Enum()
 
 
 class ModLogConfig(PluginConfig):
-    channel = Field(channel)
+    channels = DictField(ChannelField, ListField(Actions, test=1))
 
-    channel_create = Field(bool, default=True)
-    channel_delete = Field(bool, default=True)
-    guild_ban_add = Field(bool, default=True)
-    guild_ban_remove = Field(bool, default=True)
-    guild_member_add = Field(bool, default=True)
-    guild_member_remove = Field(bool, default=True)
-    guild_role_create = Field(bool, default=True)
-    guild_role_delete = Field(bool, default=True)
-    change_nick = Field(bool, default=True)
-    change_username = Field(bool, default=True)
-    message_edit = Field(bool, default=True)
-    message_delete = Field(bool, default=True)
+    @cached_property
+    def subscribed(self):
+        return (reduce(operator.or_, map(set, self.channels.values())) or Actions.attrs)
 
 
 class ModLogPlugin(Plugin):
+    def register_action(self, name, emoji, fmt):
+        action = Actions.add(name)
+        self.action_emoji[action] = emoji
+        self.action_fmt[action] = fmt
+
+    def load(self, ctx):
+        if not Actions.attrs:
+            self.action_emoji = {}
+            self.action_fmt = {}
+
+            with open('data/actions.yaml') as f:
+                for k, v in yaml.load(f.read()).items():
+                    self.register_action(k, v['emoji'], v['format'])
+        else:
+            self.action_emoji = ctx['action_emoji']
+            self.action_fmt = ctx['action_fmt']
+
+        super(ModLogPlugin, self).load(ctx)
+
+    def unload(self, ctx):
+        ctx['action_emoji'] = self.action_emoji
+        ctx['action_fmt'] = self.action_fmt
+        super(ModLogPlugin, self).unload(ctx)
+
     def log_action(self, action, event, **details):
-        if not getattr(event.config, action.name.lower(), False):
+        if not {action} & event.config.subscribed:
             return
 
-        emoji, fmt = ACTION_DATA[action]
-        msg = '{} {}'.format(emoji, fmt.format(e=event, **details))
+        emoji = self.action_emoji.get(action, '')
+        fmt = self.action_fmt[action]
+        msg = ':{}: {}'.format(emoji, fmt.format(e=event, **details))
 
-        if not isinstance(event.config.channel, int):
-            event.config.channel = event.guild.channels.select_one(name=event.config.channel).id
+        for channel, config in event.config.channels.items():
+            config = set(config) if config else Actions.attrs
+            if not {action} & config:
+                continue
 
-        channel = event.guild.channels[event.config.channel]
-        channel.send_message(msg)
+            # TODO: consider caching this better
+            if not isinstance(channel, int):
+                cid = event.guild.channels.select_one(name=channel).id
+                cobj = event.guild.channels.get(cid)
+
+            if not cobj:
+                self.log.warning('Invalid channel: %s (%s)', channel, cid)
+                continue
+
+            cobj.send_message(msg)
 
     @Plugin.listen('ChannelCreate')
     def on_channel_create(self, event):
@@ -139,7 +134,7 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
-        if not (event.config.message_edit or event.config.message_delete):
+        if not {Actions.MESSAGE_EDIT, Actions.MESSAGE_DELETE} & event.config.subscribed:
             return
 
         db.setex('messages:{}'.format(event.id), json.dumps([
@@ -148,7 +143,7 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('MessageUpdate')
     def on_message_update(self, event):
-        if not event.config.message_edit:
+        if not {Actions.MESSAGE_EDIT} & event.config.subscribed:
             return
 
         if not db.exists('messages:{}'.format(event.id)):
@@ -161,7 +156,7 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
-        if not event.config.message_delete:
+        if not {Actions.MESSAGE_DELETE} & event.config.subscribed:
             return
 
         if not db.exists('messages:{}'.format(event.id)):

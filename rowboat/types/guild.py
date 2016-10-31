@@ -1,5 +1,6 @@
 import re
 import yaml
+import time
 import urlparse
 import requests
 
@@ -52,6 +53,7 @@ class GuildConfig(SlottedModel):
         # Download and parse the configuration
         r = requests.get(url, timeout=15)
         r.raise_for_status()
+        print r.content
         cfg = cls.loads(r.content)
 
         # Once parsed, track our guild in redis and cache the settings
@@ -68,7 +70,7 @@ class GuildConfig(SlottedModel):
             return cls.loads(db.get('config:cached:{}'.format(gid)))
 
         url = db.get('config:{}'.format(gid))
-        r = requests.get(url, timeout=15)
+        r = requests.get(url, timeout=15, params={'_t': time.time()})
         r.raise_for_status()
         cfg = cls.loads(r.content)
         db.set('config:cached:{}'.format(gid), r.content)
