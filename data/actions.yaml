@@ -44,4 +44,4 @@ MESSAGE_EDIT:
 
 MESSAGE_DELETE:
   emoji: wastebasket
-  format: "{e.author} (`{author_id}`) deleted their message in {channel} (`{channel.id}`):\n{msg}"
+  format: "{author} (`{author_id}`) deleted their message in {channel} (`{channel.id}`):\n{msg}"

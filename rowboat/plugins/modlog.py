@@ -1,15 +1,14 @@
-import json
 import yaml
 import operator
 
-from disco.bot import Plugin
 from disco.util.functional import cached_property
 from holster.enum import Enum
 from holster.emitter import Priority
 
-from rowboat.redis import db
+from rowboat import RowboatPlugin as Plugin
 from rowboat.types import ListField, DictField, ChannelField
 from rowboat.types.plugin import PluginConfig
+from rowboat.plugins.messages import Message
 
 # 7 days
 MESSAGE_CACHE_TIME = 60 * 60 * 24 * 7
@@ -82,11 +81,11 @@ class ModLogPlugin(Plugin):
     def on_channel_delete(self, event):
         self.log_action(Actions.CHANNEL_DELETE, event)
 
-    @Plugin.listen('GuildBanAdd')
+    @Plugin.listen('GuilrdbanAdd')
     def on_guild_ban_add(self, event):
         self.log_action(Actions.GUILD_BAN_ADD, event)
 
-    @Plugin.listen('GuildBanRemove')
+    @Plugin.listen('GuilrdbanRemove')
     def on_guild_ban_remove(self, event):
         self.log_action(Actions.GUILD_BAN_REMOVE, event)
 
@@ -100,7 +99,6 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('GuildRoleCreate')
     def on_guild_role_create(self, event):
-        print event.role.name
         self.log_action(Actions.GUILD_ROLE_CREATE, event)
 
     @Plugin.listen('GuildRoleDelete', priority=Priority.BEFORE)
@@ -132,42 +130,27 @@ class ModLogPlugin(Plugin):
             # TODO: calculate diff and emit add/remove events
             pass
 
-    @Plugin.listen('MessageCreate')
-    def on_message_create(self, event):
-        if not {Actions.MESSAGE_EDIT, Actions.MESSAGE_DELETE} & event.config.subscribed:
-            return
-
-        db.setex('messages:{}'.format(event.id), json.dumps([
-            str(event.author), event.author.id, event.channel.id, event.content, event.pinned
-        ]),  MESSAGE_CACHE_TIME)
-
-    @Plugin.listen('MessageUpdate')
+    @Plugin.listen('MessageUpdate', priority=Priority.BEFORE)
     def on_message_update(self, event):
-        if not {Actions.MESSAGE_EDIT} & event.config.subscribed:
+        try:
+            msg = Message.get(Message.id == event.id)
+        except Message.DoesNotExist:
             return
 
-        if not db.exists('messages:{}'.format(event.id)):
-            return
-
-        content = json.loads(db.get('messages:{}'.format(event.id)))[3]
-
-        if content != event.content:
-            self.log_action(Actions.MESSAGE_EDIT, event, before=content, after=event.content)
+        if msg.content != event.content:
+            self.log_action(Actions.MESSAGE_EDIT, event, before=msg.content, after=event.content)
 
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
-        if not {Actions.MESSAGE_DELETE} & event.config.subscribed:
+        try:
+            msg = Message.get(Message.id == event.id)
+        except Message.DoesNotExist:
             return
 
-        if not db.exists('messages:{}'.format(event.id)):
-            return
-
-        data = json.loads(db.get('messages:{}'.format(event.id)))
-
-        channel = self.state.channels.get(data[2])
+        channel = self.state.channels.get(msg.channel_id)
 
         self.log_action(Actions.MESSAGE_DELETE, event,
-                author=data[0],
-                author_id=data[1],
+                author=msg.author,
+                author_id=msg.author.id,
                 channel=channel,
-                msg=data[3])
+                msg=msg.content)

@@ -5,7 +5,9 @@ from disco.bot import Plugin
 from disco.bot.command import CommandLevels
 from disco.api.http import APIException
 
-from rowboat.redis import db
+from rowboat import RowboatPlugin
+from rowboat.sql import init_db
+from rowboat.redis import rdb
 from rowboat.types.guild import GuildConfig
 
 
@@ -16,11 +18,13 @@ HELP_MESSAGE = '''\
 
 class CorePlugin(Plugin):
     def load(self, ctx):
+        init_db()
+
         self.guild_configs = ctx.get('guild_configs', {})
         super(CorePlugin, self).load(ctx)
 
         for plugin in self.bot.plugins.values():
-            if plugin == self:
+            if not isinstance(plugin, RowboatPlugin):
                 continue
 
             plugin.register_trigger('command', 'pre', functools.partial(self.on_pre, plugin))
@@ -46,7 +50,7 @@ class CorePlugin(Plugin):
 
     @Plugin.listen('GuildCreate', priority=Priority.BEFORE, conditional=lambda e: not e.created)
     def on_guild_create(self, event):
-        if db.sismember('guilds', event.id):
+        if rdb.sismember('guilds', event.id):
             self.log.info('Loading configuration for guild %s', event.id)
             cfg = self.guild_configs[event.id] = GuildConfig.load_from_id(event.id)
 
@@ -118,4 +122,4 @@ class CorePlugin(Plugin):
         if not event.guild or event.guild.id not in self.guild_configs:
             return
 
-        event.msg.reply('Config URL: <{}>'.format(db.get('config:{}'.format(event.guild.id))))
+        event.msg.reply('Config URL: <{}>'.format(rdb.get('config:{}'.format(event.guild.id))))

@@ -4,9 +4,8 @@ import time
 import urlparse
 import requests
 
-
-from rowboat.redis import db
-from rowboat.types import SlottedModel, Field, text
+from rowboat.redis import rdb
+from rowboat.types import SlottedModel, Field, DictField, snowflake, text
 from rowboat.plugins.modlog import ModLogConfig
 
 ALLOWED_DOMAINS = {
@@ -42,7 +41,19 @@ class PluginsConfig(SlottedModel):
 
 class GuildConfig(SlottedModel):
     nickname = Field(text)
+
+    # Command Stuff
+    prefix = Field(str)
+    mention = Field(bool)
+
+    levels = DictField(str, int)
+    permissions = DictField(snowflake, str)
+    commands = DictField(str, int)
     plugins = Field(PluginsConfig)
+
+    # TODO
+    def validate(self):
+        pass
 
     @classmethod
     def create_from_url(cls, guild_id, url):
@@ -57,23 +68,23 @@ class GuildConfig(SlottedModel):
         cfg = cls.loads(r.content)
 
         # Once parsed, track our guild in redis and cache the settings
-        db.sadd('guilds', guild_id)
-        db.set('config:{}'.format(guild_id), url)
-        db.set('config:cached:{}'.format(guild_id), r.content)
+        rdb.sadd('guilds', guild_id)
+        rdb.set('config:{}'.format(guild_id), url)
+        rdb.set('config:cached:{}'.format(guild_id), r.content)
 
         return cfg
 
     @classmethod
     def load_from_id(cls, gid, fresh=False):
         # If we have a cached copy, and we're not force refreshing, return that
-        if db.exists('config:cached:{}'.format(gid)) and not fresh:
-            return cls.loads(db.get('config:cached:{}'.format(gid)))
+        if rdb.exists('config:cached:{}'.format(gid)) and not fresh:
+            return cls.loads(rdb.get('config:cached:{}'.format(gid)))
 
-        url = db.get('config:{}'.format(gid))
+        url = rdb.get('config:{}'.format(gid))
         r = requests.get(url, timeout=15, params={'_t': time.time()})
         r.raise_for_status()
         cfg = cls.loads(r.content)
-        db.set('config:cached:{}'.format(gid), r.content)
+        rdb.set('config:cached:{}'.format(gid), r.content)
         return cfg
 
     @classmethod
