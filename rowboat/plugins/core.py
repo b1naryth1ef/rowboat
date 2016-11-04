@@ -34,6 +34,14 @@ class CorePlugin(Plugin):
         ctx['guild_configs'] = self.guild_configs
         super(CorePlugin, self).unload(ctx)
 
+    def set_guild_config(self, gid, config):
+        self.guild_configs[gid] = config
+
+        # TODO: make better
+        for plugin in self.bot.plugins.values():
+            if hasattr('on_config_update'):
+                plugin.on_config_update(getattr(config.plugins, plugin.name.lower()))
+
     def on_pre(self, plugin, event, args, kwargs):
         if not event.guild:
             return

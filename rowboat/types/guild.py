@@ -7,6 +7,7 @@ import requests
 from rowboat.redis import rdb
 from rowboat.types import SlottedModel, Field, DictField, snowflake, text
 from rowboat.plugins.modlog import ModLogConfig
+from rowboat.plugins.reactions import ReactionsConfig
 
 ALLOWED_DOMAINS = {
     'github.com',
@@ -37,6 +38,7 @@ def validate_config_url(url):
 
 class PluginsConfig(SlottedModel):
     modlog = Field(ModLogConfig, default=None)
+    reactions = Field(ReactionsConfig, default=None)
 
 
 class GuildConfig(SlottedModel):
@@ -64,7 +66,6 @@ class GuildConfig(SlottedModel):
         # Download and parse the configuration
         r = requests.get(url, timeout=15)
         r.raise_for_status()
-        print r.content
         cfg = cls.loads(r.content)
 
         # Once parsed, track our guild in redis and cache the settings

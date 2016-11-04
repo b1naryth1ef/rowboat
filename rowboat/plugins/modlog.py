@@ -138,6 +138,9 @@ class ModLogPlugin(Plugin):
         except Message.DoesNotExist:
             return
 
+        if not event.channel:
+            return
+
         if msg.content != event.content:
             self.log_action(Actions.MESSAGE_EDIT, event, before=msg.content, after=event.content)
 

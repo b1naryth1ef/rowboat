@@ -1,3 +1,4 @@
+from holster.emitter import Priority
 from disco.bot import Plugin
 from peewee import (
     BigIntegerField, TextField, SmallIntegerField, BooleanField,
@@ -36,6 +37,15 @@ class Message(BaseModel):
     SQL = '''CREATE INDEX IF NOT EXISTS message_content_fts ON message USING gin(to_tsvector('english', content));'''
 
 
+@BaseModel.register
+class Reaction(BaseModel):
+    # id = BigIntegerField(primary_key=True)
+    message_id = BigIntegerField()
+    user_id = BigIntegerField()
+    emoji_id = BigIntegerField(null=True)
+    emoji_name = TextField()
+
+
 class MessageCachePlugin(Plugin):
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
@@ -68,3 +78,19 @@ class MessageCachePlugin(Plugin):
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
         Message.update(deleted=True).where(Message.id == event.id).execute()
+
+    @Plugin.listen('MessageReactionAdd', priority=Priority.BEFORE)
+    def on_message_reaction_add(self, event):
+        Reaction.create(
+            message_id=event.message_id,
+            user_id=event.user_id,
+            emoji_id=event.emoji.id,
+            emoji_name=event.emoji.name)
+
+    @Plugin.listen('MessageReactionRemove', priority=Priority.BEFORE)
+    def on_message_reaction_remove(self, event):
+        Reaction.delete().where(
+            (Reaction.message_id == event.message_id) &
+            (Reaction.user_id == event.user_id) &
+            (Reaction.emoji_id == event.emoji.id) &
+            (Reaction.emoji_name == event.emoji.name)).execute()
