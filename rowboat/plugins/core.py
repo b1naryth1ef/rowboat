@@ -82,8 +82,9 @@ class CorePlugin(Plugin):
             return event.msg.reply(':warning: this server is already setup')
 
         # Make sure this is the owner of the server
-        if not event.guild.owner_id == event.author.id:
-            return event.msg.reply(':warning: only the server owner can setup rowboat')
+        if not rdb.sismember('global_admins', event.author.id):
+            if not event.guild.owner_id == event.author.id:
+                return event.msg.reply(':warning: only the server owner can setup rowboat')
 
         # Make sure we have admin perms
         m = event.guild.members.select_one(id=self.state.me.id)
@@ -91,7 +92,7 @@ class CorePlugin(Plugin):
             return event.msg.reply(':warning: bot must have the Administrator permission')
 
         try:
-            self.guild_configs[event.guild.id] = GuildConfig.create_from_url(url)
+            self.guild_configs[event.guild.id] = GuildConfig.create_from_url(event.guild.id, url)
             event.msg.reply(':ok_hand: successfully loaded configuration')
         except Exception as e:
             event.msg.reply(':no_entry: {}'.format(e))

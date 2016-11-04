@@ -12,6 +12,7 @@ from rowboat.plugins.messages import Message
 
 # 7 days
 MESSAGE_CACHE_TIME = 60 * 60 * 24 * 7
+ZERO_WIDTH_SPACE = u'\u200B'
 
 Actions = Enum()
 
@@ -21,7 +22,7 @@ class ModLogConfig(PluginConfig):
 
     @cached_property
     def subscribed(self):
-        return (reduce(operator.or_, map(set, self.channels.values())) or Actions.attrs)
+        return (reduce(operator.or_, map(set, self.channels.values())) or set(Actions.attrs))
 
 
 class ModLogPlugin(Plugin):
@@ -58,7 +59,7 @@ class ModLogPlugin(Plugin):
         msg = ':{}: {}'.format(emoji, fmt.format(e=event, **details))
 
         for channel, config in event.config.channels.items():
-            config = set(config) if config else Actions.attrs
+            config = set(config) if config else set(Actions.attrs)
             if not {action} & config:
                 continue
 
@@ -71,7 +72,7 @@ class ModLogPlugin(Plugin):
                 self.log.warning('Invalid channel: %s (%s)', channel, cid)
                 continue
 
-            cobj.send_message(msg)
+            cobj.send_message(msg.replace('@', '@' + ZERO_WIDTH_SPACE))
 
     @Plugin.listen('ChannelCreate')
     def on_channel_create(self, event):
@@ -81,11 +82,11 @@ class ModLogPlugin(Plugin):
     def on_channel_delete(self, event):
         self.log_action(Actions.CHANNEL_DELETE, event)
 
-    @Plugin.listen('GuilrdbanAdd')
+    @Plugin.listen('GuildBanAdd')
     def on_guild_ban_add(self, event):
         self.log_action(Actions.GUILD_BAN_ADD, event)
 
-    @Plugin.listen('GuilrdbanRemove')
+    @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):
         self.log_action(Actions.GUILD_BAN_REMOVE, event)
 
@@ -148,6 +149,8 @@ class ModLogPlugin(Plugin):
             return
 
         channel = self.state.channels.get(msg.channel_id)
+        if not channel:
+            return
 
         self.log_action(Actions.MESSAGE_DELETE, event,
                 author=msg.author,

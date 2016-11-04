@@ -20,7 +20,7 @@ class MessageAuthor(BaseModel):
         )
 
     def __str__(self):
-        return '{}#{}'.format(self.username, self.discriminator)
+        return u'{}#{}'.format(self.username, self.discriminator)
 
 
 @BaseModel.register
@@ -56,12 +56,14 @@ class MessageCachePlugin(Plugin):
 
     @Plugin.listen('MessageUpdate')
     def on_message_update(self, event):
-        Message.update(
-            content=event.content,
-            edited_timestamp=event.edited_timestamp
-        ).where(
-            Message.id == event.id
-        ).execute()
+        to_update = {
+            'edited_timestamp': event.edited_timestamp
+        }
+
+        if event.content:
+            to_update['content'] = event.content
+
+        Message.update(**to_update).where(Message.id == event.id).execute()
 
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
