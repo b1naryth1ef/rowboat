@@ -1,24 +1,26 @@
 import yaml
+import requests
 import operator
 
-from disco.util.functional import cached_property
+from six import BytesIO
+from PIL import Image
 from holster.enum import Enum
 from holster.emitter import Priority
+from disco.util.functional import cached_property
+from disco.types import UNSET
 
 from rowboat import RowboatPlugin as Plugin
 from rowboat.types import ListField, DictField, ChannelField
 from rowboat.types.plugin import PluginConfig
 from rowboat.plugins.messages import Message
 
-# 7 days
-MESSAGE_CACHE_TIME = 60 * 60 * 24 * 7
 ZERO_WIDTH_SPACE = u'\u200B'
 
 Actions = Enum()
 
 
 class ModLogConfig(PluginConfig):
-    channels = DictField(ChannelField, ListField(Actions, test=1))
+    channels = DictField(ChannelField, ListField(Actions))
 
     @cached_property
     def subscribed(self):
@@ -50,7 +52,7 @@ class ModLogPlugin(Plugin):
         ctx['action_fmt'] = self.action_fmt
         super(ModLogPlugin, self).unload(ctx)
 
-    def log_action(self, action, event, **details):
+    def log_action(self, action, event, attachment=None, **details):
         if not {action} & event.config.subscribed:
             return
 
@@ -72,7 +74,9 @@ class ModLogPlugin(Plugin):
                 self.log.warning('Invalid channel: %s (%s)', channel, cid)
                 continue
 
-            cobj.send_message(msg.replace('@', '@' + ZERO_WIDTH_SPACE))
+            cobj.send_message(
+                msg.replace('@', '@' + ZERO_WIDTH_SPACE),
+                attachment=attachment)
 
     @Plugin.listen('ChannelCreate')
     def on_channel_create(self, event):
@@ -125,11 +129,49 @@ class ModLogPlugin(Plugin):
                 before=pre_member.user.username,
                 after=event.user.username)
 
-        # TODO: avatar change
+        pre_roles = set(pre_member.roles)
+        post_roles = set(event.roles)
+        if pre_roles != post_roles:
+            added = post_roles - pre_roles
+            removed = pre_roles - post_roles
 
-        if set(pre_member.roles) != set(event.roles):
-            # TODO: calculate diff and emit add/remove events
-            pass
+            for role in filter(bool, map(event.guild.roles.get, added)):
+                self.log_action(Actions.GUILD_MEMBER_ROLES_ADD, event, role=role)
+
+            for role in filter(bool, map(event.guild.roles.get, removed)):
+                self.log_action(Actions.GUILD_MEMBER_ROLES_RMV, event, role=role)
+
+    @Plugin.listen('PresenceUpdate', priority=Priority.BEFORE)
+    def on_presence_update(self, event):
+        """
+        TODO:
+            optimize so we only DL images once per guild
+        """
+        if Actions.GUILD_MEMBER_AVATAR_CHANGE not in event.config.subscribed:
+            return
+
+        pre_member = event.guild.members.get(event.user.id)
+        if not pre_member:
+            return
+
+        if event.user.avatar is UNSET:
+            return
+
+        if pre_member.user.avatar != event.user.avatar:
+            image = Image.new('RGB', (256, 128))
+
+            if pre_member.user.avatar:
+                r = requests.get(pre_member.user.avatar_url)
+                image.paste(Image.open(BytesIO(r.content)), (0, 0))
+
+            if event.user.avatar:
+                r = requests.get(event.user.avatar_url)
+                image.paste(Image.open(BytesIO(r.content)), (128, 0))
+
+            combined = BytesIO()
+            image.save(combined, 'jpeg', quality=55)
+            combined.seek(0)
+            self.log_action(Actions.GUILD_MEMBER_AVATAR_CHANGE, event, attachment=('avatar.jpg', combined))
 
     @Plugin.listen('MessageUpdate', priority=Priority.BEFORE)
     def on_message_update(self, event):
@@ -138,7 +180,7 @@ class ModLogPlugin(Plugin):
         except Message.DoesNotExist:
             return
 
-        if not event.channel:
+        if not event.channel or not event.author:
             return
 
         if msg.content != event.content:
@@ -152,7 +194,7 @@ class ModLogPlugin(Plugin):
             return
 
         channel = self.state.channels.get(msg.channel_id)
-        if not channel:
+        if not channel or not msg.author:
             return
 
         self.log_action(Actions.MESSAGE_DELETE, event,

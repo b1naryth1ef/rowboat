@@ -8,11 +8,11 @@ CHANNEL_DELETE:
 
 GUILD_BAN_ADD:
   emoji: rotating_light
-  format: 'user {e.user} (`{e.id}`) was banned'
+  format: 'user {e.user} (`{e.user.id}`) was banned'
 
 GUILD_BAN_REMOVE:
   emoji: rotating_light
-  format: 'user {e.user} (`{e.id}`) was unbanned'
+  format: 'user {e.user} (`{e.user.id}`) was unbanned'
 
 GUILD_MEMBER_ADD:
   emoji: inbox_tray
@@ -21,6 +21,18 @@ GUILD_MEMBER_ADD:
 GUILD_MEMBER_REMOVE:
   emoji: outbox_tray
   format: 'user {e.user} (`{e.id}`) left (or was kicked from) the server'
+
+GUILD_MEMBER_ROLES_ADD:
+  emoji: key
+  format: "{e.user} was given the role **{role.name}** (`{role.id}`)"
+
+GUILD_MEMBER_ROLES_RMV:
+  emoji: key
+  format: "{e.user} was removed from the role **{role.name}** (`{role.id}`)"
+
+GUILD_MEMBER_AVATAR_CHANGE:
+  emoji: camera
+  format: '{e.user} changed their avatar'
 
 GUILD_ROLE_CREATE:
   emoji: pen_ballpoint

@@ -43,17 +43,21 @@ class CorePlugin(Plugin):
                 plugin.on_config_update(getattr(config.plugins, plugin.name.lower()))
 
     def on_pre(self, plugin, event, args, kwargs):
-        if not event.guild:
+        if hasattr(event, 'guild'):
+            guild_id = event.guild.id
+        elif hasattr(event, 'guild_id'):
+            guild_id = event.guild_id
+        else:
             return
 
-        if event.guild.id not in self.guild_configs:
+        if guild_id not in self.guild_configs:
             return
 
         plugin = plugin.name.lower().replace('plugin', '')
-        if not getattr(self.guild_configs[event.guild.id].plugins, plugin, None):
+        if not getattr(self.guild_configs[guild_id].plugins, plugin, None):
             return
 
-        event.config = getattr(self.guild_configs[event.guild.id].plugins, plugin)
+        event.config = getattr(self.guild_configs[guild_id].plugins, plugin)
         return event
 
     @Plugin.listen('GuildCreate', priority=Priority.BEFORE, conditional=lambda e: not e.created)

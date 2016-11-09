@@ -126,8 +126,9 @@ class ReactionsPlugin(Plugin):
                 return False
 
         if config.no_letters:
-            start, end = REGION_INDICATOR_RANGE
-            if start <= event.emoji.name[0] <= end:
-                return False
+            if len(event.emoji.name) == 1:
+                start, end = REGION_INDICATOR_RANGE
+                if start <= event.emoji.name[0] <= end:
+                    return False
 
         return True
