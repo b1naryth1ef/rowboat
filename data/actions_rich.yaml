@@ -1,0 +1,119 @@
+CHANNEL_CREATE:
+  color: green
+  fields:
+    name: '{e.mention}'
+    id: '`{e.id}`'
+  text: 'channel created'
+
+CHANNEL_DELETE:
+  color: red
+  fields:
+    name: '#{e.name}'
+    id: '`{e.id}`'
+  text: 'channel deleted'
+
+GUILD_BAN_ADD:
+  color: orange
+  fields:
+    user: '{e.user}'
+    id: '`{e.user.id}`'
+  text: 'user banned'
+
+GUILD_BAN_REMOVE:
+  color: red
+  fields:
+    user: '{e.user}'
+    id: '`{e.user.id}`'
+  text: 'user unbanned'
+
+GUILD_MEMBER_ADD:
+  color: green
+  fields:
+    user: '{e.user}'
+    id: '`{e.user.id}`'
+  text: 'user joined the server'
+
+GUILD_MEMBER_REMOVE:
+  color: red
+  fields:
+    user: '{e.user}'
+    id: '`{e.user.id}`'
+  text: 'user left (or was kicked from) the server'
+
+GUILD_MEMBER_ROLES_ADD:
+  color: green
+  fields:
+    user: '{e.user}'
+    user-id: '`{e.user.id}`'
+    role: '{role.name}'
+    role-id: '`{role.id}`'
+  text: 'user was added to a role'
+
+GUILD_MEMBER_ROLES_RMV:
+  color: red
+  fields:
+    user: '{e.user}'
+    user-id: '`{e.user.id}`'
+    role: '{role.name}'
+    role-id: '`{role.id}`'
+  text: 'user was removed from a role'
+
+GUILD_MEMBER_AVATAR_CHANGE:
+  color: orange
+  fields:
+    user: '{e.user}'
+    user-id: '`{e.user.id}`'
+  text: 'user updated their avatar'
+
+GUILD_ROLE_CREATE:
+  color: green
+  fields:
+    role: '{e.role}'
+    role-id: '`{e.role.id}`'
+  text: 'role created'
+
+GUILD_ROLE_DELETE:
+  color: red
+  fields:
+    role: '{pre_role}'
+    role-id: '`{e.role_id}`'
+  text: 'role deleted'
+
+CHANGE_NICK:
+  color: orange
+  fields:
+    user: '{e.user}'
+    user-id: '`{e.user.id}`'
+    before: '{before}'
+    after: '{after}'
+  text: 'user changed nicknames'
+
+CHANGE_USERNAME:
+  color: orange
+  fields:
+    user: '{e.user}'
+    user-id: '`{e.user.id}`'
+    before: '{before}'
+    after: '{after}'
+  text: 'user changed usernames'
+
+MESSAGE_EDIT:
+  color: orange
+  fields:
+    author: '{e.author}'
+    channel: '{e.channel}'
+    author-id: '`{e.author.id}`'
+    channel-id: '`{e.channel.id}`'
+    before!: '{before}'
+    after!: '{after}'
+  text: 'message edited'
+
+MESSAGE_DELETE:
+  color: red
+  fields:
+    author: '{author}'
+    channel: '{channel}'
+    author-id: '`{author_id}`'
+    channel-id: '`{channel_id}`'
+    message!: '{msg}'
+  text: 'message deleted'

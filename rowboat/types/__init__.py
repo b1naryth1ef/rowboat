@@ -11,3 +11,7 @@ def ChannelField(raw):
         elif not raw[0].isdigit():
             return raw
     return snowflake(raw)
+
+
+def UserField(raw):
+    return snowflake(raw)

@@ -84,6 +84,7 @@ class GuildConfig(SlottedModel):
         url = rdb.get('config:{}'.format(gid))
         r = requests.get(url, timeout=15, params={'_t': time.time()})
         r.raise_for_status()
+        print r.content
         cfg = cls.loads(r.content)
         rdb.set('config:cached:{}'.format(gid), r.content)
         return cfg

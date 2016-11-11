@@ -1,0 +1,59 @@
+CHANNEL_CREATE:
+  emoji: pen_ballpoint
+  format: 'channel {e.mention} was created'
+
+CHANNEL_DELETE:
+  emoji: wastebasket
+  format: 'channel #{e.name} was deleted'
+
+GUILD_BAN_ADD:
+  emoji: rotating_light
+  format: 'user {e.user} was banned'
+
+GUILD_BAN_REMOVE:
+  emoji: rotating_light
+  format: 'user {e.user} was unbanned'
+
+GUILD_MEMBER_ADD:
+  emoji: inbox_tray
+  format: 'user {e.user} joined the server{new}'
+
+GUILD_MEMBER_REMOVE:
+  emoji: outbox_tray
+  format: 'user {e.user} left (or was kicked from) the server'
+
+GUILD_MEMBER_ROLES_ADD:
+  emoji: key
+  format: "{e.user} was given the role **{role.name}**"
+
+GUILD_MEMBER_ROLES_RMV:
+  emoji: key
+  format: "{e.user} was removed from the role **{role.name}**"
+
+GUILD_MEMBER_AVATAR_CHANGE:
+  emoji: camera
+  format: '{e.user} changed their avatar'
+
+GUILD_ROLE_CREATE:
+  emoji: pen_ballpoint
+  format: 'role {e.role} was created'
+
+GUILD_ROLE_DELETE:
+  emoji: wastebasket
+  format: 'role {pre_role} was deleted'
+
+CHANGE_NICK:
+  emoji: name_badge
+  format: 'user {e.user} changed their nick from `{before}` to `{after}`'
+
+CHANGE_USERNAME:
+  emoji: name_badge
+  format: 'user {e.user} changed their username from `{before}` to `{after}`'
+
+MESSAGE_EDIT:
+  emoji: pencil
+  format: "{e.author} edited their message in **{e.channel}**:\n\t**Before:** {before}\n\t**After:** {after}"
+
+MESSAGE_DELETE:
+  emoji: wastebasket
+  format: "{author} deleted their message in **{channel}**:\n{msg}"
