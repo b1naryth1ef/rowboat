@@ -1,5 +1,5 @@
 from holster.emitter import Priority
-from disco.bot import Plugin, CommandLevels
+from disco.bot import Plugin
 from disco.types.message import MessageTable
 from peewee import (
     BigIntegerField, TextField, SmallIntegerField, BooleanField,
@@ -63,7 +63,7 @@ class MessageCachePlugin(Plugin):
             channel_id=event.channel_id,
             guild_id=(event.guild and event.guild.id),
             author=author,
-            content=event.content,
+            content=event.with_proper_mentions,
             timestamp=event.timestamp)
 
     @Plugin.listen('MessageUpdate')
@@ -76,7 +76,7 @@ class MessageCachePlugin(Plugin):
         }
 
         if event.content:
-            to_update['content'] = event.content
+            to_update['content'] = event.with_proper_mentions
 
         Message.update(**to_update).where(Message.id == event.id).execute()
 
@@ -100,7 +100,7 @@ class MessageCachePlugin(Plugin):
             (Reaction.emoji_id == (event.emoji.id or None)) &
             (Reaction.emoji_name == (event.emoji.name or None))).execute()
 
-    @Plugin.command('sql', level=CommandLevels.OWNER)
+    @Plugin.command('sql', level=-1)
     def command_sql(self, event):
         conn = database.obj.get_conn()
 

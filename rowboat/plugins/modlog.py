@@ -1,3 +1,4 @@
+import re
 import six
 import time
 import pytz
@@ -9,6 +10,7 @@ from PIL import Image
 from holster.enum import Enum
 from holster.emitter import Priority
 from datetime import datetime
+from collections import defaultdict
 
 from disco.types import UNSET
 from disco.types.message import MessageEmbed, MessageEmbedField
@@ -30,6 +32,14 @@ COLORS = {
     'orange': 0xff7700,
     'green': 0x009a44,
 }
+
+URL_REGEX = re.compile(r'(https?://[^\s]+)')
+IGNORED_URL_REGEX = re.compile(r'<https?://[^\s]+>')
+
+
+def filter_urls(content):
+    content = IGNORED_URL_REGEX.sub(' ', content)
+    return URL_REGEX.sub(r'<\1>', content)
 
 
 class ChannelConfig(SlottedModel):
@@ -53,15 +63,40 @@ class ChannelConfig(SlottedModel):
 
 
 class ModLogConfig(PluginConfig):
+    resolved = Field(bool, default=False, private=True)
+
     channels = DictField(ChannelField, ChannelConfig)
     new_member_threshold = Field(int, default=(15 * 60))
 
     @cached_property
     def subscribed(self):
-        return reduce(operator.or_, (i.subscribed for i in self.channels.values()))
+        return reduce(operator.or_, (i.subscribed for i in self.channels.values())) if self.channels else set()
 
 
 class ModLogPlugin(Plugin):
+    def create_debounce(self, event, user, typ, **kwargs):
+        kwargs.update({
+            'type': typ,
+            'time': time.time(),
+        })
+        # TODO: check if we should even track this
+
+        self.debounce[event.guild.id][user.id] = kwargs
+
+    def resolve_channels(self, event):
+        new_channels = {}
+
+        for key, channel in event.config.channels.items():
+            if isinstance(key, int):
+                chan = event.guild.channels.select_one(id=key)
+            else:
+                chan = event.guild.channels.select_one(name=key)
+
+            if chan:
+                new_channels[chan.id] = channel
+
+        event.config.channels = new_channels
+
     def register_action(self, name, rich, simple):
         action = Actions.add(name)
         self.action_rich[action] = rich
@@ -84,7 +119,7 @@ class ModLogPlugin(Plugin):
             self.action_rich = ctx['action_rich']
             self.action_simple = ctx['action_simple']
 
-        self.debounce = ctx.get('debounce', {})
+        self.debounce = ctx.get('debounce', defaultdict(dict))
 
         super(ModLogPlugin, self).load(ctx)
 
@@ -95,6 +130,10 @@ class ModLogPlugin(Plugin):
         super(ModLogPlugin, self).unload(ctx)
 
     def log_action(self, action, event, attachment=None, **details):
+        if not event.config.resolved:
+            self.resolve_channels(event)
+            event.config.resolved = True
+
         if not {action} & event.config.subscribed:
             return
 
@@ -125,9 +164,9 @@ class ModLogPlugin(Plugin):
         def generate_simple(config):
             info = self.action_simple.get(action)
 
-            msg = ':{}: {}'.format(
+            msg = u':{}: {}'.format(
                 info['emoji'],
-                info['format'].format(e=event, **details).replace('@', '@' + ZERO_WIDTH_SPACE))
+                six.text_type(info['format']).format(e=event, **details).replace('@', '@' + ZERO_WIDTH_SPACE))
 
             if config.timestamps:
                 ts = pytz.utc.localize(datetime.utcnow()).astimezone(config.tz)
@@ -139,28 +178,21 @@ class ModLogPlugin(Plugin):
             if not {action} & config.subscribed:
                 continue
 
-            # TODO: consider caching this better
-            if isinstance(channel, int):
-                cobj = event.guild.channels.get(channel)
-            else:
-                cobj = event.guild.channels.select_one(name=channel)
-
-            if not cobj:
-                self.log.warning('Invalid channel: %s', channel)
-                continue
-
             if config.compact and action not in config.rich:
                 msg, embed = generate_simple(config)
             else:
                 msg, embed = generate_rich(config)
 
-            cobj.send_message(msg, embed=embed, attachment=attachment if config.compact else None)
+            channel = event.guild.channels.get(channel)
+            if channel:
+                channel.send_message(msg, embed=embed, attachment=attachment if config.compact else None)
 
     @Plugin.schedule(120)
     def cleanup_debounce(self):
-        for k, v in list(six.iteritems(self.debounce)):
-            if v + 120 > time.time():
-                del self.debounce[k]
+        for obj in six.itervalues(self.debounce):
+            for k, v in list(six.iteritems(obj)):
+                if v['time'] + 30 > time.time():
+                    del obj[k]
 
     @Plugin.listen('ChannelCreate')
     def on_channel_create(self, event):
@@ -172,8 +204,18 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('GuildBanAdd')
     def on_guild_ban_add(self, event):
-        self.debounce[event.user.id] = time.time()
-        self.log_action(Actions.GUILD_BAN_ADD, event)
+        if event.user.id in self.debounce[event.guild.id]:
+            debounce = self.debounce[event.guild.id][event.user.id]
+
+            if debounce['type'] == 'ban_reason':
+                self.log_action(Actions.GUILD_BAN_ADD_REASON,
+                    event,
+                    actor=debounce['actor'],
+                    reason=debounce['reason'])
+        else:
+            self.log_action(Actions.GUILD_BAN_ADD, event)
+
+        self.create_debounce(event, 'ban')
 
     @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):
@@ -181,15 +223,22 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('GuildMemberAdd')
     def on_guild_member_add(self, event):
-        if event.user.id in self.debounce:
+        if event.user.id in self.debounce[event.guild.id]:
             del self.debounce[event.user.id]
 
         new = (time.time() - to_unix(event.user.id) < event.config.new_member_threshold)
-        self.log_action(Actions.GUILD_MEMBER_ADD, event, new=':new:' if new else '')
+        self.log_action(Actions.GUILD_MEMBER_ADD, event, new=' :new:' if new else '')
 
     @Plugin.listen('GuildMemberRemove')
     def on_guild_member_remove(self, event):
-        if event.user.id in self.debounce:
+        if event.user.id in self.debounce[event.guild.id]:
+            debounce = self.debounce[event.guild.id][event.user.id]
+
+            if debounce['type'] == 'kick':
+                self.log_action(Actions.GUILD_MEMBER_KICK, event,
+                    actor=debounce['actor'],
+                    reason=debounce['reason'])
+
             return
 
         self.log_action(Actions.GUILD_MEMBER_REMOVE, event)
@@ -275,8 +324,12 @@ class ModLogPlugin(Plugin):
         if not event.channel or not event.author:
             return
 
-        if msg.content != event.content:
-            self.log_action(Actions.MESSAGE_EDIT, event, before=msg.content, after=event.content)
+        if msg.content != event.with_proper_mentions:
+            self.log_action(
+                Actions.MESSAGE_EDIT,
+                event,
+                before=filter_urls(msg.content),
+                after=filter_urls(event.with_proper_mentions))
 
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
@@ -293,4 +346,4 @@ class ModLogPlugin(Plugin):
                 author=msg.author,
                 author_id=msg.author.id,
                 channel=channel,
-                msg=msg.content)
+                msg=filter_urls(msg.content))

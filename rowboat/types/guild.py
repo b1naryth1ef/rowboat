@@ -5,9 +5,10 @@ import urlparse
 import requests
 
 from rowboat.redis import rdb
-from rowboat.types import SlottedModel, Field, DictField, snowflake, text
+from rowboat.types import SlottedModel, Field, DictField, text
 from rowboat.plugins.modlog import ModLogConfig
 from rowboat.plugins.reactions import ReactionsConfig
+from rowboat.plugins.admin import AdminConfig
 
 ALLOWED_DOMAINS = {
     'github.com',
@@ -39,18 +40,26 @@ def validate_config_url(url):
 class PluginsConfig(SlottedModel):
     modlog = Field(ModLogConfig, default=None)
     reactions = Field(ReactionsConfig, default=None)
+    admin = Field(AdminConfig, default=None)
+
+
+class CommandOverrideConfig(SlottedModel):
+    disabled = Field(bool, default=False)
+    level = Field(int)
+
+
+class CommandsConfig(SlottedModel):
+    prefix = Field(str, default='')
+    mention = Field(bool, default=False)
+    overrides = DictField(str, CommandOverrideConfig)
 
 
 class GuildConfig(SlottedModel):
     nickname = Field(text)
 
-    # Command Stuff
-    prefix = Field(str)
-    mention = Field(bool)
-
-    levels = DictField(str, int)
-    permissions = DictField(snowflake, str)
-    commands = DictField(str, int)
+    commands = Field(CommandsConfig, default=None)
+    # TODO: role name support
+    levels = DictField(int, int)
     plugins = Field(PluginsConfig)
 
     # TODO
@@ -66,14 +75,14 @@ class GuildConfig(SlottedModel):
         # Download and parse the configuration
         r = requests.get(url, timeout=15)
         r.raise_for_status()
-        cfg = cls.loads(r.content)
+        cfg, leftover = cls.loads(r.content)
 
         # Once parsed, track our guild in redis and cache the settings
         rdb.sadd('guilds', guild_id)
         rdb.set('config:{}'.format(guild_id), url)
         rdb.set('config:cached:{}'.format(guild_id), r.content)
 
-        return cfg
+        return cfg, leftover.keys()
 
     @classmethod
     def load_from_id(cls, gid, fresh=False):
@@ -84,12 +93,14 @@ class GuildConfig(SlottedModel):
         url = rdb.get('config:{}'.format(gid))
         r = requests.get(url, timeout=15, params={'_t': time.time()})
         r.raise_for_status()
-        print r.content
-        cfg = cls.loads(r.content)
+        cfg, leftover = cls.loads(r.content)
         rdb.set('config:cached:{}'.format(gid), r.content)
-        return cfg
+        return cfg, leftover.keys()
 
     @classmethod
     def loads(cls, content):
         obj = yaml.load(content)
-        return GuildConfig(obj)
+        gc = GuildConfig()
+        gc.load(obj, consume=True)
+        gc.validate()
+        return gc, obj

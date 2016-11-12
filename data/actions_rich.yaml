@@ -19,6 +19,15 @@ GUILD_BAN_ADD:
     id: '`{e.user.id}`'
   text: 'user banned'
 
+GUILD_BAN_ADD_REASON:
+  color: orange
+  fields:
+    user: '{e.user}'
+    id: '`{e.user.id}`'
+    admin: '{actor}'
+    reason: '{reason}'
+  text: 'user banned'
+
 GUILD_BAN_REMOVE:
   color: red
   fields:
@@ -39,6 +48,15 @@ GUILD_MEMBER_REMOVE:
     user: '{e.user}'
     id: '`{e.user.id}`'
   text: 'user left (or was kicked from) the server'
+
+GUILD_MEMBER_KICK:
+  color: red
+  fields:
+    user: '{e.user}'
+    id: '`{e.user.id}`'
+    admin: '{actor}'
+    reason: '{reason}'
+  text: 'user was kicked from the server'
 
 GUILD_MEMBER_ROLES_ADD:
   color: green

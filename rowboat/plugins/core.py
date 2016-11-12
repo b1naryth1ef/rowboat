@@ -2,8 +2,8 @@ import functools
 
 from holster.emitter import Priority
 from disco.bot import Plugin
-from disco.bot.command import CommandLevels
 from disco.api.http import APIException
+from disco.bot.command import CommandEvent, CommandLevels
 
 from rowboat import RowboatPlugin
 from rowboat.sql import init_db
@@ -64,7 +64,8 @@ class CorePlugin(Plugin):
     def on_guild_create(self, event):
         if rdb.sismember('guilds', event.id):
             self.log.info('Loading configuration for guild %s', event.id)
-            cfg = self.guild_configs[event.id] = GuildConfig.load_from_id(event.id)
+            cfg, leftover = GuildConfig.load_from_id(event.id)
+            self.guild_configs[event.id] = cfg
 
             # Set nickname on boot
             if cfg.nickname:
@@ -75,7 +76,64 @@ class CorePlugin(Plugin):
                     except APIException as e:
                         self.log.warning('Failed to set nickname for guild %s (%s)', event.guild, e.content)
 
-    @Plugin.command('reload', '[plugin:str]', group='control', level=CommandLevels.OWNER, oob=True)
+    @Plugin.listen('MessageCreate')
+    def on_message_create(self, event):
+        if event.message.author.id == self.client.state.me.id:
+            return
+
+        if hasattr(event, 'guild'):
+            guild_id = event.guild.id
+        elif hasattr(event, 'guild_id'):
+            guild_id = event.guild_id
+        else:
+            return
+
+        if guild_id not in self.guild_configs:
+            return
+
+        config = self.guild_configs[guild_id]
+
+        if config.commands:
+            commands = list(self.bot.get_commands_for_message(
+                config.commands.mention,
+                {},
+                config.commands.prefix,
+                event.message))
+        else:
+            commands = list(self.bot.get_commands_for_message(True, {}, '', event.message))
+
+        if not len(commands):
+            return
+
+        user_level = 0
+        for oid in [event.author.id] + event.guild.get_member(event.author).roles:
+            if oid in config.levels and config.levels[oid] > user_level:
+                user_level = config.levels[oid]
+
+        global_admin = rdb.sismember('global_admins', event.author.id)
+
+        for command, match in commands:
+            if command.level == -1 and not global_admin:
+                continue
+
+            level = command.level
+
+            if config.commands and command.plugin != self:
+                if command.triggers[0] in config.commands.overrides:
+                    override = config.commands.overrides[command.triggers[0]]
+                    if override.disabled:
+                        continue
+
+                    if override.level is not None:
+                        level = override.level
+
+            if not global_admin and user_level < level:
+                continue
+
+            command.plugin.execute(CommandEvent(command, event.message, match))
+            return
+
+    @Plugin.command('reload', '[plugin:str]', group='control', level=-1, oob=True)
     def command_control_reload(self, event, plugin=None):
         if not plugin:
             for plugin in self.bot.plugins.values():
@@ -104,12 +162,15 @@ class CorePlugin(Plugin):
             return event.msg.reply(':warning: bot must have the Administrator permission')
 
         try:
-            self.guild_configs[event.guild.id] = GuildConfig.create_from_url(event.guild.id, url)
+            self.guild_configs[event.guild.id], leftover = GuildConfig.create_from_url(event.guild.id, url)
             event.msg.reply(':ok_hand: successfully loaded configuration')
+
+            if leftover:
+                event.msg.reply(':warning: your config had the following leftover (e.g. invalid) keys: `{}`'.format(leftover))
         except Exception as e:
             event.msg.reply(':no_entry: {}'.format(e))
 
-    @Plugin.command('reload')
+    @Plugin.command('reload', level=CommandLevels.ADMIN)
     def command_reload(self, event):
         if not event.guild:
             return
@@ -118,19 +179,21 @@ class CorePlugin(Plugin):
             return event.msg.reply(':warning: this guild is not setup yet')
 
         try:
-            new = GuildConfig.load_from_id(event.guild.id, fresh=True)
+            new, leftover = GuildConfig.load_from_id(event.guild.id, fresh=True)
         except Exception as e:
             return event.msg.reply(':no_entry: {}'.format(e))
 
         self.guild_configs[event.guild.id] = new
         event.msg.reply(':ok_hand: guild configuration reloaded')
+        if leftover:
+            event.msg.reply(':warning: your config had the following leftover (e.g. invalid) keys: `{}`'.format(leftover))
 
-    @Plugin.command('help')
+    @Plugin.command('help', level=CommandLevels.ADMIN)
     def command_help(self, event):
         # TODO: cooldown
         event.msg.reply(HELP_MESSAGE)
 
-    @Plugin.command('config')
+    @Plugin.command('config', level=CommandLevels.ADMIN)
     def command_config(self, event):
         if not event.guild or event.guild.id not in self.guild_configs:
             return

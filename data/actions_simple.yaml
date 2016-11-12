@@ -10,6 +10,10 @@ GUILD_BAN_ADD:
   emoji: rotating_light
   format: 'user {e.user} was banned'
 
+GUILD_BAN_ADD_REASON:
+  emoji: rotating_light
+  format: 'user {e.user} was banned from the server by **{actor}**: `{reason}`'
+
 GUILD_BAN_REMOVE:
   emoji: rotating_light
   format: 'user {e.user} was unbanned'
@@ -21,6 +25,10 @@ GUILD_MEMBER_ADD:
 GUILD_MEMBER_REMOVE:
   emoji: outbox_tray
   format: 'user {e.user} left (or was kicked from) the server'
+
+GUILD_MEMBER_KICK:
+  emoji: boot
+  format: 'user {e.user} was kicked from the server by **{actor}**: `{reason}`'
 
 GUILD_MEMBER_ROLES_ADD:
   emoji: key
@@ -52,7 +60,7 @@ CHANGE_USERNAME:
 
 MESSAGE_EDIT:
   emoji: pencil
-  format: "{e.author} edited their message in **{e.channel}**:\n\t**Before:** {before}\n\t**After:** {after}"
+  format: "{e.author} edited their message in **{e.channel}**:\n**B:** {before}\n**A:** {after}"
 
 MESSAGE_DELETE:
   emoji: wastebasket

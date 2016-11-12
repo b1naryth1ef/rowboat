@@ -39,8 +39,7 @@ class ChannelConfig(BaseConfig):
 
 
 class ReactionsConfig(PluginConfig):
-    # TODO: private
-    resolved = Field(bool, default=False)
+    resolved = Field(bool, default=False, private=True)
 
     channels = DictField(ChannelField, ChannelConfig)
     users = DictField(UserField, BaseConfig)
@@ -56,14 +55,12 @@ class ReactionsPlugin(Plugin):
                 continue
 
             if isinstance(key, int):
-                chan = event.guild.channels.select_one(id=key).id
+                chan = event.guild.channels.select_one(id=key)
             else:
                 chan = event.guild.channels.select_one(name=key)
 
-            if not chan:
-                continue
-
-            new_channels[chan.id] = channel
+            if chan:
+                new_channels[chan.id] = channel
 
         event.config.channels = new_channels
 
