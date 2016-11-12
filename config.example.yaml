@@ -1,10 +1,16 @@
+token: ''
+
 manhole_enable: true
 manhole_bind: 127.0.0.1:7171
 
 bot:
+  commands_enabled: false
   plugins:
-    - plugins.mod
-    - plugins.util
+    - rowboat.plugins.modlog
+    - rowboat.plugins.reactions
+    - rowboat.plugins.admin
+    - rowboat.plugins.core
+    - rowboat.plugins.messages
   levels:
     80351110224678912: owner
     103559217914318848: trusted
