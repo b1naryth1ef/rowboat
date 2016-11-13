@@ -1,25 +1,28 @@
+import humanize
 import functools
 
+from datetime import datetime
 from holster.emitter import Priority
 from disco.bot import Plugin
 from disco.api.http import APIException
 from disco.bot.command import CommandEvent, CommandLevels
 
-from rowboat import RowboatPlugin
+from rowboat import RowboatPlugin, VERSION
 from rowboat.sql import init_db
 from rowboat.redis import rdb
 from rowboat.types.guild import GuildConfig
 
-
-HELP_MESSAGE = '''\
-:information_source: Info, docs, and detailed help can be found here: <https://github.com/b1naryth1ef/rowboat/wiki>
-'''
+INFO_MESSAGE = '''\
+:information_source: Rowboat V{} - more information and detailed help can be found here:\
+<https://github.com/b1naryth1ef/rowboat/wiki>
+'''.format(VERSION)
 
 
 class CorePlugin(Plugin):
     def load(self, ctx):
         init_db()
 
+        self.startup = ctx.get('startup', datetime.utcnow())
         self.guild_configs = ctx.get('guild_configs', {})
         super(CorePlugin, self).load(ctx)
 
@@ -32,6 +35,7 @@ class CorePlugin(Plugin):
 
     def unload(self, ctx):
         ctx['guild_configs'] = self.guild_configs
+        ctx['startup'] = self.startup
         super(CorePlugin, self).unload(ctx)
 
     def set_guild_config(self, gid, config):
@@ -188,10 +192,9 @@ class CorePlugin(Plugin):
         if leftover:
             event.msg.reply(':warning: your config had the following leftover (e.g. invalid) keys: `{}`'.format(leftover))
 
-    @Plugin.command('help', level=CommandLevels.ADMIN)
+    @Plugin.command('info', level=CommandLevels.ADMIN)
     def command_help(self, event):
-        # TODO: cooldown
-        event.msg.reply(HELP_MESSAGE)
+        event.msg.reply(INFO_MESSAGE)
 
     @Plugin.command('config', level=CommandLevels.ADMIN)
     def command_config(self, event):
@@ -199,3 +202,9 @@ class CorePlugin(Plugin):
             return
 
         event.msg.reply('Config URL: <{}>'.format(rdb.get('config:{}'.format(event.guild.id))))
+
+    @Plugin.command('uptime', level=-1)
+    def command_uptime(self, event):
+        event.msg.reply('Rowboat was started {}'.format(
+            humanize.naturaltime(datetime.utcnow() - self.startup)
+        ))

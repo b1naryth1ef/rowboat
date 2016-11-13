@@ -261,13 +261,6 @@ class ModLogPlugin(Plugin):
                 before=pre_member.nick or '<NO_NICK>',
                 after=event.nick or '<NO_NICK>')
 
-        if pre_member.user.username != event.user.username:
-            self.log_action(
-                Actions.CHANGE_USERNAME,
-                event,
-                before=pre_member.user.username,
-                after=event.user.username)
-
         pre_roles = set(pre_member.roles)
         post_roles = set(event.roles)
         if pre_roles != post_roles:
@@ -293,10 +286,14 @@ class ModLogPlugin(Plugin):
         if not pre_member:
             return
 
-        if event.user.avatar is UNSET:
-            return
+        if event.user.username is not UNSET and pre_member.user.username != event.user.username:
+            self.log_action(
+                Actions.CHANGE_USERNAME,
+                event,
+                before=pre_member.user.username,
+                after=event.user.username)
 
-        if pre_member.user.avatar != event.user.avatar:
+        if event.user.avatar is not UNSET and pre_member.user.avatar != event.user.avatar:
             image = Image.new('RGB', (256, 128))
 
             if pre_member.user.avatar:
@@ -325,7 +322,7 @@ class ModLogPlugin(Plugin):
         if not event.channel or not event.author:
             return
 
-        if msg.content is not UNSET and msg.content != event.with_proper_mentions:
+        if event.content is not UNSET and msg.content != event.with_proper_mentions:
             self.log_action(
                 Actions.MESSAGE_EDIT,
                 event,
