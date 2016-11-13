@@ -84,6 +84,12 @@ class MessageCachePlugin(Plugin):
     def on_message_delete(self, event):
         Message.update(deleted=True).where(Message.id == event.id).execute()
 
+    @Plugin.listen('MessageDeleteBulk')
+    def on_message_delete_bulk(self, event):
+        Message.update(deleted=True).where(
+            Message.id << event.ids
+        ).execute()
+
     @Plugin.listen('MessageReactionAdd', priority=Priority.BEFORE)
     def on_message_reaction_add(self, event):
         Reaction.create(

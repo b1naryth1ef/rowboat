@@ -135,3 +135,11 @@ MESSAGE_DELETE:
     channel-id: '`{channel_id}`'
     message!: '{msg}'
   text: 'message deleted'
+
+MESSAGE_DELETE_BULK:
+  color: red
+  fields:
+    channel: '{channel}'
+    channel-id: '{channel.id}'
+    count: '{count}'
+  text: 'multiple messages deleted'

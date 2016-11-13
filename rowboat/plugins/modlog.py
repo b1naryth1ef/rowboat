@@ -34,11 +34,9 @@ COLORS = {
 }
 
 URL_REGEX = re.compile(r'(https?://[^\s]+)')
-IGNORED_URL_REGEX = re.compile(r'<https?://[^\s]+>')
 
 
 def filter_urls(content):
-    content = IGNORED_URL_REGEX.sub(' ', content)
     return URL_REGEX.sub(r'<\1>', content)
 
 
@@ -215,7 +213,7 @@ class ModLogPlugin(Plugin):
         else:
             self.log_action(Actions.GUILD_BAN_ADD, event)
 
-        self.create_debounce(event, 'ban')
+        self.create_debounce(event, event.user, 'ban')
 
     @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):
@@ -316,6 +314,9 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('MessageUpdate', priority=Priority.BEFORE)
     def on_message_update(self, event):
+        if event.author.id == self.state.me.id:
+            return
+
         try:
             msg = Message.get(Message.id == event.id)
         except Message.DoesNotExist:
@@ -324,7 +325,7 @@ class ModLogPlugin(Plugin):
         if not event.channel or not event.author:
             return
 
-        if msg.content != event.with_proper_mentions:
+        if msg.content is not UNSET and msg.content != event.with_proper_mentions:
             self.log_action(
                 Actions.MESSAGE_EDIT,
                 event,
@@ -342,8 +343,19 @@ class ModLogPlugin(Plugin):
         if not channel or not msg.author:
             return
 
+        if msg.author.id == self.state.me.id:
+            return
+
         self.log_action(Actions.MESSAGE_DELETE, event,
                 author=msg.author,
                 author_id=msg.author.id,
                 channel=channel,
                 msg=filter_urls(msg.content))
+
+    @Plugin.listen('MessageDeleteBulk')
+    def on_message_delete_bulk(self, event):
+        channel = self.state.channels.get(event.channel_id)
+        if not channel:
+            return
+
+        self.log_action(Actions.MESSAGE_DELETE_BULK, event, channel=channel, count=len(event.ids))

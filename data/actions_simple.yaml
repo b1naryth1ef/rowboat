@@ -65,3 +65,7 @@ MESSAGE_EDIT:
 MESSAGE_DELETE:
   emoji: wastebasket
   format: "{author} deleted their message in **{channel}**:\n{msg}"
+
+MESSAGE_DELETE_BULK:
+  emoji: wastebasket
+  format: "{count} messages where delted from **{channel}**"
