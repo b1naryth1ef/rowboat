@@ -20,7 +20,7 @@ def emoji(data):
         return data
 
     if data not in EMOJI_ALIAS_UNICODE.keys():
-        raise ValueError('Unknown emoji {}'.format(data))
+        raise ValueError(u'Unknown emoji {}'.format(data))
 
     return EMOJI_ALIAS_UNICODE[data]
 
