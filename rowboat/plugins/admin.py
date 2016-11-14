@@ -14,6 +14,13 @@ class AdminConfig(PluginConfig):
 
 
 class AdminPlugin(Plugin):
+    @Plugin.command('roles', level=CommandLevels.MOD)
+    def roles(self, event):
+        roles = []
+        for role in event.guild.roles.values():
+            roles.append('{} - {}'.format(role.id, role.name))
+        return event.msg.reply('```{}```'.format('\n'.join(roles)))
+
     @Plugin.command('kick', '<user:user> [reason:str...]', level=CommandLevels.MOD)
     def kick(self, event, user, reason=None):
         """
@@ -88,11 +95,11 @@ class AdminPlugin(Plugin):
 
         if fmt == 'txt':
             data = map(encode_txt, msgs)
-            result = '\n'.join(data)
+            result = u'\n'.join(data)
         elif fmt == 'csv':
             data = map(encode_csv, msgs)
             data = ['id,timestamp,author_id,author,content'] + data
-            result = '\n'.join(data)
+            result = u'\n'.join(data)
         elif fmt == 'json':
             data = list(map(encode_json, msgs))
             result = json.dumps({

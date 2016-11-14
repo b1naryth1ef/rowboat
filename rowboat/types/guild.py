@@ -59,7 +59,7 @@ class CommandsConfig(SlottedModel):
 class GuildConfig(SlottedModel):
     nickname = Field(text)
 
-    commands = Field(CommandsConfig, default=None)
+    commands = Field(CommandsConfig, default=None, create=False)
     # TODO: role name support
     levels = DictField(int, int)
     plugins = Field(PluginsConfig)

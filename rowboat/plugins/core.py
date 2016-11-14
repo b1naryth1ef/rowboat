@@ -47,6 +47,10 @@ class CorePlugin(Plugin):
                 plugin.on_config_update(getattr(config.plugins, plugin.name.lower()))
 
     def on_pre(self, plugin, event, args, kwargs):
+        if isinstance(event, CommandEvent):
+            if event.command.metadata.get('global_', False):
+                return event
+
         if hasattr(event, 'guild'):
             guild_id = event.guild.id
         elif hasattr(event, 'guild_id'):

@@ -21,9 +21,8 @@ from rowboat import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField
 from rowboat.types.plugin import PluginConfig
 from rowboat.plugins.messages import Message
-from rowboat.util import ordered_load
+from rowboat.util import ordered_load, C
 
-ZERO_WIDTH_SPACE = u'\u200B'
 
 Actions = Enum()
 
@@ -154,7 +153,7 @@ class ModLogPlugin(Plugin):
                 if '-' in field.name:
                     field.name = field.name.replace('-', ' ').title()
 
-                field.value = v.format(e=event, **details).replace('@', '@' + ZERO_WIDTH_SPACE)
+                field.value = C(v.format(e=event, **details))
                 embed.fields.append(field)
 
             return '', embed
@@ -164,7 +163,7 @@ class ModLogPlugin(Plugin):
 
             msg = u':{}: {}'.format(
                 info['emoji'],
-                six.text_type(info['format']).format(e=event, **details).replace('@', '@' + ZERO_WIDTH_SPACE))
+                C(six.text_type(info['format']).format(e=event, **details)))
 
             if config.timestamps:
                 ts = pytz.utc.localize(datetime.utcnow()).astimezone(config.tz)

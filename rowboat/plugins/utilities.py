@@ -3,6 +3,9 @@ import random
 import requests
 import humanize
 
+from six import BytesIO
+from PIL import Image
+from gevent.pool import Pool
 from datetime import datetime
 from emoji.unicode_codes import EMOJI_ALIAS_UNICODE
 
@@ -15,8 +18,10 @@ CDN_URL = 'https://twemoji.maxcdn.com/2/72x72/{}.png'
 EMOJI_RE = re.compile(r'<:(.+):([0-9]+)>')
 
 
-def get_emoji_url(char):
-    return CDN_URL.format(char.encode("unicode_escape").decode("utf-8")[2:].lstrip("0"))
+def get_emoji_url(emoji):
+    return CDN_URL.format('-'.join(
+        char.encode("unicode_escape").decode("utf-8")[2:].lstrip("0")
+        for char in emoji))
 
 
 class UtilitiesConfig(PluginConfig):
@@ -113,19 +118,38 @@ class UtilitiesPlugin(Plugin):
         r.raise_for_status()
         return event.msg.reply('\n'.join(fields), attachment=('emoji.png', r.content))
 
-    @Plugin.command('jumbo', '<emoji:str>')
-    def jumbo(self, event, emoji):
-        if emoji in EMOJI_ALIAS_UNICODE.values():
-            url = get_emoji_url(emoji)
-        elif EMOJI_RE.match(emoji):
-            _, eid = EMOJI_RE.findall(emoji)[0]
-            url = 'https://discordapp.com/api/emojis/{}.png'.format(eid)
-        else:
-            return event.msg.reply('Invalid emoji: `{}`'.format(emoji))
+    @Plugin.command('jumbo', '<emojis:str...>')
+    def jumbo(self, event, emojis):
+        urls = []
 
-        r = requests.get(url)
-        r.raise_for_status()
-        return event.msg.reply('', attachment=('emoji.png', r.content))
+        for emoji in emojis.split(' ')[:5]:
+            if ' '.join(list(emoji)) in EMOJI_ALIAS_UNICODE.values():
+                urls.append(get_emoji_url(emoji))
+            elif EMOJI_RE.match(emoji):
+                _, eid = EMOJI_RE.findall(emoji)[0]
+                urls.append('https://discordapp.com/api/emojis/{}.png'.format(eid))
+            else:
+                return event.msg.reply(u'Invalid emoji: `{}`'.format(emoji.replace('`', '')))
+
+        width, height, images = 0, 0, []
+
+        for r in Pool(6).imap(requests.get, urls):
+            r.raise_for_status()
+            img = Image.open(BytesIO(r.content))
+            height = img.height if img.height > height else height
+            width += img.width + 10
+            images.append(img)
+
+        image = Image.new('RGBA', (width, height))
+        width_offset = 0
+        for img in images:
+            image.paste(img, (width_offset, 0))
+            width_offset += img.width + 10
+
+        combined = BytesIO()
+        image.save(combined, 'png', quality=55)
+        combined.seek(0)
+        return event.msg.reply('', attachment=('emoji.png', combined))
 
     @Plugin.command('seen', '<user:user>')
     def seen(self, event, user):
