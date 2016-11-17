@@ -114,8 +114,8 @@ class AdminPlugin(Plugin):
     @Plugin.command('clean', '[size:int]', level=CommandLevels.MOD)
     def clean(self, event, size=25, typ=None):
         # TODO: global mutex
-        if 0 > size >= 5000:
-            return event.msg.reply(':warning: Too many messages, must be between 1-5000')
+        if 0 > size >= 10000:
+            return event.msg.reply(':warning: Too many messages, must be between 1-10000')
 
         msgs = list(reversed(Message.select().where(
             (Message.deleted >> False) &

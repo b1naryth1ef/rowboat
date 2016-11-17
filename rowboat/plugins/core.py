@@ -38,9 +38,12 @@ class CorePlugin(Plugin):
         ctx['startup'] = self.startup
         super(CorePlugin, self).unload(ctx)
 
-    def on_pre(self, plugin, event, args, kwargs):
+    def on_pre(self, plugin, func, event, args, kwargs):
         if isinstance(event, CommandEvent):
             if event.command.metadata.get('global_', False):
+                return event
+        elif hasattr(func, 'subscriptions'):
+            if func.subscriptions[0].metadata.get('global_', False):
                 return event
 
         if hasattr(event, 'guild'):
@@ -112,9 +115,13 @@ class CorePlugin(Plugin):
 
         user_level = 0
         if config:
-            for oid in [event.author.id] + event.guild.get_member(event.author).roles:
+            for oid in event.guild.get_member(event.author).roles:
                 if oid in config.levels and config.levels[oid] > user_level:
                     user_level = config.levels[oid]
+
+            # User ID overrides should override all others
+            if event.author.id in config.levels:
+                user_level = config.levels[event.author.id]
 
         global_admin = rdb.sismember('global_admins', event.author.id)
 
@@ -173,6 +180,14 @@ class CorePlugin(Plugin):
         guild.save()
         event.msg.reply(':ok_hand: this guild has been unwhitelisted for {}'.format(plugin))
 
+    @Plugin.command('wl list', '[guild:snowflake]', group='control', level=-1)
+    def control_whitelist_list(self, event, guild=None):
+        guild = self.guilds.get(guild or event.guild.id)
+        if not guild:
+            return event.msg.reply(':warning: this guild isnt setup yet')
+
+        event.msg.reply('`{}`'.format(', '.join(guild.whitelist)))
+
     @Plugin.command('setup', '<url:str>')
     def command_setup(self, event, url):
         if not event.guild:
@@ -182,14 +197,16 @@ class CorePlugin(Plugin):
         if event.guild.id in self.guilds:
             return event.msg.reply(':warning: this server is already setup')
 
+        global_admin = rdb.sismember('global_admins', event.author.id)
+
         # Make sure this is the owner of the server
-        if not rdb.sismember('global_admins', event.author.id):
+        if not global_admin:
             if not event.guild.owner_id == event.author.id:
                 return event.msg.reply(':warning: only the server owner can setup rowboat')
 
         # Make sure we have admin perms
         m = event.guild.members.select_one(id=self.state.me.id)
-        if not m.permissions.administrator:
+        if not m.permissions.administrator and not global_admin:
             return event.msg.reply(':warning: bot must have the Administrator permission')
 
         try:

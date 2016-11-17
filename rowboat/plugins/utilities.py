@@ -16,6 +16,7 @@ from rowboat.plugins.messages import Message
 
 CDN_URL = 'https://twemoji.maxcdn.com/2/72x72/{}.png'
 EMOJI_RE = re.compile(r'<:(.+):([0-9]+)>')
+URL_REGEX = re.compile(r'(https?://[^\s]+)')
 
 
 def get_emoji_url(emoji):
@@ -165,3 +166,26 @@ class UtilitiesPlugin(Plugin):
             humanize.naturaltime(datetime.utcnow() - msg.timestamp),
             msg.timestamp
         ))
+
+    @Plugin.command('jpeg', '<url:str>')
+    def jpeg(self, event, url):
+        url = URL_REGEX.findall(url)
+
+        if len(url) != 1:
+            return event.msg.reply('Invalid image URL')
+        url = url[0]
+
+        if url[-1] == '>':
+            url = url[:-1]
+
+        try:
+            r = requests.get(url, timeout=15)
+            r.raise_for_status()
+            img = Image.open(BytesIO(r.content))
+        except:
+            return event.msg.reply('Invalid image')
+
+        output = BytesIO()
+        img.save(output, 'jpeg', quality=1, subsampling=0)
+        output.seek(0)
+        event.msg.reply('', attachment=('image.jpg', output))

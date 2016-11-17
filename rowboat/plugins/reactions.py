@@ -39,6 +39,8 @@ class ChannelConfig(BaseConfig):
 
 
 class ReactionsConfig(PluginConfig):
+    whitelisted = True
+
     resolved = Field(bool, default=False, private=True)
 
     channels = DictField(ChannelField, ChannelConfig)

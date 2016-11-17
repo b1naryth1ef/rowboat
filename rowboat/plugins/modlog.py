@@ -80,19 +80,19 @@ class ModLogPlugin(Plugin):
 
         self.debounce[event.guild.id][user.id] = kwargs
 
-    def resolve_channels(self, event):
+    def resolve_channels(self, guild, config):
         new_channels = {}
 
-        for key, channel in event.config.channels.items():
+        for key, channel in config.channels.items():
             if isinstance(key, int):
-                chan = event.guild.channels.select_one(id=key)
+                chan = guild.channels.select_one(id=key)
             else:
-                chan = event.guild.channels.select_one(name=key)
+                chan = guild.channels.select_one(name=key)
 
             if chan:
                 new_channels[chan.id] = channel
 
-        event.config.channels = new_channels
+        config.channels = new_channels
 
     def register_action(self, name, rich, simple):
         action = Actions.add(name)
@@ -127,11 +127,14 @@ class ModLogPlugin(Plugin):
         super(ModLogPlugin, self).unload(ctx)
 
     def log_action(self, action, event, attachment=None, **details):
-        if not event.config.resolved:
-            self.resolve_channels(event)
-            event.config.resolved = True
+        return self.log_action_raw(action, event, event.guild, event.config, attachment, **details)
 
-        if not {action} & event.config.subscribed:
+    def log_action_raw(self, action, event, guild, config, attachment=None, **details):
+        if not config.resolved:
+            self.resolve_channels(guild, config)
+            config.resolved = True
+
+        if not {action} & config.subscribed:
             return
 
         def generate_rich(config):
@@ -171,7 +174,7 @@ class ModLogPlugin(Plugin):
 
             return msg, None
 
-        for channel, config in event.config.channels.items():
+        for channel, config in config.channels.items():
             if not {action} & config.subscribed:
                 continue
 
@@ -180,7 +183,7 @@ class ModLogPlugin(Plugin):
             else:
                 msg, embed = generate_rich(config)
 
-            channel = event.guild.channels.get(channel)
+            channel = guild.channels.get(channel)
             if channel:
                 channel.send_message(msg, embed=embed, attachment=attachment if config.compact else None)
 
@@ -272,41 +275,70 @@ class ModLogPlugin(Plugin):
             for role in filter(bool, map(event.guild.roles.get, removed)):
                 self.log_action(Actions.GUILD_MEMBER_ROLES_RMV, event, role=role)
 
-    @Plugin.listen('PresenceUpdate', priority=Priority.BEFORE)
+    @Plugin.listen('PresenceUpdate', priority=Priority.BEFORE, metadata={'global_': True})
     def on_presence_update(self, event):
-        """
-        TODO:
-            optimize so we only DL images once per guild
-        """
-        if Actions.GUILD_MEMBER_AVATAR_CHANGE not in event.config.subscribed:
+        plugin = self.bot.plugins.get('CorePlugin')
+        if not plugin or not event.user:
             return
 
-        pre_member = event.guild.members.get(event.user.id)
-        if not pre_member:
+        subscribed_guilds = defaultdict(list)
+
+        for guild_id, config in plugin.guilds.items():
+            guild = self.state.guilds.get(guild_id)
+            if not guild:
+                continue
+
+            if event.user.id not in guild.members:
+                continue
+
+            config = config.get_config()
+            if not config.plugins.modlog:
+                continue
+
+            for act in {Actions.CHANGE_USERNAME, Actions.GUILD_MEMBER_AVATAR_CHANGE}:
+                if {act} & config.plugins.modlog.subscribed:
+                    subscribed_guilds[act].append((guild, config))
+
+        if not len(subscribed_guilds):
             return
 
-        if event.user.username is not UNSET and pre_member.user.username != event.user.username:
-            self.log_action(
-                Actions.CHANGE_USERNAME,
-                event,
-                before=pre_member.user.username,
-                after=event.user.username)
+        pre_user = self.state.users.get(event.user.id)
 
-        if event.user.avatar is not UNSET and pre_member.user.avatar != event.user.avatar:
-            image = Image.new('RGB', (256, 128))
+        if Actions.CHANGE_USERNAME in subscribed_guilds:
+            if event.user.username is not UNSET and event.user.username != pre_user.username:
+                for guild, config in subscribed_guilds[Actions.CHANGE_USERNAME]:
+                    self.log_action_raw(
+                        Actions.CHANGE_USERNAME,
+                        event,
+                        guild,
+                        config.plugins.modlog,
+                        before=pre_user.username,
+                        after=event.user.username)
 
-            if pre_member.user.avatar:
-                r = requests.get(pre_member.user.avatar_url)
-                image.paste(Image.open(BytesIO(r.content)), (0, 0))
+        if Actions.GUILD_MEMBER_AVATAR_CHANGE in subscribed_guilds:
+            if event.user.avatar is not UNSET and event.user.avatar != pre_user.avatar:
 
-            if event.user.avatar:
-                r = requests.get(event.user.avatar_url)
-                image.paste(Image.open(BytesIO(r.content)), (128, 0))
+                image = Image.new('RGB', (256, 128))
 
-            combined = BytesIO()
-            image.save(combined, 'jpeg', quality=55)
-            combined.seek(0)
-            self.log_action(Actions.GUILD_MEMBER_AVATAR_CHANGE, event, attachment=('avatar.jpg', combined))
+                if pre_user.avatar:
+                    r = requests.get(pre_user.avatar_url)
+                    image.paste(Image.open(BytesIO(r.content)), (0, 0))
+
+                if event.user.avatar:
+                    r = requests.get(event.user.avatar_url)
+                    image.paste(Image.open(BytesIO(r.content)), (128, 0))
+
+                combined = BytesIO()
+                image.save(combined, 'jpeg', quality=55)
+                combined.seek(0)
+
+                for guild, config in subscribed_guilds[Actions.GUILD_MEMBER_AVATAR_CHANGE]:
+                    self.log_action_raw(
+                        Actions.GUILD_MEMBER_AVATAR_CHANGE,
+                        event,
+                        guild,
+                        config.plugins.modlog,
+                        attachment=('avatar.jpg', combined))
 
     @Plugin.listen('MessageUpdate', priority=Priority.BEFORE)
     def on_message_update(self, event):
