@@ -23,7 +23,7 @@ class MessageAuthor(BaseModel):
 
     class Meta:
         indexes = (
-            (('username', 'discriminator'), True),
+            (('id', 'username', 'discriminator'), True),
         )
 
     def __str__(self):
@@ -172,7 +172,7 @@ class MessageCachePlugin(Plugin):
 
     @Plugin.command('list', level=-1, group='markov', global_=True)
     def command_markov_list(self, event):
-        event.msg.reply(u'`{}`'.format(', '.join(self.models.keys())))
+        event.msg.reply(u'`{}`'.format(', '.join(map(str, self.models.keys()))))
 
     @Plugin.command('delete', '<oid:snowflake>', level=-1, group='markov', global_=True)
     def command_markov_delete(self, event, oid):
