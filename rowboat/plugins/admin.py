@@ -6,7 +6,7 @@ from disco.bot import CommandLevels
 
 from rowboat import RowboatPlugin as Plugin
 from rowboat.types.plugin import PluginConfig
-from rowboat.plugins.messages import Message, MessageAuthor
+from rowboat.plugins.messages import Message, User
 
 
 class AdminConfig(PluginConfig):
@@ -91,7 +91,7 @@ class AdminPlugin(Plugin):
         msgs = list(reversed(Message.select().where(
             (Message.deleted >> False) &
             (Message.channel_id == event.channel.id)
-        ).join(MessageAuthor).order_by(Message.timestamp.desc()).limit(size)))
+        ).join(User).order_by(Message.timestamp.desc()).limit(size)))
 
         if fmt == 'txt':
             data = map(encode_txt, msgs)
@@ -120,7 +120,7 @@ class AdminPlugin(Plugin):
         msgs = list(reversed(Message.select().where(
             (Message.deleted >> False) &
             (Message.channel_id == event.channel.id)
-        ).join(MessageAuthor).order_by(Message.timestamp.desc()).limit(size)))
+        ).join(User).order_by(Message.timestamp.desc()).limit(size)))
 
         event.channel.delete_messages(msgs)
         event.msg.reply(':wastebasket: Ok, deleted {} messages'.format(len(msgs))).after(5).delete()

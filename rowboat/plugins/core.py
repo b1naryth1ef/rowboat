@@ -8,7 +8,7 @@ from disco.api.http import APIException
 from disco.bot.command import CommandEvent, CommandLevels
 
 from rowboat import RowboatPlugin, VERSION
-from rowboat.models import Guild
+from rowboat.models.guild import Guild
 from rowboat.sql import init_db
 from rowboat.redis import rdb
 

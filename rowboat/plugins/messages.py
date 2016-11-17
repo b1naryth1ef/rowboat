@@ -5,29 +5,15 @@ from holster.emitter import Priority
 from disco.bot import Plugin
 from disco.bot.command import CommandError
 from disco.types.message import MessageTable
-from disco.types.user import User
+from disco.types.user import User as DiscoUser
 from peewee import (
-    BigIntegerField, TextField, SmallIntegerField, BooleanField,
+    BigIntegerField, TextField, BooleanField,
     ForeignKeyField, DateTimeField
 )
+from playhouse.postgres_ext import BinaryJSONField
 
 from rowboat.sql import BaseModel, database
-
-
-@BaseModel.register
-class MessageAuthor(BaseModel):
-    id = BigIntegerField(primary_key=True)
-    username = TextField()
-    discriminator = SmallIntegerField()
-    bot = BooleanField()
-
-    class Meta:
-        indexes = (
-            (('id', 'username', 'discriminator'), True),
-        )
-
-    def __str__(self):
-        return u'{}#{}'.format(self.username, self.discriminator)
+from rowboat.models.user import User
 
 
 @BaseModel.register
@@ -35,13 +21,18 @@ class Message(BaseModel):
     id = BigIntegerField(primary_key=True)
     channel_id = BigIntegerField(index=True)
     guild_id = BigIntegerField(index=True, null=True)
-    author = ForeignKeyField(MessageAuthor)
+    author = ForeignKeyField(User)
     content = TextField()
     timestamp = DateTimeField()
     edited_timestamp = DateTimeField(null=True, default=None)
     deleted = BooleanField(default=False)
 
-    SQL = '''CREATE INDEX IF NOT EXISTS message_content_fts ON message USING gin(to_tsvector('english', content));'''
+    mentions = BinaryJSONField(default=[], null=True)
+
+    SQL = '''CREATE INDEX IF NOT EXISTS message_content_fts ON messages USING gin(to_tsvector('english', content));'''
+
+    class Meta:
+        db_table = 'messages'
 
 
 @BaseModel.register
@@ -50,6 +41,9 @@ class Reaction(BaseModel):
     user_id = BigIntegerField()
     emoji_id = BigIntegerField(null=True)
     emoji_name = TextField()
+
+    class Meta:
+        db_table = 'reactions'
 
 
 class MessageCachePlugin(Plugin):
@@ -63,21 +57,7 @@ class MessageCachePlugin(Plugin):
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
-        author, _ = MessageAuthor.get_or_create(
-            id=event.author.id,
-            defaults={
-                'username': event.author.username,
-                'discriminator': event.author.discriminator,
-                'bot': event.author.bot,
-            })
-
-        Message.create(
-            id=event.id,
-            channel_id=event.channel_id,
-            guild_id=(event.guild and event.guild.id),
-            author=author,
-            content=event.with_proper_mentions,
-            timestamp=event.timestamp)
+        self.add_message(event.message)
 
     @Plugin.listen('MessageUpdate')
     def on_message_update(self, event):
@@ -138,7 +118,7 @@ class MessageCachePlugin(Plugin):
 
     @Plugin.command('init', '<entity:user|channel>', level=-1, group='markov', global_=True)
     def command_markov(self, event, entity):
-        if isinstance(entity, User):
+        if isinstance(entity, DiscoUser):
             q = Message.select().where(Message.author_id == entity.id).limit(500000)
         else:
             q = Message.select().where(Message.channel_id == entity.id).limit(500000)
@@ -195,13 +175,7 @@ class MessageCachePlugin(Plugin):
         event.msg.reply('{} backfill on {} completed, {} messages stored'.format(event.author.mention, channel, g.get()))
 
     def add_message(self, msg):
-        author, _ = MessageAuthor.get_or_create(
-            id=msg.author.id,
-            defaults={
-                'username': msg.author.username,
-                'discriminator': msg.author.discriminator,
-                'bot': msg.author.bot,
-            })
+        author = User.from_disco_user(msg.author)
 
         _, created = Message.get_or_create(
             id=msg.id,
@@ -210,8 +184,10 @@ class MessageCachePlugin(Plugin):
                 guild_id=(msg.guild and msg.guild.id),
                 author=author,
                 content=msg.with_proper_mentions,
-                timestamp=msg.timestamp))
+                timestamp=msg.timestamp,
+                mentions=list(msg.mentions.keys())))
 
+        list(map(User.from_disco_user, msg.mentions.values()))
         return created
 
     def backfill_channel(self, channel, full=False):

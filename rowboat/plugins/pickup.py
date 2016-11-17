@@ -43,6 +43,9 @@ class PickupGame(BaseModel):
 
     created_at = DateTimeField(default=datetime.utcnow)
 
+    class Meta:
+        db_table = 'pickupgames'
+
     @property
     def all_players(self):
         return sum(self.teams.values(), list())

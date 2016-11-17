@@ -27,6 +27,8 @@ class Profile(BaseModel):
     created_at = DateTimeField(default=datetime.utcnow)
 
     class Meta:
+        db_table = 'profiles'
+
         primary_key = CompositeKey('user_id', 'platform')
 
         indexes = (
