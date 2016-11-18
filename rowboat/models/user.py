@@ -51,4 +51,4 @@ class User(BaseModel):
         return obj
 
     def __str__(self):
-        return u'{}#{}'.format(self.username, self.discriminator)
+        return u'{}#{}'.format(self.username, str(self.discriminator).zfill(4))

@@ -1,3 +1,4 @@
+import time
 import psycopg2
 import markovify
 
@@ -105,7 +106,9 @@ class MessageCachePlugin(Plugin):
 
         with conn.cursor() as cur:
             try:
+                start = time.time()
                 cur.execute(event.codeblock.format(e=event))
+                dur = time.time() - start
             except psycopg2.Error as e:
                 raise CommandError(e.pgerror)
             tbl = MessageTable()
@@ -114,7 +117,7 @@ class MessageCachePlugin(Plugin):
             for row in cur.fetchall():
                 tbl.add(*row)
 
-            event.msg.reply(tbl.compile())
+            event.msg.reply(tbl.compile() + '\n _took {}ms_'.format(int(dur * 1000)))
 
     @Plugin.command('init', '<entity:user|channel>', level=-1, group='markov', global_=True)
     def command_markov(self, event, entity):

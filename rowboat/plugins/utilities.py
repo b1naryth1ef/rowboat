@@ -102,7 +102,7 @@ class UtilitiesPlugin(Plugin):
     @Plugin.command('emoji', '<emoji:str>')
     def emoji(self, event, emoji):
         if not EMOJI_RE.match(emoji):
-            return event.msg.reply('Unknown emoji: `{}`'.format(emoji))
+            return event.msg.reply(u'Unknown emoji: `{}`'.format(emoji))
 
         fields = []
 
@@ -124,13 +124,13 @@ class UtilitiesPlugin(Plugin):
         urls = []
 
         for emoji in emojis.split(' ')[:5]:
-            if ' '.join(list(emoji)) in EMOJI_ALIAS_UNICODE.values():
-                urls.append(get_emoji_url(emoji))
-            elif EMOJI_RE.match(emoji):
+            # if ' '.join(list(emoji)) in EMOJI_ALIAS_UNICODE.values():
+            if EMOJI_RE.match(emoji):
                 _, eid = EMOJI_RE.findall(emoji)[0]
                 urls.append('https://discordapp.com/api/emojis/{}.png'.format(eid))
             else:
-                return event.msg.reply(u'Invalid emoji: `{}`'.format(emoji.replace('`', '')))
+                urls.append(get_emoji_url(emoji))
+                # return event.msg.reply(u'Invalid emoji: `{}`'.format(emoji.replace('`', '')))
 
         width, height, images = 0, 0, []
 
@@ -159,9 +159,9 @@ class UtilitiesPlugin(Plugin):
                 Message.author_id == user.id
             ).order_by(Message.timestamp.desc()).limit(1).get()
         except Message.DoesNotExist:
-            return event.msg.reply("I've never seen {}".format(user))
+            return event.msg.reply(u"I've never seen {}".format(user))
 
-        event.msg.reply('I last saw {} {} ({})'.format(
+        event.msg.reply(u'I last saw {} {} ({})'.format(
             user,
             humanize.naturaltime(datetime.utcnow() - msg.timestamp),
             msg.timestamp

@@ -1,10 +1,21 @@
 from peewee import *
+from peewee import Expression
 from playhouse.postgres_ext import *
 
 REGISTERED_MODELS = []
 
 # Create a database proxy we can setup post-init
 database = Proxy()
+
+
+OP['IRGX'] = 'irgx'
+
+
+def pg_regex_i(lhs, rhs):
+    return Expression(lhs, OP.IRGX, rhs)
+
+
+PostgresqlExtDatabase.register_ops({OP.IRGX: '~*'})
 
 
 class BaseModel(Model):
