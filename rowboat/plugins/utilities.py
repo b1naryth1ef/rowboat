@@ -5,13 +5,14 @@ import humanize
 
 from six import BytesIO
 from PIL import Image
+from pyquery import PyQuery
 from gevent.pool import Pool
 from datetime import datetime
-from emoji.unicode_codes import EMOJI_ALIAS_UNICODE
+from disco.types.message import MessageEmbed
 
 from rowboat import RowboatPlugin as Plugin
 from rowboat.types.plugin import PluginConfig
-from rowboat.plugins.messages import Message
+from rowboat.models.message import Message
 
 
 CDN_URL = 'https://twemoji.maxcdn.com/2/72x72/{}.png'
@@ -98,6 +99,34 @@ class UtilitiesPlugin(Plugin):
             data['latitude'],
             data['longitude'],
         ))
+
+    @Plugin.command('google', '<query:str...>')
+    def google(self, event, query):
+        url = 'https://www.google.com/search?hl=en&q={}&btnG=Google+Search&tbs=0&safe=off&tbm='
+        r = requests.get(url.format(query))
+        pq = PyQuery(r.content)
+
+        results = []
+        for result in pq('.g'):
+            try:
+                url = result.getchildren()[0].getchildren()[0]
+                txt = result.getchildren()[1].getchildren()[1].text_content()
+                results.append({
+                    'url': url.attrib['href'],
+                    'title': url.text_content(),
+                    'text': txt,
+                })
+            except:
+                continue
+
+        if not results:
+            return event.msg.reply('No results found')
+
+        embed = MessageEmbed()
+        embed.title = results[0]['title']
+        embed.url = results[0]['url'].split('q=', 1)[-1].split('&', 1)[0]
+        embed.description = results[0]['text']
+        return event.msg.reply('', embed=embed)
 
     @Plugin.command('emoji', '<emoji:str>')
     def emoji(self, event, emoji):

@@ -7,44 +7,9 @@ from disco.bot import Plugin
 from disco.bot.command import CommandError
 from disco.types.message import MessageTable
 from disco.types.user import User as DiscoUser
-from peewee import (
-    BigIntegerField, TextField, BooleanField,
-    ForeignKeyField, DateTimeField
-)
-from playhouse.postgres_ext import BinaryJSONField
 
-from rowboat.sql import BaseModel, database
-from rowboat.models.user import User
-
-
-@BaseModel.register
-class Message(BaseModel):
-    id = BigIntegerField(primary_key=True)
-    channel_id = BigIntegerField(index=True)
-    guild_id = BigIntegerField(index=True, null=True)
-    author = ForeignKeyField(User)
-    content = TextField()
-    timestamp = DateTimeField()
-    edited_timestamp = DateTimeField(null=True, default=None)
-    deleted = BooleanField(default=False)
-
-    mentions = BinaryJSONField(default=[], null=True)
-
-    SQL = '''CREATE INDEX IF NOT EXISTS message_content_fts ON messages USING gin(to_tsvector('english', content));'''
-
-    class Meta:
-        db_table = 'messages'
-
-
-@BaseModel.register
-class Reaction(BaseModel):
-    message_id = BigIntegerField()
-    user_id = BigIntegerField()
-    emoji_id = BigIntegerField(null=True)
-    emoji_name = TextField()
-
-    class Meta:
-        db_table = 'reactions'
+from rowboat.sql import database
+from rowboat.models.message import Message, Reaction
 
 
 class MessageCachePlugin(Plugin):
@@ -58,21 +23,11 @@ class MessageCachePlugin(Plugin):
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
-        self.add_message(event.message)
+        Message.from_disco_message(event.message)
 
     @Plugin.listen('MessageUpdate')
     def on_message_update(self, event):
-        if not event.edited_timestamp:
-            return
-
-        to_update = {
-            'edited_timestamp': event.edited_timestamp
-        }
-
-        if event.content:
-            to_update['content'] = event.with_proper_mentions
-
-        Message.update(**to_update).where(Message.id == event.id).execute()
+        Message.from_disco_message_update(event.message)
 
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
@@ -80,17 +35,11 @@ class MessageCachePlugin(Plugin):
 
     @Plugin.listen('MessageDeleteBulk')
     def on_message_delete_bulk(self, event):
-        Message.update(deleted=True).where(
-            Message.id << event.ids
-        ).execute()
+        Message.update(deleted=True).where((Message.id << event.ids)).execute()
 
     @Plugin.listen('MessageReactionAdd', priority=Priority.BEFORE)
     def on_message_reaction_add(self, event):
-        Reaction.create(
-            message_id=event.message_id,
-            user_id=event.user_id,
-            emoji_id=event.emoji.id or None,
-            emoji_name=event.emoji.name or None)
+        Reaction.from_disco_reaction(event)
 
     @Plugin.listen('MessageReactionRemove', priority=Priority.BEFORE)
     def on_message_reaction_remove(self, event):
@@ -177,22 +126,6 @@ class MessageCachePlugin(Plugin):
         event.msg.reply(':ok_hand: started backfill on {}'.format(channel))
         event.msg.reply('{} backfill on {} completed, {} messages stored'.format(event.author.mention, channel, g.get()))
 
-    def add_message(self, msg):
-        author = User.from_disco_user(msg.author)
-
-        _, created = Message.get_or_create(
-            id=msg.id,
-            defaults=dict(
-                channel_id=msg.channel_id,
-                guild_id=(msg.guild and msg.guild.id),
-                author=author,
-                content=msg.with_proper_mentions,
-                timestamp=msg.timestamp,
-                mentions=list(msg.mentions.keys())))
-
-        list(map(User.from_disco_user, msg.mentions.values()))
-        return created
-
     def backfill_channel(self, channel, full=False):
         total = 0
         start = channel.last_message_id
@@ -207,7 +140,7 @@ class MessageCachePlugin(Plugin):
 
         for chunk in channel.messages_iter(bulk=True, before=start):
             with database.atomic():
-                size = len(filter(bool, map(self.add_message, chunk)))
+                size = len(filter(bool, map(Message.from_disco_message, chunk)))
                 total += size
                 self.log.info('%s - backfilled %s messages (%s dupes)', channel, total, 100 - size)
 

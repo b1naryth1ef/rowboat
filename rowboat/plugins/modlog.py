@@ -256,6 +256,9 @@ class ModLogPlugin(Plugin):
     def on_guild_member_update(self, event):
         pre_member = event.guild.members.get(event.id)
 
+        if not pre_member:
+            return
+
         if pre_member.nick != event.nick:
             self.log_action(
                 Actions.CHANGE_NICK,

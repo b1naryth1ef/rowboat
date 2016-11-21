@@ -79,12 +79,14 @@ class CorePlugin(Plugin):
         self.guilds[event.id] = guild
 
         if guild.get_config().nickname:
-            m = event.members.select_one(id=self.state.me.id)
-            if m and m.nick != guild.get_config().nickname:
-                try:
-                    m.set_nickname(guild.get_config().nickname)
-                except APIException as e:
-                    self.log.warning('Failed to set nickname for guild %s (%s)', event.guild, e.content)
+            def set_nickname():
+                m = event.members.select_one(id=self.state.me.id)
+                if m and m.nick != guild.get_config().nickname:
+                    try:
+                        m.set_nickname(guild.get_config().nickname)
+                    except APIException as e:
+                        self.log.warning('Failed to set nickname for guild %s (%s)', event.guild, e.content)
+            self.spawn_later(5, set_nickname)
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):

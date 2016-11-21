@@ -12,7 +12,8 @@ from rowboat.util import C
 from rowboat.redis import rdb
 # from rowboat.sql import pg_regex_i
 from rowboat.types.plugin import PluginConfig
-from rowboat.plugins.messages import Message, User
+from rowboat.models.user import User
+from rowboat.models.message import Message
 
 
 class AdminConfig(PluginConfig):
@@ -167,17 +168,19 @@ class AdminPlugin(Plugin):
 
         # Grab total messages/characters
         q = base_query.select(
-            fn.Count('*'), fn.Sum(fn.char_length(Message.content))
+            fn.Count('*'),
+            fn.Sum(fn.char_length(Message.content)),
+            fn.Sum(fn.jsonb_array_length(Message.emojis)),
         ).tuples()[0]
 
-        # Grab total custom emojis
-        unique = list(Message.raw("""
-            SELECT count(*) as c, regexp_matches(content, '<:(.+?):([0-9]+?)>', 'gi') as emoji
-            FROM messages WHERE content ~* '<:.+:[0-9]+>' AND author_id=%s GROUP BY emoji
-            ORDER BY c DESC;
+        emojis = list(Message.raw("""
+            SELECT count(i)
+            FROM (
+                SELECT jsonb_array_elements(emojis)
+                FROM messages WHERE author_id=%s
+            ) i
+            GROUP BY i
         """, (user.id, )).tuples())
-
-        custom = sum([i[0] for i in unique])
 
         deleted = base_query.where((Message.deleted >> True)).count()
 
@@ -189,9 +192,9 @@ class AdminPlugin(Plugin):
         embed.fields.append(
             MessageEmbedField(name='Deleted Messages', value=deleted, inline=True))
         embed.fields.append(
-            MessageEmbedField(name='Total Custom Emoji', value=custom, inline=True))
+            MessageEmbedField(name='Total Custom Emoji', value=sum(i[0] for i in emojis), inline=True))
         embed.fields.append(
-            MessageEmbedField(name='Unique Emojis Used', value=len(unique), inline=True))
+            MessageEmbedField(name='Unique Emojis Used', value=len(emojis), inline=True))
         embed.author = MessageEmbedAuthor(name=user.username, icon_url=user.avatar_url)
         embed.color = 0xF49AC2
 
@@ -199,11 +202,16 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('emojistats', level=CommandLevels.MOD)
     def emojistats(self, event):
-        q = list(Message.raw("""
-            SELECT count(*) as c, regexp_matches(content, '<:(.+?):([0-9]+?)>', 'gi') as emoji
-            FROM messages WHERE content ~* '<:.+:[0-9]+>' AND guild_id=%s GROUP BY emoji
-            ORDER BY c DESC LIMIT 10;
-        """, (event.guild.id, )).tuples())
+        q = Message.raw("""
+            SELECT i, count(i)
+            FROM (
+                SELECT jsonb_array_elements(emojis)
+                FROM messages WHERE guild_id=%s
+            ) i
+            GROUP BY i
+            ORDER BY 2 DESC
+            LIMIT 10;
+        """).tuples()
 
         tbl = MessageTable()
         tbl.set_header('Count', 'Name', 'ID')
