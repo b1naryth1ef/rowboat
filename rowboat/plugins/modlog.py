@@ -4,6 +4,7 @@ import time
 import pytz
 import requests
 import operator
+import humanize
 
 from six import BytesIO
 from PIL import Image
@@ -15,7 +16,7 @@ from collections import defaultdict
 from disco.types import UNSET
 from disco.types.message import MessageEmbed, MessageEmbedField
 from disco.util.functional import cached_property
-from disco.util.snowflake import to_unix
+from disco.util.snowflake import to_unix, to_datetime
 
 from rowboat import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField
@@ -226,7 +227,10 @@ class ModLogPlugin(Plugin):
         if event.user.id in self.debounce[event.guild.id]:
             del self.debounce[event.user.id]
 
-        new = (time.time() - to_unix(event.user.id) < event.config.new_member_threshold)
+        new = ''
+        if event.config.new_member_threshold and (time.time() - to_unix(event.user.id)) < event.config.new_member_threshold:
+            new = ' :new: (created {})'.format(humanize.naturaltime(datetime.utcnow() - to_datetime(event.user.id)))
+
         self.log_action(Actions.GUILD_MEMBER_ADD, event, new=' :new:' if new else '')
 
     @Plugin.listen('GuildMemberRemove')

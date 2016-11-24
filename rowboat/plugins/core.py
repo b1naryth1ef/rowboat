@@ -93,9 +93,9 @@ class CorePlugin(Plugin):
         if event.message.author.id == self.client.state.me.id:
             return
 
-        if hasattr(event, 'guild'):
+        if hasattr(event, 'guild') and event.guild:
             guild_id = event.guild.id
-        elif hasattr(event, 'guild_id'):
+        elif hasattr(event, 'guild_id') and event.guild_id:
             guild_id = event.guild_id
         else:
             return

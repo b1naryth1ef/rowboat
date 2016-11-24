@@ -1,7 +1,10 @@
 import six
 import json
+import random
 import requests
 
+from PIL import Image
+from six import BytesIO
 from peewee import fn
 from disco.bot import CommandLevels
 from disco.types.channel import Channel
@@ -9,6 +12,7 @@ from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, M
 
 from rowboat import RowboatPlugin as Plugin
 from rowboat.util import C
+from rowboat.util.images import get_dominant_colors
 from rowboat.redis import rdb
 # from rowboat.sql import pg_regex_i
 from rowboat.types.plugin import PluginConfig
@@ -196,13 +200,23 @@ class AdminPlugin(Plugin):
         embed.fields.append(
             MessageEmbedField(name='Unique Emojis Used', value=len(emojis), inline=True))
         embed.author = MessageEmbedAuthor(name=user.username, icon_url=user.avatar_url)
-        embed.color = 0xF49AC2
+
+        key = 'avatar:color:{}'.format(user.id)
+        if rdb.exists(key):
+            embed.color = int(rdb.get(key))
+        else:
+            r = requests.get(user.avatar_url)
+            embed.color = int(random.choice(
+                get_dominant_colors(Image.open(BytesIO(r.content)))
+            ), 16)
+            rdb.set(key, embed.color)
 
         event.msg.reply('', embed=embed)
 
     @Plugin.command('emojistats', level=CommandLevels.MOD)
     def emojistats(self, event):
-        q = Message.raw("""
+        pass
+        q = list(Message.raw("""
             SELECT i, count(i)
             FROM (
                 SELECT jsonb_array_elements(emojis)
@@ -211,7 +225,9 @@ class AdminPlugin(Plugin):
             GROUP BY i
             ORDER BY 2 DESC
             LIMIT 10;
-        """).tuples()
+        """, (event.guild.id, )).tuples())
+
+        print q
 
         tbl = MessageTable()
         tbl.set_header('Count', 'Name', 'ID')

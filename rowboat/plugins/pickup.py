@@ -93,8 +93,14 @@ class PickupConfig(PluginConfig):
 class PickupPlugin(Plugin):
     whitelisted = True
 
-    @Plugin.command('create', '<template:str>', level=CommandLevels.MOD, group='pug')
-    def create(self, event, template):
+    @Plugin.command('create', '[template:str]', level=CommandLevels.MOD, group='pug')
+    def create(self, event, template=None):
+        if not template and len(event.config.templates) == 1:
+            template = list(event.config.templates.keys())[0]
+
+        if template not in event.config.templates:
+            return event.msg.reply(':warning: unknown pickup game template `{}`'.format(C(template)))
+
         try:
             PickupGame.select().where(
                 (PickupGame.guild_id == event.guild.id) &
@@ -104,9 +110,6 @@ class PickupPlugin(Plugin):
             return event.msg.reply(':warning: a pickup game is already running in this channel')
         except PickupGame.DoesNotExist:
             pass
-
-        if template not in event.config.templates:
-            return event.msg.reply(':warning: unknown pickup game template `{}`'.format(C(template)))
 
         PickupGame.create(
             guild_id=event.guild.id,
@@ -158,3 +161,16 @@ class PickupPlugin(Plugin):
 
         game.rmv_player(event.author.id)
         event.msg.reply(':ok_hand: you have left the current pickup game')
+
+    @Plugin.command('list', aliases=['who'])
+    def list(self, event):
+        game = self.get_game(event)
+
+        members = list(map(event.guild.members.get, game.all_players))
+
+        template = event.config.templates[game.template]
+
+        event.msg.reply('{}/{} players: {}'.format(
+            len(members),
+            template.players * len(template.teams),
+            ', '.join(['**' + (i.nick or i.user.username) + '**' for i in members])))

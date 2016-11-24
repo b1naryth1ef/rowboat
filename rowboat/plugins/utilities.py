@@ -85,7 +85,7 @@ class UtilitiesPlugin(Plugin):
             '\n'.join(sites),
         ))
 
-    @Plugin.command('geoip', '<ip:str>')
+    @Plugin.command('geoip', '<ip:str>', global_=True)
     def geoip(self, event, ip):
         r = requests.get('http://json.geoiplookup.io/{}'.format(ip))
         r.raise_for_status()
