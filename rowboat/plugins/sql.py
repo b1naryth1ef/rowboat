@@ -187,10 +187,11 @@ class SQLPlugin(Plugin):
         if chan_count == 1:
             event.msg.reply('Backfilling {}, loaded {} messages so far'.format(channel, messages))
         else:
-            event.msg.reply('[{}/{}] current channel {}, {} messages so far'.format(
+            event.msg.reply('[{}/{}] current channel {} ({}), {} messages so far'.format(
                 chan_current,
                 chan_count,
                 channel,
+                channel.guild if channel.guild_id else '',
                 messages
             ))
 
@@ -219,6 +220,9 @@ class SQLPlugin(Plugin):
                 ).order_by(Message.id.asc()).limit(1).get().id
             except Message.DoesNotExist:
                 pass
+
+        if not start:
+            return
 
         for chunk in channel.messages_iter(bulk=True, before=start):
             with database.atomic():

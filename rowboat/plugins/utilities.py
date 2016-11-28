@@ -231,7 +231,8 @@ class UtilitiesPlugin(Plugin):
 
         member = event.guild.get_member(user)
         embed.fields.append(
-            MessageEmbedField(name='Nickname', value=member.nick or '`No Nickname`', inline=True))
+            MessageEmbedField(name='Nickname',
+                value=member.nick if member and member.nick else '`No Nickname`', inline=True))
 
         embed.fields.append(
             MessageEmbedField(name='ID', value=str(user.id), inline=True))
@@ -240,11 +241,11 @@ class UtilitiesPlugin(Plugin):
             MessageEmbedField(name='Creation Date', value=str(to_datetime(user.id)), inline=True))
 
         embed.fields.append(
-            MessageEmbedField(name='Join Date', value=member.joined_at, inline=True))
+            MessageEmbedField(name='Join Date', value=member.joined_at if member else '`Unknown`', inline=True))
 
         embed.fields.append(
             MessageEmbedField(name='Roles', value=', '.join(
-                (event.guild.roles.get(i).name for i in member.roles)) or 'no roles', inline=False))
+                (event.guild.roles.get(i).name for i in (member.roles if member else []))) or 'no roles', inline=False))
 
         embed.color = get_dominant_colors_user(user)
         event.msg.reply('', embed=embed)
