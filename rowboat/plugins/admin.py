@@ -1,23 +1,34 @@
 import six
 import json
-import random
 import requests
 
-from PIL import Image
-from six import BytesIO
 from peewee import fn
 from disco.bot import CommandLevels
 from disco.types.channel import Channel
-from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedAuthor
+from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
 
 from rowboat import RowboatPlugin as Plugin
 from rowboat.util import C
-from rowboat.util.images import get_dominant_colors
+from rowboat.util.images import get_dominant_colors_user
 from rowboat.redis import rdb
-# from rowboat.sql import pg_regex_i
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.user import User
 from rowboat.models.message import Message
+
+
+EMOJI_STATS_SQL = """
+WITH emojis AS (
+    SELECT jsonb_array_elements_text(emojis) as id
+    FROM messages WHERE guild_id={gid} AND jsonb_array_length(emojis) > 0
+)
+SELECT gm.emoji_id, count(*), gm.name
+FROM emojis
+JOIN guildemojis gm ON gm.emoji_id=emojis.id::bigint
+WHERE gm.guild_id={gid}
+GROUP BY gm.emoji_id
+{}
+LIMIT 10;
+"""
 
 
 class AdminConfig(PluginConfig):
@@ -116,7 +127,7 @@ class AdminPlugin(Plugin):
             result = json.dumps({
                 'count': len(data),
                 'messages': data,
-            }, )
+            })
 
         r = requests.post('http://hastebin.com/documents', data=result)
         r.raise_for_status()
@@ -199,41 +210,25 @@ class AdminPlugin(Plugin):
             MessageEmbedField(name='Total Custom Emoji', value=sum(i[0] for i in emojis), inline=True))
         embed.fields.append(
             MessageEmbedField(name='Unique Emojis Used', value=len(emojis), inline=True))
-        embed.author = MessageEmbedAuthor(name=user.username, icon_url=user.avatar_url)
 
-        key = 'avatar:color:{}'.format(user.id)
-        if rdb.exists(key):
-            embed.color = int(rdb.get(key))
-        else:
-            r = requests.get(user.avatar_url)
-            embed.color = int(random.choice(
-                get_dominant_colors(Image.open(BytesIO(r.content)))
-            ), 16)
-            rdb.set(key, embed.color)
-
+        embed.thumbnail = MessageEmbedThumbnail(url=user.avatar_url)
+        embed.color = get_dominant_colors_user(user)
         event.msg.reply('', embed=embed)
 
-    @Plugin.command('emojistats', level=CommandLevels.MOD)
-    def emojistats(self, event):
-        pass
-        q = list(Message.raw("""
-            SELECT i, count(i)
-            FROM (
-                SELECT jsonb_array_elements(emojis)
-                FROM messages WHERE guild_id=%s
-            ) i
-            GROUP BY i
-            ORDER BY 2 DESC
-            LIMIT 10;
-        """, (event.guild.id, )).tuples())
+    @Plugin.command('emojistats most', level=CommandLevels.MOD, context={'mode': 'most'})
+    @Plugin.command('emojistats least', level=CommandLevels.MOD, context={'mode': 'least'})
+    def emojistats(self, event, mode='default'):
+        if mode == 'most':
+            sql = EMOJI_STATS_SQL.format('ORDER BY 2 DESC', gid=event.guild.id)
+        else:
+            sql = EMOJI_STATS_SQL.format('ORDER BY 2 ASC', gid=event.guild.id)
 
-        print q
+        q = list(Message.raw(sql).tuples())
 
         tbl = MessageTable()
         tbl.set_header('Count', 'Name', 'ID')
 
-        for count, data in q:
-            name, emoji_id = data
+        for emoji_id, count, name in q:
             tbl.add(count, name, emoji_id)
 
         event.msg.reply(tbl.compile())

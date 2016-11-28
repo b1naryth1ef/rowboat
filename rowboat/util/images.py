@@ -29,6 +29,22 @@ def get_dominant_colors(img, n=3):
     return map(rtoh, rgbs)
 
 
+def get_dominant_colors_user(user):
+    import requests
+    from rowboat.redis import rdb
+    from PIL import Image
+    from six import BytesIO
+
+    key = 'avatar:color:{}'.format(user.id)
+    if rdb.exists(key):
+        return int(rdb.get(key))
+    else:
+        r = requests.get(user.avatar_url)
+        color = int(get_dominant_colors(Image.open(BytesIO(r.content)))[0], 16)
+        rdb.setex(key, color, 60 * 60 * 24 * 7)
+        return color
+
+
 def euclidean(p1, p2):
     return sqrt(sum([
         (p1.coords[i] - p2.coords[i]) ** 2 for i in range(p1.n)

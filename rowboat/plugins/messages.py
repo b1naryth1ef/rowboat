@@ -12,6 +12,7 @@ from rowboat.sql import database
 from rowboat.models.message import Message, Reaction
 
 
+# TODO: rename this lol
 class MessageCachePlugin(Plugin):
     def load(self, ctx):
         self.models = ctx.get('models', {})
@@ -48,6 +49,20 @@ class MessageCachePlugin(Plugin):
             (Reaction.user_id == event.user_id) &
             (Reaction.emoji_id == (event.emoji.id or None)) &
             (Reaction.emoji_name == (event.emoji.name or None))).execute()
+
+    @Plugin.listen('GuildEmojisUpdate', priority=Priority.BEFORE)
+    def on_guild_emojis_update(self, event):
+        from rowboat.models.guild import GuildEmoji
+        ids = []
+
+        for emoji in event.emojis:
+            GuildEmoji.from_disco_guild_emoji(emoji, event.guild_id)
+            ids.append(emoji.id)
+
+        GuildEmoji.update(deleted=True).where(
+            (GuildEmoji.guild_id == event.guild_id) &
+            (~(GuildEmoji.emoji_id << ids))
+        ).execute()
 
     @Plugin.command('sql', level=-1, global_=True)
     def command_sql(self, event):

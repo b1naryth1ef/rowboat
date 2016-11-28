@@ -8,7 +8,7 @@ from disco.api.http import APIException
 from disco.bot.command import CommandEvent, CommandLevels
 
 from rowboat import RowboatPlugin, VERSION
-from rowboat.models.guild import Guild
+from rowboat.models.guild import Guild, GuildEmoji
 from rowboat.sql import init_db
 from rowboat.redis import rdb
 
@@ -87,6 +87,9 @@ class CorePlugin(Plugin):
                     except APIException as e:
                         self.log.warning('Failed to set nickname for guild %s (%s)', event.guild, e.content)
             self.spawn_later(5, set_nickname)
+
+        for emoji in event.emojis.values():
+            GuildEmoji.from_disco_guild_emoji(emoji)
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
@@ -236,7 +239,7 @@ class CorePlugin(Plugin):
 
         event.msg.reply(':ok_hand: guild configuration reloaded')
 
-    @Plugin.command('info', level=CommandLevels.ADMIN)
+    @Plugin.command('about', level=CommandLevels.ADMIN)
     def command_help(self, event):
         event.msg.reply(INFO_MESSAGE)
 

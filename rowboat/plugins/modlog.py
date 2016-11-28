@@ -225,7 +225,7 @@ class ModLogPlugin(Plugin):
     @Plugin.listen('GuildMemberAdd')
     def on_guild_member_add(self, event):
         if event.user.id in self.debounce[event.guild.id]:
-            del self.debounce[event.user.id]
+            del self.debounce[event.guild.id][event.user.id]
 
         new = ''
         if event.config.new_member_threshold and (time.time() - to_unix(event.user.id)) < event.config.new_member_threshold:

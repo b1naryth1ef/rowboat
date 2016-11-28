@@ -96,3 +96,31 @@ class Guild(BaseModel):
         if not hasattr(self, '_cached_config'):
             self._cached_config = GuildConfig(self.config)
         return self._cached_config
+
+
+@BaseModel.register
+class GuildEmoji(BaseModel):
+    emoji_id = BigIntegerField(primary_key=True)
+    guild_id = BigIntegerField()
+    name = CharField()
+
+    require_colons = BooleanField()
+    managed = BooleanField()
+    roles = BinaryJSONField()
+
+    deleted = BooleanField(default=False)
+
+    class Meta:
+        db_table = 'guildemojis'
+
+    @classmethod
+    def from_disco_guild_emoji(cls, emoji, guild_id=None):
+        return cls.get_or_create(
+            emoji_id=emoji.id,
+            defaults=dict(
+                guild_id=guild_id or emoji.guild_id,
+                name=emoji.name,
+                require_colons=emoji.require_colons,
+                managed=emoji.managed,
+                roles=emoji.roles,
+            ))[0]

@@ -8,11 +8,13 @@ from PIL import Image
 from pyquery import PyQuery
 from gevent.pool import Pool
 from datetime import datetime
-from disco.types.message import MessageEmbed
+from disco.types.message import MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
+from disco.util.snowflake import to_datetime
 
 from rowboat import RowboatPlugin as Plugin
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.message import Message
+from rowboat.util.images import get_dominant_colors_user
 
 
 CDN_URL = 'https://twemoji.maxcdn.com/2/72x72/{}.png'
@@ -218,3 +220,31 @@ class UtilitiesPlugin(Plugin):
         img.save(output, 'jpeg', quality=1, subsampling=0)
         output.seek(0)
         event.msg.reply('', attachment=('image.jpg', output))
+
+    @Plugin.command('info', '<user:user>')
+    def info(self, event, user):
+        embed = MessageEmbed()
+
+        embed.thumbnail = MessageEmbedThumbnail(url=user.avatar_url)
+        embed.fields.append(
+            MessageEmbedField(name='Username', value=user.username, inline=True))
+
+        member = event.guild.get_member(user)
+        embed.fields.append(
+            MessageEmbedField(name='Nickname', value=member.nick or '`No Nickname`', inline=True))
+
+        embed.fields.append(
+            MessageEmbedField(name='ID', value=str(user.id), inline=True))
+
+        embed.fields.append(
+            MessageEmbedField(name='Creation Date', value=str(to_datetime(user.id)), inline=True))
+
+        embed.fields.append(
+            MessageEmbedField(name='Join Date', value=member.joined_at, inline=True))
+
+        embed.fields.append(
+            MessageEmbedField(name='Roles', value=', '.join(
+                (event.guild.roles.get(i).name for i in member.roles)) or 'no roles', inline=False))
+
+        embed.color = get_dominant_colors_user(user)
+        event.msg.reply('', embed=embed)

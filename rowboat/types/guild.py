@@ -5,7 +5,6 @@ from rowboat.plugins.modlog import ModLogConfig
 from rowboat.plugins.reactions import ReactionsConfig
 from rowboat.plugins.admin import AdminConfig
 from rowboat.plugins.utilities import UtilitiesConfig
-from rowboat.plugins.pickup import PickupConfig
 
 
 CooldownMode = Enum(
@@ -20,7 +19,6 @@ class PluginsConfig(SlottedModel):
     reactions = Field(ReactionsConfig, default=None)
     admin = Field(AdminConfig, default=None)
     utilities = Field(UtilitiesConfig, default=None)
-    pickup = Field(PickupConfig, default=None)
 
 
 class CommandCooldownConfig(SlottedModel):
