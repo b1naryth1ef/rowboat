@@ -10,9 +10,17 @@ GUILD_BAN_ADD:
   emoji: rotating_light
   format: 'user {e.user} was banned'
 
+GUILD_SOFTBAN_ADD:
+  emoji: rotating_light
+  format: 'user {e.user} was soft-banned by **{actor}**: `{reason}`'
+
+GUILD_TEMPBAN_ADD:
+  emoji: rotating_light
+  format: 'user {e.user} was temp-banned until {expires} by **{actor}**: `{reason}`'
+
 GUILD_BAN_ADD_REASON:
   emoji: rotating_light
-  format: 'user {e.user} was banned from the server by **{actor}**: `{reason}`'
+  format: 'user {e.user} was banned by **{actor}**: `{reason}`'
 
 GUILD_BAN_REMOVE:
   emoji: rotating_light

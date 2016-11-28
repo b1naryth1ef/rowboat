@@ -12,7 +12,7 @@ from rowboat.util import C
 from rowboat.util.images import get_dominant_colors_user
 from rowboat.redis import rdb
 from rowboat.types.plugin import PluginConfig
-from rowboat.models.user import User
+from rowboat.models.user import User, Infraction
 from rowboat.models.message import Message
 
 
@@ -49,12 +49,9 @@ class AdminPlugin(Plugin):
         Kick a user from the server (with an optional reason for the modlog).
         """
 
-        u = event.guild.get_member(user)
-        if u:
-            self.bot.plugins.get('ModLogPlugin').create_debounce(event, user, 'kick',
-                actor=str(event.author),
-                reason=reason or 'no reason')
-            u.kick()
+        member = event.guild.get_member(user)
+        if member:
+            Infraction.kick(self, event, member, reason)
         else:
             event.msg.reply(':warning: Invalid user!')
 
@@ -64,12 +61,33 @@ class AdminPlugin(Plugin):
         Ban a user from the server (with an optional reason for the modlog).
         """
 
-        u = event.guild.get_member(user)
-        if u:
-            self.bot.plugins.get('ModLogPlugin').create_debounce(event, user, 'ban_reason',
-                actor=str(event.author),
-                reason=reason or 'no reason')
-            u.ban()
+        member = event.guild.get_member(user)
+        if member:
+            Infraction.ban(self, event, member, reason)
+        else:
+            event.msg.reply(':warning: Invalid user!')
+
+    @Plugin.command('softban', '<user:user> [reason:str...]', level=CommandLevels.MOD)
+    def softban(self, event, user, reason=None):
+        """
+        Ban then unban a user from the server (with an optional reason for the modlog).
+        """
+
+        member = event.guild.get_member(user)
+        if member:
+            Infraction.softban(self, event, member, reason)
+        else:
+            event.msg.reply(':warning: Invalid user!')
+
+    @Plugin.command('tempban', '<user:user> <duration:duration> [reason:str...]', level=CommandLevels.MOD)
+    def tempban(self, event, duration, user, reason=None):
+        """
+        Ban a user from the server for a given duration (with an optional reason for the modlog).
+        """
+
+        member = event.guild.get_member(user)
+        if member:
+            Infraction.tempban(self, event, member, reason, duration)
         else:
             event.msg.reply(':warning: Invalid user!')
 

@@ -209,10 +209,23 @@ class ModLogPlugin(Plugin):
             debounce = self.debounce[event.guild.id][event.user.id]
 
             if debounce['type'] == 'ban_reason':
-                self.log_action(Actions.GUILD_BAN_ADD_REASON,
-                    event,
-                    actor=debounce['actor'],
-                    reason=debounce['reason'])
+                if debounce['temp']:
+                    if debounce['expires']:
+                        self.log_action(Actions.GUILD_TEMPBAN_ADD,
+                            event,
+                            actor=debounce['actor'],
+                            expires=debounce['expires'],
+                            reason=debounce['reason'])
+                    else:
+                        self.log_action(Actions.GUILD_SOFTBAN_ADD,
+                            event,
+                            actor=debounce['actor'],
+                            reason=debounce['reason'])
+                else:
+                    self.log_action(Actions.GUILD_BAN_ADD_REASON,
+                        event,
+                        actor=debounce['actor'],
+                        reason=debounce['reason'])
         else:
             self.log_action(Actions.GUILD_BAN_ADD, event)
 
@@ -220,6 +233,14 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):
+        if event.user.id in self.debounce[event.guild_id]:
+            debounce = self.debounce[event.guild_id][event.user.id]
+
+            # Ignore softbans
+            if debounce['type'] == 'ban_reason':
+                if debounce['temp'] and not debounce['expires']:
+                    return
+
         self.log_action(Actions.GUILD_BAN_REMOVE, event)
 
     @Plugin.listen('GuildMemberAdd')

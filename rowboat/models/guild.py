@@ -11,7 +11,6 @@ from datetime import datetime
 from playhouse.postgres_ext import BinaryJSONField
 
 from rowboat.sql import BaseModel
-from rowboat.types.guild import GuildConfig
 
 ALLOWED_DOMAINS = {
     'github.com',
@@ -56,6 +55,7 @@ class Guild(BaseModel):
 
     @staticmethod
     def load_from_url(url):
+        from rowboat.types.guild import GuildConfig
         r = requests.get(url, timeout=15, params={'_t': time.time()})
         r.raise_for_status()
 
@@ -90,6 +90,7 @@ class Guild(BaseModel):
             delattr(self, '_cached_config')
 
     def get_config(self):
+        from rowboat.types.guild import GuildConfig
         if not self.config:
             self.reload()
 
