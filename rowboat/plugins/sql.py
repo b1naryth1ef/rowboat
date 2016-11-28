@@ -5,6 +5,7 @@ import markovify
 from holster.emitter import Priority
 from disco.bot import Plugin
 from disco.bot.command import CommandError
+from disco.api.http import APIException
 from disco.types.message import MessageTable
 from disco.types.user import User as DiscoUser
 
@@ -174,7 +175,10 @@ class SQLPlugin(Plugin):
         for channel in self.state.channels.values():
             self.backfill_status[0] = channel
             self.backfill_status[2] += 1
-            self.backfill_channel(channel)
+            try:
+                self.backfill_channel(channel)
+            except APIException:
+                continue
 
         self.backfill_status = None
 
