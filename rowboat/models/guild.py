@@ -115,12 +115,17 @@ class GuildEmoji(BaseModel):
 
     @classmethod
     def from_disco_guild_emoji(cls, emoji, guild_id=None):
-        return cls.get_or_create(
-            emoji_id=emoji.id,
-            defaults=dict(
-                guild_id=guild_id or emoji.guild_id,
-                name=emoji.name,
-                require_colons=emoji.require_colons,
-                managed=emoji.managed,
-                roles=emoji.roles,
-            ))[0]
+        try:
+            ge = cls.get(emoji_id=emoji.id)
+            new = False
+        except cls.DoesNotExist:
+            ge = cls(emoji_id=emoji.id)
+            new = True
+
+        ge.guild_id = guild_id or emoji.guild_id
+        ge.name = emoji.name
+        ge.require_colons = emoji.require_colons
+        ge.managed = emoji.managed
+        ge.roles = emoji.roles
+        ge.save(force_insert=new)
+        return ge

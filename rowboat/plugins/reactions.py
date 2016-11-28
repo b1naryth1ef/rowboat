@@ -4,7 +4,7 @@ from peewee import fn
 from rowboat import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, ListField, DictField, ChannelField, UserField, Field
 from rowboat.types.plugin import PluginConfig
-from rowboat.plugins.messages import Reaction
+from rowboat.models.message import Reaction
 
 REGION_INDICATOR_RANGE = (u'\U0001F1E6', u'\U0001F1FF')
 

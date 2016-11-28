@@ -35,13 +35,13 @@ def get_dominant_colors_user(user):
     from PIL import Image
     from six import BytesIO
 
-    key = 'avatar:color:{}'.format(user.id)
+    key = 'avatar:color:{}'.format(user.avatar)
     if rdb.exists(key):
         return int(rdb.get(key))
     else:
         r = requests.get(user.avatar_url)
         color = int(get_dominant_colors(Image.open(BytesIO(r.content)))[0], 16)
-        rdb.setex(key, color, 60 * 60 * 24 * 7)
+        rdb.set(key, color)
         return color
 
 

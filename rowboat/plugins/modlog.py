@@ -21,7 +21,7 @@ from disco.util.snowflake import to_unix, to_datetime
 from rowboat import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField
 from rowboat.types.plugin import PluginConfig
-from rowboat.plugins.messages import Message
+from rowboat.models.message import Message
 from rowboat.util import ordered_load, C
 
 

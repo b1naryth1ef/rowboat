@@ -59,6 +59,8 @@ class Message(BaseModel):
                 author=User.from_disco_user(obj.author),
                 content=obj.with_proper_mentions,
                 timestamp=obj.timestamp,
+                edited_timestamp=obj.edited_timestamp,
+                num_edits=(0 if not obj.edited_timestamp else 1),
                 mentions=list(obj.mentions.keys()),
                 emojis=list(map(int, EMOJI_RE.findall(obj.content)))))
 

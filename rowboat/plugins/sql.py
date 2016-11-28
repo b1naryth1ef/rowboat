@@ -9,18 +9,21 @@ from disco.types.message import MessageTable
 from disco.types.user import User as DiscoUser
 
 from rowboat.sql import database
+from rowboat.models.guild import GuildEmoji
+from rowboat.models.channel import Channel
 from rowboat.models.message import Message, Reaction
 
 
 # TODO: rename this lol
-class MessageCachePlugin(Plugin):
+class SQLPlugin(Plugin):
     def load(self, ctx):
         self.models = ctx.get('models', {})
-        super(MessageCachePlugin, self).load(ctx)
+        self.backfill_status = None
+        super(SQLPlugin, self).load(ctx)
 
     def unload(self, ctx):
         ctx['models'] = self.models
-        super(MessageCachePlugin, self).unload(ctx)
+        super(SQLPlugin, self).unload(ctx)
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
@@ -52,7 +55,6 @@ class MessageCachePlugin(Plugin):
 
     @Plugin.listen('GuildEmojisUpdate', priority=Priority.BEFORE)
     def on_guild_emojis_update(self, event):
-        from rowboat.models.guild import GuildEmoji
         ids = []
 
         for emoji in event.emojis:
@@ -63,6 +65,33 @@ class MessageCachePlugin(Plugin):
             (GuildEmoji.guild_id == event.guild_id) &
             (~(GuildEmoji.emoji_id << ids))
         ).execute()
+
+    @Plugin.listen('GuildCreate')
+    def on_guild_create(self, event):
+        for channel in event.channels.values():
+            Channel.from_disco_channel(channel)
+
+        for emoji in event.emojis.values():
+            GuildEmoji.from_disco_guild_emoji(emoji)
+
+    @Plugin.listen('GuildDelete')
+    def on_guild_delete(self, event):
+        if event.deleted:
+            Channel.update(deleted=True).where(
+                Channel.guild_id == event.id
+            ).execute()
+
+    @Plugin.listen('ChannelCreate')
+    def on_channel_create(self, event):
+        Channel.from_disco_channel(event.channel)
+
+    @Plugin.listen('ChannelUpdate')
+    def on_channel_update(self, event):
+        Channel.from_disco_channel(event.channel)
+
+    @Plugin.listen('ChannelDelete')
+    def on_channel_delete(self, event):
+        Channel.update(deleted=True).where(Channel.channel_id == event.channel.id).execute()
 
     @Plugin.command('sql', level=-1, global_=True)
     def command_sql(self, event):
@@ -134,14 +163,52 @@ class MessageCachePlugin(Plugin):
         self.models = {}
         event.msg.reply(':ok_hand: cleared models')
 
-    @Plugin.command('backfill', '[channel:channel]', level=-1, global_=True)
+    @Plugin.command('backfill global', level=-1, global_=True)
+    def command_backfill_global(self, event):
+        if self.backfill_status:
+            return event.msg.reply(':warning: already backfilling')
+
+        event.msg.reply(':ok_hand: starting backfill on {} channels'.format(len(self.state.channels)))
+
+        self.backfill_status = [None, len(self.state.channels), 0, 0]
+        for channel in self.state.channels.values():
+            self.backfill_status[0] = channel
+            self.backfill_status[2] += 1
+            self.backfill_channel(channel)
+
+        self.backfill_status = None
+
+    @Plugin.command('backfill status', level=-1, global_=True)
+    def command_backfill_status(self, event):
+        if not self.backfill_status:
+            return event.msg.reply(':warning: no backfill')
+
+        channel, chan_count, chan_current, messages = self.backfill_status
+        if chan_count == 1:
+            event.msg.reply('Backfilling {}, loaded {} messages so far'.format(channel, messages))
+        else:
+            event.msg.reply('[{}/{}] current channel {}, {} messages so far'.format(
+                chan_current,
+                chan_count,
+                channel,
+                messages
+            ))
+
+    @Plugin.command('backfill one', '[channel:channel]', level=-1, global_=True)
     def command_backfill(self, event, channel=None):
+        if self.backfill_status:
+            return event.msg.reply(':warning: already backfilling')
+
         channel = channel or event.channel
+        self.backfill_status = [channel, 1, 1, 0]
         g = self.spawn(self.backfill_channel, channel)
         event.msg.reply(':ok_hand: started backfill on {}'.format(channel))
-        event.msg.reply('{} backfill on {} completed, {} messages stored'.format(event.author.mention, channel, g.get()))
+        count = g.get()
+        self.backfill_status = None
+        event.msg.reply('{} backfill on {} completed, {} messages stored'.format(event.author.mention, channel, count))
 
     def backfill_channel(self, channel, full=False):
+        self.backfill_status[3] = 0
         total = 0
         start = channel.last_message_id
 
@@ -157,6 +224,11 @@ class MessageCachePlugin(Plugin):
             with database.atomic():
                 size = len(filter(bool, map(Message.from_disco_message, chunk)))
                 total += size
+                self.backfill_status[3] = total
                 self.log.info('%s - backfilled %s messages (%s dupes)', channel, total, 100 - size)
+
+        Channel.update(first_message_id=Channel.generate_first_message_id(channel.id)).where(
+            Channel.channel_id == channel.id
+        ).execute()
 
         return total
