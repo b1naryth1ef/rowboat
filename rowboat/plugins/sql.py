@@ -229,11 +229,11 @@ class SQLPlugin(Plugin):
             return
 
         for chunk in channel.messages_iter(bulk=True, before=start):
-            with database.atomic():
-                size = len(filter(bool, map(Message.from_disco_message, chunk)))
-                total += size
-                self.backfill_status[3] = total
-                self.log.info('%s - backfilled %s messages (%s dupes)', channel, total, 100 - size)
+            existing = [i.id for i in Message.select(Message.id).where((Message.id << [i.id for i in chunk]))]
+            Message.from_disco_message_many([i for i in chunk if i.id not in existing])
+            total += len(chunk)
+            self.backfill_status[3] = total
+            self.log.info('%s - backfilled %s messages', channel, total)
 
         Channel.update(first_message_id=Channel.generate_first_message_id(channel.id)).where(
             Channel.channel_id == channel.id

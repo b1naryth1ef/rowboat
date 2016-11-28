@@ -69,6 +69,21 @@ class Message(BaseModel):
 
         return created
 
+    @classmethod
+    def from_disco_message_many(cls, objs):
+        cls.insert_many([{
+            'id': obj.id,
+            'channel_id': obj.channel_id,
+            'guild_id': (obj.guild and obj.guild.id),
+            'author': User.from_disco_user(obj.author),
+            'content': obj.with_proper_mentions,
+            'timestamp': obj.timestamp,
+            'edited_timestamp': obj.edited_timestamp,
+            'num_edits': (0 if not obj.edited_timestamp else 1),
+            'mentions': list(obj.mentions.keys()),
+            'emojis': list(map(int, EMOJI_RE.findall(obj.content))),
+        } for obj in objs]).execute()
+
 
 @BaseModel.register
 class Reaction(BaseModel):
