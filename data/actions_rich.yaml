@@ -162,3 +162,11 @@ MESSAGE_DELETE_BULK:
     channel-id: '{channel.id}'
     count: '{count}'
   text: 'multiple messages deleted'
+
+COMMAND_USED:
+  color: green
+  fields:
+    user: '{e.author}'
+    channel: '{e.channel}'
+    command: '{e.content}'
+  text: 'command used'

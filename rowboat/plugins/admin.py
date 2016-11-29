@@ -35,6 +35,8 @@ class AdminConfig(PluginConfig):
     pass
 
 
+# TODO: unban tempbans
+
 class AdminPlugin(Plugin):
     @Plugin.command('roles', level=CommandLevels.MOD)
     def roles(self, event):

@@ -77,3 +77,7 @@ MESSAGE_DELETE:
 MESSAGE_DELETE_BULK:
   emoji: wastebasket
   format: "{count} messages where delted from **{channel}**"
+
+COMMAND_USED:
+  emoji: wrench
+  format: "{e.author} used the command: `{e.content}` in **{e.channel}**"

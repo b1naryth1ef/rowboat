@@ -8,9 +8,10 @@ from disco.api.http import APIException
 from disco.bot.command import CommandEvent, CommandLevels
 
 from rowboat import RowboatPlugin, VERSION
-from rowboat.models.guild import Guild
 from rowboat.sql import init_db
 from rowboat.redis import rdb
+from rowboat.models.guild import Guild
+from rowboat.plugins.modlog import Actions
 
 INFO_MESSAGE = '''\
 :information_source: Rowboat V{} - more information and detailed help can be found here:\
@@ -46,9 +47,9 @@ class CorePlugin(Plugin):
             if func.subscriptions[0].metadata.get('global_', False):
                 return event
 
-        if hasattr(event, 'guild'):
+        if hasattr(event, 'guild') and event.guild:
             guild_id = event.guild.id
-        elif hasattr(event, 'guild_id'):
+        elif hasattr(event, 'guild_id') and event.guild_id:
             guild_id = event.guild_id
         else:
             return
@@ -90,18 +91,21 @@ class CorePlugin(Plugin):
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
-        if event.message.author.id == self.client.state.me.id:
+        # Ignore messages sent by bots
+        if event.message.author.bot:
             return
 
+        # If this is message for a guild, grab the guild object
         if hasattr(event, 'guild') and event.guild:
-            guild_id = event.guild.id
+            guild = self.guilds.get(event.guild.id)
         elif hasattr(event, 'guild_id') and event.guild_id:
-            guild_id = event.guild_id
+            guild = self.guilds.get(event.guild_id)
         else:
-            return
+            guild = None
 
-        guild = self.guilds.get(guild_id)
         config = guild and guild.get_config()
+
+        # If the guild has configuration, use that (otherwise use defaults)
         if config:
             if config.commands:
                 commands = list(self.bot.get_commands_for_message(
@@ -109,9 +113,14 @@ class CorePlugin(Plugin):
                     {},
                     config.commands.prefix,
                     event.message))
-        else:
+        elif guild:
+            # Setup command requires mention
             commands = list(self.bot.get_commands_for_message(True, {}, '', event.message))
+        else:
+            # DM's just use the commands (no prefix/mention)
+            commands = list(self.bot.get_commands_for_message(False, {}, '', event.message))
 
+        # If we didn't find any matching commands, return
         if not len(commands):
             return
 
@@ -125,15 +134,18 @@ class CorePlugin(Plugin):
             if event.author.id in config.levels:
                 user_level = config.levels[event.author.id]
 
+        # Grab whether this user is a global admin
+        # TODO: cache this
         global_admin = rdb.sismember('global_admins', event.author.id)
 
+        # Iterate over commands and find a match
         for command, match in commands:
             if command.level == -1 and not global_admin:
                 continue
 
             level = command.level
 
-            if not config and command.triggers[0] != 'setup':
+            if guild and not config and command.triggers[0] != 'setup':
                 continue
             elif config and config.commands and command.plugin != self:
                 if command.triggers[0] in config.commands.overrides:
@@ -148,6 +160,17 @@ class CorePlugin(Plugin):
                 continue
 
             command.plugin.execute(CommandEvent(command, event.message, match))
+
+            # Dispatch the command used modlog event
+            if config:
+                event.config = getattr(config.plugins, 'modlog', None)
+                if not event.config:
+                    return
+
+                plugin = self.bot.plugins.get('ModLogPlugin')
+                if plugin:
+                    plugin.log_action(Actions.COMMAND_USED, event)
+
             return
 
     @Plugin.command('reload', '[plugin:str]', group='control', level=-1, oob=True)

@@ -78,6 +78,10 @@ class Infraction(BaseModel):
     class Meta:
         db_table = 'infractions'
 
+        indexes = (
+            (('guild', 'user'), False),
+        )
+
     @classmethod
     def kick(cls, plugin, event, member, reason):
         cls.create(guild=member.guild_id, user=member.user.id, actor=event.author.id, type_=cls.Types.KICK, reason=reason)

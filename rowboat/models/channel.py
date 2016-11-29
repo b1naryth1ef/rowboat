@@ -8,7 +8,7 @@ from rowboat.models.message import Message
 class Channel(BaseModel):
     channel_id = BigIntegerField(primary_key=True)
     guild_id = BigIntegerField(null=True)
-    name = CharField(null=True)
+    name = CharField(null=True, index=True)
     topic = TextField(null=True)
 
     # First message sent in the channel

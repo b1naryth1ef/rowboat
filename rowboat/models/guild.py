@@ -103,7 +103,7 @@ class Guild(BaseModel):
 class GuildEmoji(BaseModel):
     emoji_id = BigIntegerField(primary_key=True)
     guild_id = BigIntegerField()
-    name = CharField()
+    name = CharField(index=True)
 
     require_colons = BooleanField()
     managed = BooleanField()

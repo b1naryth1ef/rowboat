@@ -6,7 +6,7 @@ from holster.emitter import Priority
 from disco.bot import Plugin
 from disco.bot.command import CommandError
 from disco.api.http import APIException
-from disco.types.message import MessageTable
+from disco.types.message import MessageTable, MessageEmbed
 from disco.types.user import User as DiscoUser
 
 from rowboat.sql import database
@@ -98,20 +98,49 @@ class SQLPlugin(Plugin):
     def command_sql(self, event):
         conn = database.obj.get_conn()
 
-        with conn.cursor() as cur:
-            try:
+        try:
+            tbl = MessageTable(codeblock=False)
+
+            with conn.cursor() as cur:
                 start = time.time()
                 cur.execute(event.codeblock.format(e=event))
                 dur = time.time() - start
-            except psycopg2.Error as e:
-                raise CommandError(e.pgerror)
-            tbl = MessageTable()
-            tbl.set_header(*[desc[0] for desc in cur.description])
+                tbl.set_header(*[desc[0] for desc in cur.description])
 
-            for row in cur.fetchall():
-                tbl.add(*row)
+                for row in cur.fetchall():
+                    tbl.add(*row)
 
-            event.msg.reply(tbl.compile() + '\n _took {}ms_'.format(int(dur * 1000)))
+                event.msg.reply('```' + tbl.compile() + '```\n_took {}ms_\n'.format(int(dur * 1000)))
+        except psycopg2.Error as e:
+            event.msg.reply('```{}```'.format(e.pgerror))
+
+        '''
+        embed = MessageEmbed()
+        try:
+            tbl = MessageTable(codeblock=False)
+
+            with conn.cursor() as cur:
+                try:
+                    start = time.time()
+                    cur.execute(event.codeblock.format(e=event))
+                    dur = time.time() - start
+                except psycopg2.Error as e:
+                    raise CommandError(e.pgerror)
+
+                tbl.set_header(*[desc[0] for desc in cur.description])
+
+                for row in cur.fetchall():
+                    tbl.add(*row)
+
+                embed.description = tbl.compile()
+                embed.description += '\n _took {}ms_'.format(int(dur * 1000))
+                embed.color = 0x77dd77
+        except psycopg2.Error as e:
+            embed.description = '```{}```'.format(e.pgerror)
+            embed.color = 0xff6961
+
+        event.msg.reply('', embed=embed)
+        '''
 
     @Plugin.command('init', '<entity:user|channel>', level=-1, group='markov', global_=True)
     def command_markov(self, event, entity):
@@ -195,7 +224,7 @@ class SQLPlugin(Plugin):
                 chan_current,
                 chan_count,
                 channel,
-                channel.guild if channel.guild_id else '',
+                channel.guild.name if channel.guild_id else '',
                 messages
             ))
 
