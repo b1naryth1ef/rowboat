@@ -8,7 +8,7 @@ from rowboat import RowboatPlugin as Plugin
 class InfluxPlugin(Plugin):
     def load(self, ctx):
         super(InfluxPlugin, self).load(ctx)
-        self.influx = InfluxDBClient('10.0.1.244', database='rowboat', username='admin', password='dRzsqcdqUvK[5qgfNmu7Yhjiveiwj7aj')
+        self.influx = InfluxDBClient()
         self.influx.create_database('rowboat', )
         self.points_cache = []
         self.lock = Semaphore()
