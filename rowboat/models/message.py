@@ -16,8 +16,8 @@ EMOJI_RE = re.compile(r'<:.+:([0-9]+)>')
 @BaseModel.register
 class Message(BaseModel):
     id = BigIntegerField(primary_key=True)
-    channel_id = BigIntegerField(index=True)
-    guild_id = BigIntegerField(index=True, null=True)
+    channel_id = BigIntegerField()
+    guild_id = BigIntegerField(null=True)
     author = ForeignKeyField(User)
     content = TextField()
     timestamp = DateTimeField()
@@ -32,6 +32,12 @@ class Message(BaseModel):
 
     class Meta:
         db_table = 'messages'
+
+        indexes = (
+            (('channel_id', 'id'), True),
+            (('guild_id', 'id'), True),
+            (('author_id', 'id'), True),
+        )
 
     @classmethod
     def from_disco_message_update(cls, obj):
