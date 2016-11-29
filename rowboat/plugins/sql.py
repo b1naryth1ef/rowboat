@@ -172,7 +172,7 @@ class SQLPlugin(Plugin):
         event.msg.reply(':ok_hand: starting backfill on {} channels'.format(len(self.state.channels)))
 
         self.backfill_status = [None, len(self.state.channels), 0, 0]
-        for channel in self.state.channels.values():
+        for channel in list(self.state.channels.values()):
             self.backfill_status[0] = channel
             self.backfill_status[2] += 1
             try:
