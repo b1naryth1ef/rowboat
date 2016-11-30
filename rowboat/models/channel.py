@@ -35,11 +35,11 @@ class Channel(BaseModel):
         except cls.DoesNotExist:
             new = True
             obj = cls(channel_id=channel.id)
+            obj.first_message_id = cls.generate_first_message_id(channel.id)
 
         obj.guild_id = channel.guild_id or None
         obj.name = channel.name or None
         obj.topic = channel.topic or None
-        obj.first_message_id = cls.generate_first_message_id(channel.id)
 
         obj.save(force_insert=new)
         return obj

@@ -1,3 +1,5 @@
+import psycogreen.gevent; psycogreen.gevent.patch_psycopg()
+
 from peewee import *
 from peewee import Expression
 from playhouse.postgres_ext import *
