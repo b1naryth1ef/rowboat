@@ -77,7 +77,7 @@ class CorePlugin(Plugin):
         try:
             guild = Guild.with_id(event.id)
         except Guild.DoesNotExist:
-            self.log.warning('Guild {} is not setup'.format(event.id))
+            # self.log.warning('Guild {} is not setup'.format(event.id))
             return
 
         self.guilds[event.id] = guild
