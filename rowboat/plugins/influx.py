@@ -1,7 +1,9 @@
 from gevent.lock import Semaphore
 from datetime import datetime
 from influxdb import InfluxDBClient
+from collections import Counter
 
+from disco.types.user import GameType
 from rowboat import RowboatPlugin as Plugin
 
 
@@ -117,18 +119,35 @@ class InfluxPlugin(Plugin):
                 'guild_id': event.guild.id,
             }, event.guild.member_count)
 
-    @Plugin.listen('PresenceUpdate')
-    def on_presence_update(self, event):
-        if not event.guild_id:
-            return
+    @Plugin.schedule(10, init=False)
+    def on_presence_update(self):
+        for guild in self.state.guilds.values():
+            status = Counter()
+            games = Counter()
+            streaming = 0
 
-        data = {
-            'status': event.status.name,
-            'user_id': event.user.id
-        }
+            for member in guild.members.values():
+                if member.user.presence:
+                    status[member.user.presence.status.name] += 1
 
-        if event.game:
-            data['game.type'] = event.game.type.name if event.game.type else 0
-            data['game.name'] = event.game.name
+                if member.user.presence.game and member.user.presence.game.type:
+                    if member.user.presence.game.type == GameType.DEFAULT:
+                        games[member.user.presence.game.name] += 1
+                    else:
+                        streaming += 1
 
-        self.write_point('guild.members.status', data)
+            for status, count in status.items():
+                self.write_point('guild.members.status', {
+                    'status': status,
+                    'guild_id': guild.id,
+                }, count)
+
+            for game, count in games.items():
+                self.write_point('guild.members.games', {
+                    'game': game,
+                    'guild_id': guild.id,
+                }, count)
+
+            self.write_point('guild.members.streaming', {
+                'guild_id': guild.id,
+            }, streaming)
