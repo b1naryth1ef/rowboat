@@ -26,13 +26,13 @@ class InfluxPlugin(Plugin):
             self.influx.write_points(self.points_cache)
             self.points_cache = []
 
-    def write_point(self, measurement, tags):
+    def write_point(self, measurement, tags, value=1):
         self.points_cache.append({
             'measurement': measurement,
             'tags': tags,
             'time': datetime.utcnow(),
             'fields': {
-                'value': 1,
+                'value': value,
             }
         })
 
@@ -90,14 +90,37 @@ class InfluxPlugin(Plugin):
             'emoji_name': event.emoji.name,
         })
 
-    @Plugin.listen('GuildCreate')
-    def on_guild_create(self, event):
-        pass
+    @Plugin.listen('GuildMemberAdd')
+    def on_guild_member_add(self, event):
+        guild = self.state.guilds.get(event.guild_id)
+        if not guild:
+            return
 
-    @Plugin.listen('GuildDelete')
-    def on_guild_delete(self, event):
-        pass
+        self.write_point('guild.members.count', {
+            'guild_id': event.guild_id,
+        }, len(guild.members))
+
+    @Plugin.listen('GuildMemberRemove')
+    def on_guild_member_remove(self, event):
+        guild = self.state.guilds.get(event.guild_id)
+        if not guild:
+            return
+
+        self.write_point('guild.members.count', {
+            'guild_id': event.guild_id,
+        }, len(guild.members))
 
     @Plugin.listen('PresenceUpdate')
     def on_presence_update(self, event):
-        pass
+        if not event.guild_id:
+            return
+
+        data = {
+            'status': event.status.name
+        }
+
+        if event.status.game:
+            data['game.type'] = event.game.type.name
+            data['game.name'] = event.game.name
+
+        self.write_point('guild.members.status', data)
