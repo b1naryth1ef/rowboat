@@ -98,6 +98,9 @@ class CorePlugin(Plugin):
         if event.message.author.bot:
             return
 
+        if rdb.sismember('ignored_channels', event.message.channel_id):
+            return
+
         # If this is message for a guild, grab the guild object
         if hasattr(event, 'guild') and event.guild:
             guild = self.guilds.get(event.guild.id)

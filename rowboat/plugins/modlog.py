@@ -284,6 +284,7 @@ class ModLogPlugin(Plugin):
         if not pre_member:
             return
 
+        print pre_member.nick, event.nick
         if pre_member.nick != event.nick:
             self.log_action(
                 Actions.CHANGE_NICK,
