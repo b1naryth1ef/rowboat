@@ -119,7 +119,7 @@ class InfluxPlugin(Plugin):
             'status': event.status.name
         }
 
-        if event.status.game:
+        if event.game:
             data['game.type'] = event.game.type.name
             data['game.name'] = event.game.name
 
