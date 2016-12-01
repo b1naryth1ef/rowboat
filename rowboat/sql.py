@@ -31,7 +31,11 @@ class BaseModel(Model):
 
 
 def init_db():
-    database.initialize(PostgresqlExtDatabase('rowboat', user='rowboat'))
+    database.initialize(PooledPostgresqlExtDatabase(
+        'rowboat',
+        user='postgres',
+        max_connections=5,
+        stale_timeout=300))
 
     for model in REGISTERED_MODELS:
         model.create_table(True)
