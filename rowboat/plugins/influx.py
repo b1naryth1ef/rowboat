@@ -116,7 +116,8 @@ class InfluxPlugin(Plugin):
             return
 
         data = {
-            'status': event.status.name
+            'status': event.status.name,
+            'user_id': event.user.id
         }
 
         if event.game:
