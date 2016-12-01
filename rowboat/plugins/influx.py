@@ -120,7 +120,7 @@ class InfluxPlugin(Plugin):
         }
 
         if event.game:
-            data['game.type'] = event.game.type.name
+            data['game.type'] = event.game.type.name if event.game.type else 0
             data['game.name'] = event.game.name
 
         self.write_point('guild.members.status', data)
