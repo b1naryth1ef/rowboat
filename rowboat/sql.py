@@ -1,9 +1,9 @@
+import os
 import psycogreen.gevent; psycogreen.gevent.patch_psycopg()
 
 from peewee import *
 from peewee import Expression
 from playhouse.postgres_ext import *
-from playhouse.pool import PooledPostgresqlExtDatabase
 
 REGISTERED_MODELS = []
 
@@ -32,11 +32,7 @@ class BaseModel(Model):
 
 
 def init_db():
-    database.initialize(PooledPostgresqlExtDatabase(
-        'rowboat',
-        user='postgres',
-        max_connections=5,
-        stale_timeout=300))
+    database.initialize(PostgresqlExtDatabase('rowboat', user='rowboat', port=int(os.getenv('PG_PORT', 5432))))
 
     for model in REGISTERED_MODELS:
         model.create_table(True)
