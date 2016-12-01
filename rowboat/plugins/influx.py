@@ -110,6 +110,13 @@ class InfluxPlugin(Plugin):
             'guild_id': event.guild_id,
         }, len(guild.members))
 
+    @Plugin.listen('GuildCreate')
+    def on_guild_create(self, event):
+        if event.guild.member_count:
+            self.write_point('guild.members.count', {
+                'guild_id': event.guild.id,
+            }, event.guild.member_count)
+
     @Plugin.listen('PresenceUpdate')
     def on_presence_update(self, event):
         if not event.guild_id:
