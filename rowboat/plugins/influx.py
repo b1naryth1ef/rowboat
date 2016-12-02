@@ -3,7 +3,7 @@ from datetime import datetime
 from influxdb import InfluxDBClient
 from collections import Counter
 
-from disco.types.user import GameType
+from disco.types.user import GameType, Status
 from rowboat import RowboatPlugin as Plugin
 
 
@@ -128,7 +128,9 @@ class InfluxPlugin(Plugin):
 
             for member in guild.members.values():
                 if not member.user.presence:
+                    status[Status.OFFLINE.name] += 1
                     continue
+
                 status[member.user.presence.status.name] += 1
 
                 if member.user.presence.game and member.user.presence.game.type:
