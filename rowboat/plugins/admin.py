@@ -11,6 +11,7 @@ from rowboat import RowboatPlugin as Plugin
 from rowboat.util import C
 from rowboat.util.images import get_dominant_colors_user
 from rowboat.redis import rdb
+from rowboat.types import Field
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.user import User, Infraction
 from rowboat.models.message import Message
@@ -32,7 +33,7 @@ LIMIT 10;
 
 
 class AdminConfig(PluginConfig):
-    pass
+    confirm_actions = Field(bool, default=True)
 
 
 # TODO: unban tempbans
@@ -50,10 +51,11 @@ class AdminPlugin(Plugin):
         """
         Kick a user from the server (with an optional reason for the modlog).
         """
-
         member = event.guild.get_member(user)
         if member:
             Infraction.kick(self, event, member, reason)
+            if event.config.confirm_actions:
+                event.msg.reply(':ok_hand: kicked {} for `{}`'.format(user, reason or 'no reason given'))
         else:
             event.msg.reply(':warning: Invalid user!')
 
@@ -66,6 +68,8 @@ class AdminPlugin(Plugin):
         member = event.guild.get_member(user)
         if member:
             Infraction.ban(self, event, member, reason)
+            if event.config.confirm_actions:
+                event.msg.reply(':ok_hand: banned {} for `{}`'.format(user, reason or 'no reason given'))
         else:
             event.msg.reply(':warning: Invalid user!')
 
@@ -78,6 +82,8 @@ class AdminPlugin(Plugin):
         member = event.guild.get_member(user)
         if member:
             Infraction.softban(self, event, member, reason)
+            if event.config.confirm_actions:
+                event.msg.reply(':ok_hand: soft-banned {} for `{}`'.format(user, reason or 'no reason given'))
         else:
             event.msg.reply(':warning: Invalid user!')
 
@@ -90,6 +96,8 @@ class AdminPlugin(Plugin):
         member = event.guild.get_member(user)
         if member:
             Infraction.tempban(self, event, member, reason, duration)
+            if event.config.confirm_actions:
+                event.msg.reply(':ok_hand: temp-banned {} for `{}`'.format(user, reason or 'no reason given'))
         else:
             event.msg.reply(':warning: Invalid user!')
 
