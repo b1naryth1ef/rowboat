@@ -127,8 +127,9 @@ class InfluxPlugin(Plugin):
             streaming = 0
 
             for member in guild.members.values():
-                if member.user.presence:
-                    status[member.user.presence.status.name] += 1
+                if not member.user.presence:
+                    continue
+                status[member.user.presence.status.name] += 1
 
                 if member.user.presence.game and member.user.presence.game.type:
                     if member.user.presence.game.type == GameType.DEFAULT:
