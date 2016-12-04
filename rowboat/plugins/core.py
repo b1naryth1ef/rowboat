@@ -4,10 +4,10 @@ import functools
 
 from datetime import datetime
 from holster.emitter import Priority
-from disco.bot import Plugin
 from disco.api.http import APIException
 from disco.bot.command import CommandEvent, CommandLevels
 
+from rowboat import BasePlugin as Plugin
 from rowboat import RowboatPlugin, VERSION
 from rowboat.sql import init_db
 from rowboat.redis import rdb

@@ -4,7 +4,7 @@ from influxdb import InfluxDBClient
 from collections import Counter
 
 from disco.types.user import GameType, Status
-from rowboat import RowboatPlugin as Plugin
+from rowboat import BasePlugin as Plugin
 
 
 class InfluxPlugin(Plugin):

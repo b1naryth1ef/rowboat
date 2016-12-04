@@ -39,9 +39,21 @@ class UtilitiesPlugin(Plugin):
 
     @Plugin.command('cat')
     def cat(self, event):
-        r = requests.get('http://random.cat/meow')
-        r.raise_for_status()
-        r = requests.get(r.json()['file'])
+        # Sometimes random.cat gives us gifs (smh)
+        for _ in range(3):
+            try:
+                r = requests.get('http://random.cat/meow')
+                r.raise_for_status()
+            except:
+                continue
+
+            url = r.json()['file']
+            if not url.endswith('.gif'):
+                break
+        else:
+            return event.msg.reply('404 cat not found :(')
+
+        r = requests.get(url)
         r.raise_for_status()
         event.msg.reply('', attachment=('cat.jpg', r.content))
 
@@ -155,13 +167,11 @@ class UtilitiesPlugin(Plugin):
         urls = []
 
         for emoji in emojis.split(' ')[:5]:
-            # if ' '.join(list(emoji)) in EMOJI_ALIAS_UNICODE.values():
             if EMOJI_RE.match(emoji):
                 _, eid = EMOJI_RE.findall(emoji)[0]
                 urls.append('https://discordapp.com/api/emojis/{}.png'.format(eid))
             else:
                 urls.append(get_emoji_url(emoji))
-                # return event.msg.reply(u'Invalid emoji: `{}`'.format(emoji.replace('`', '')))
 
         width, height, images = 0, 0, []
 

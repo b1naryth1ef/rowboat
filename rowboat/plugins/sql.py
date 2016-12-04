@@ -3,11 +3,11 @@ import psycopg2
 import markovify
 
 from holster.emitter import Priority
-from disco.bot import Plugin
 from disco.api.http import APIException
 from disco.types.message import MessageTable
 from disco.types.user import User as DiscoUser
 
+from rowboat import BasePlugin as Plugin
 from rowboat.sql import database
 from rowboat.models.guild import GuildEmoji
 from rowboat.models.channel import Channel
