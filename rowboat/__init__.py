@@ -33,19 +33,19 @@ class RavenPlugin(object):
                 'plugin': event.command.plugin.__class__.__name__,
                 'content': event.msg.content,
             }
-            event['author'] = event.msg.author.to_dict(),
-            event['channel'] = {
+            extra['author'] = event.msg.author.to_dict(),
+            extra['channel'] = {
                 'id': event.channel.id,
                 'name': event.channel.name,
             }
 
             if event.guild:
-                event['guild'] = {
+                extra['guild'] = {
                     'id': event.guild.id,
                     'name': event.guild.id,
                 }
         elif isinstance(event, GatewayEvent):
-            event['event'] = {
+            extra['event'] = {
                 'name': event.__class__.__name__,
                 'data': event.to_dict(),
             }
