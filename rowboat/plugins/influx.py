@@ -4,7 +4,7 @@ from influxdb import InfluxDBClient
 from collections import Counter
 
 from disco.types.user import GameType, Status
-from rowboat import BasePlugin as Plugin
+from rowboat import BasePlugin as Plugin, raven_client
 
 
 class InfluxPlugin(Plugin):
@@ -24,9 +24,13 @@ class InfluxPlugin(Plugin):
         if not len(self.points_cache):
             return
 
-        with self.lock:
-            self.influx.write_points(self.points_cache)
-            self.points_cache = []
+        try:
+            with self.lock:
+                self.influx.write_points(self.points_cache)
+                self.points_cache = []
+        except:
+            self.log.exception('Failed to write influx data: ')
+            raven_client.captureException()
 
     def write_point(self, measurement, tags, value=1):
         self.points_cache.append({
