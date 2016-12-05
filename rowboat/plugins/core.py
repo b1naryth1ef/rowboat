@@ -103,12 +103,13 @@ class CorePlugin(Plugin):
 
         # If this is message for a guild, grab the guild object
         if hasattr(event, 'guild') and event.guild:
-            guild = self.guilds.get(event.guild.id)
+            guild_id = event.guild.id
         elif hasattr(event, 'guild_id') and event.guild_id:
-            guild = self.guilds.get(event.guild_id)
+            guild_id = event.guild_id
         else:
-            guild = None
+            guild_id = None
 
+        guild = self.guilds.get(event.guild.id) if guild_id else None
         config = guild and guild.get_config()
 
         # If the guild has configuration, use that (otherwise use defaults)
@@ -119,8 +120,8 @@ class CorePlugin(Plugin):
                     {},
                     config.commands.prefix,
                     event.message))
-        elif guild:
-            # Setup command requires mention
+        elif guild_id:
+            # Otherwise, default to requiring mentions
             commands = list(self.bot.get_commands_for_message(True, {}, '', event.message))
         else:
             # DM's just use the commands (no prefix/mention)
