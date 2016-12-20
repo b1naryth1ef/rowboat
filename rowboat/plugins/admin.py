@@ -142,7 +142,7 @@ class AdminPlugin(Plugin):
         if 0 > size >= 5000:
             return event.msg.reply(':warning: Too many messages, must be between 1-5000')
 
-        q = Message.select().where().join(User).order_by(Message.timestamp.desc()).limit(size)
+        q = Message.select().join(User).order_by(Message.timestamp.desc()).limit(size)
 
         if mode in ('all', 'channel'):
             q = q.where((Message.channel_id == (channel or event.channel).id))
