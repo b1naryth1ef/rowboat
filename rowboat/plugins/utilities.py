@@ -303,7 +303,7 @@ class UtilitiesPlugin(Plugin):
             user.avatar,
         )
 
-        member = event.guild.get_member(user.user_id)
+        member = event.guild.get_member(user.user_id) if event.guild else None
 
         embed.thumbnail = MessageEmbedThumbnail(url=avatar)
         embed.fields.append(
