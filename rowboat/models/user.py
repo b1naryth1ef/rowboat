@@ -84,6 +84,7 @@ class Infraction(BaseModel):
 
     @classmethod
     def kick(cls, plugin, event, member, reason):
+        User.from_disco_user(member.user)
         cls.create(guild=member.guild_id, user=member.user.id, actor=event.author.id, type_=cls.Types.KICK, reason=reason)
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'kick',
             actor=str(event.author),
@@ -92,6 +93,7 @@ class Infraction(BaseModel):
 
     @classmethod
     def tempban(cls, plugin, event, member, reason, duration):
+        User.from_disco_user(member.user)
         expires_at = datetime.utcnow() + timedelta(seconds=duration)
 
         cls.create(
@@ -112,6 +114,7 @@ class Infraction(BaseModel):
 
     @classmethod
     def softban(cls, plugin, event, member, reason):
+        User.from_disco_user(member.user)
         cls.create(guild=member.guild_id, user=member.user.id, actor=event.author.id, type_=cls.Types.SOFTBAN, reason=reason)
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
             actor=str(event.author),
@@ -124,6 +127,7 @@ class Infraction(BaseModel):
 
     @classmethod
     def ban(cls, plugin, event, member, reason):
+        User.from_disco_user(member.user)
         cls.create(guild=member.guild_id, user=member.user.id, actor=event.author.id, type_=cls.Types.BAN, reason=reason)
 
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
