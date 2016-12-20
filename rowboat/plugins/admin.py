@@ -55,7 +55,7 @@ class AdminPlugin(Plugin):
         if member:
             Infraction.kick(self, event, member, reason)
             if event.config.confirm_actions:
-                event.msg.reply(':ok_hand: kicked {} for `{}`'.format(user, reason or 'no reason given'))
+                event.msg.reply(u':ok_hand: kicked {} for `{}`'.format(user, reason or 'no reason given'))
         else:
             event.msg.reply(':warning: Invalid user!')
 
@@ -69,7 +69,7 @@ class AdminPlugin(Plugin):
         if member:
             Infraction.ban(self, event, member, reason)
             if event.config.confirm_actions:
-                event.msg.reply(':ok_hand: banned {} for `{}`'.format(user, reason or 'no reason given'))
+                event.msg.reply(u':ok_hand: banned {} for `{}`'.format(user, reason or 'no reason given'))
         else:
             event.msg.reply(':warning: Invalid user!')
 
@@ -83,7 +83,7 @@ class AdminPlugin(Plugin):
         if member:
             Infraction.softban(self, event, member, reason)
             if event.config.confirm_actions:
-                event.msg.reply(':ok_hand: soft-banned {} for `{}`'.format(user, reason or 'no reason given'))
+                event.msg.reply(u':ok_hand: soft-banned {} for `{}`'.format(user, reason or 'no reason given'))
         else:
             event.msg.reply(':warning: Invalid user!')
 
@@ -97,12 +97,14 @@ class AdminPlugin(Plugin):
         if member:
             Infraction.tempban(self, event, member, reason, duration)
             if event.config.confirm_actions:
-                event.msg.reply(':ok_hand: temp-banned {} for `{}`'.format(user, reason or 'no reason given'))
+                event.msg.reply(u':ok_hand: temp-banned {} for `{}`'.format(user, reason or 'no reason given'))
         else:
             event.msg.reply(':warning: Invalid user!')
 
-    @Plugin.command('archive', '[size:int] [fmt:str]', level=CommandLevels.MOD)
-    def archive(self, event, size=50, fmt='txt'):
+    @Plugin.command('archive here', '[size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'all'})
+    @Plugin.command('archive user', '<user:user> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'user'})
+    @Plugin.command('archive channel', '<channel:channel> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'channel'})
+    def archive(self, event, size=50, fmt='txt', mode=None, user=None, channel=None):
         """
         Archives messages to a given format (txt, csv, json).
         """
@@ -120,6 +122,7 @@ class AdminPlugin(Plugin):
                 msg.author.id,
                 msg.author,
                 msg.content,
+                str(msg.deleted).lower(),
             ]))
 
         def encode_json(msg):
@@ -129,7 +132,8 @@ class AdminPlugin(Plugin):
                 'user_id': str(msg.author.id),
                 'username': msg.author.username,
                 'discriminator': msg.author.discriminator,
-                'content': msg.content
+                'content': msg.content,
+                'deleted': msg.deleted,
             }
 
         if fmt not in ('txt', 'csv', 'json'):
@@ -138,17 +142,21 @@ class AdminPlugin(Plugin):
         if 0 > size >= 5000:
             return event.msg.reply(':warning: Too many messages, must be between 1-5000')
 
-        msgs = list(reversed(Message.select().where(
-            (Message.deleted >> False) &
-            (Message.channel_id == event.channel.id)
-        ).join(User).order_by(Message.timestamp.desc()).limit(size)))
+        q = Message.select().where().join(User).order_by(Message.timestamp.desc()).limit(size)
+
+        if mode in ('all', 'channel'):
+            q = q.where((Message.channel_id == (channel or event.channel).id))
+        else:
+            q = q.where((Message.author_id == user.id))
+
+        msgs = list(reversed(q))
 
         if fmt == 'txt':
             data = map(encode_txt, msgs)
             result = u'\n'.join(data)
         elif fmt == 'csv':
             data = map(encode_csv, msgs)
-            data = ['id,timestamp,author_id,author,content'] + data
+            data = ['id,timestamp,author_id,author,content,deleted'] + data
             result = u'\n'.join(data)
         elif fmt == 'json':
             data = list(map(encode_json, msgs))

@@ -14,7 +14,7 @@ from rowboat.redis import rdb
 from rowboat.models.guild import Guild
 from rowboat.plugins.modlog import Actions
 
-PY_CODE_BLOCK = '```py\n{}\n```'
+PY_CODE_BLOCK = u'```py\n{}\n```'
 
 INFO_MESSAGE = '''\
 :information_source: Rowboat V{} - more information and detailed help can be found here:\
