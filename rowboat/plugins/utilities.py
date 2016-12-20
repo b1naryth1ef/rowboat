@@ -143,7 +143,7 @@ class UtilitiesPlugin(Plugin):
             return event.msg.reply('No recent mentions that have been deleted')
 
         return event.msg.reply(u'```{}```'.format(
-            '\n'.join(['[{}] {}: {}'.format(m.timestamp, m.author, m.content) for m in q])
+            '\n'.join([u'[{}] {}: {}'.format(m.timestamp, m.author, m.content) for m in q])
         ))
 
     @Plugin.command('google', '<query:str...>')
