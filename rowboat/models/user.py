@@ -16,6 +16,10 @@ class User(BaseModel):
 
     created_at = DateTimeField(default=datetime.utcnow)
 
+    SQL = '''
+        CREATE INDEX IF NOT EXISTS users_username_trgm ON users USING gin(username gin_trgm_ops);
+    '''
+
     class Meta:
         db_table = 'users'
 

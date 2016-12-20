@@ -2,12 +2,13 @@ import re
 import random
 import requests
 import humanize
+import operator
 
 from six import BytesIO
 from PIL import Image
 from pyquery import PyQuery
 from gevent.pool import Pool
-from datetime import datetime
+from datetime import datetime, timedelta
 from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
 from disco.util.snowflake import to_datetime
 
@@ -16,13 +17,16 @@ from disco.types.guild import Guild as DiscoGuild
 from disco.types.channel import Channel as DiscoChannel
 
 from rowboat import RowboatPlugin as Plugin
+from rowboat.util import C
 from rowboat.types.plugin import PluginConfig
+from rowboat.models.user import User
 from rowboat.models.message import Message
 from rowboat.util.images import get_dominant_colors_user
 
 
 CDN_URL = 'https://twemoji.maxcdn.com/2/72x72/{}.png'
 EMOJI_RE = re.compile(r'<:(.+):([0-9]+)>')
+USER_MENTION_RE = re.compile('<@!?([0-9]+)>')
 URL_REGEX = re.compile(r'(https?://[^\s]+)')
 
 
@@ -116,6 +120,30 @@ class UtilitiesPlugin(Plugin):
             data['country_code'],
             data['latitude'],
             data['longitude'],
+        ))
+
+    @Plugin.command('mentions', global_=True)
+    def mentions(self, event):
+        q = Message.select().where(
+            (Message.deleted == True) &
+            (Message.mentions.contains(str(event.author.id))) &
+            (Message.timestamp > (datetime.utcnow() - timedelta(days=7)))
+        ).limit(5)
+
+        q = Message.raw('''
+            SELECT * FROM messages
+            WHERE deleted=true
+            AND timestamp > %s
+            AND mentions @> %s
+            ORDER BY timestamp DESC
+            LIMIT 5;
+        ''', datetime.utcnow() - timedelta(days=7), str(event.author.id)).execute()
+
+        if not len(q):
+            return event.msg.reply('No recent mentions that have been deleted')
+
+        return event.msg.reply(u'```{}```'.format(
+            '\n'.join(['[{}] {}: {}'.format(m.timestamp, m.author, m.content) for m in q])
         ))
 
     @Plugin.command('google', '<query:str...>')
@@ -235,33 +263,76 @@ class UtilitiesPlugin(Plugin):
         output.seek(0)
         event.msg.reply('', attachment=('image.jpg', output))
 
-    @Plugin.command('info', '<user:user>')
-    def info(self, event, user):
+    @Plugin.command('info', '<query:str>', context={'mode': 'default'})
+    @Plugin.command('search', '<query:str>', context={'mode': 'search'})
+    def info(self, event, query, mode=None):
+        queries = []
+
+        if query.isdigit():
+            queries.append((User.user_id == query))
+
+        q = USER_MENTION_RE.findall(query)
+        if len(q) and q[0].isdigit():
+            queries.append((User.user_id == q[0]))
+        elif mode == 'search':
+            queries.append((User.username ** '%{}%'.format(query.replace('%', ''))))
+        else:
+            queries.append((User.username ** query.replace('%', '')))
+
+        if '#' in query:
+            username, discrim = query.rsplit('#', 1)
+            if discrim.isdigit():
+                queries.append((
+                    (User.username == username) &
+                    (User.discriminator == int(discrim))))
+
+        users = User.select().where(reduce(operator.or_, queries))
+        if len(users) == 0:
+            return event.msg.reply(u'No users found for query `{}`'.format(C(query)))
+        elif len(users) > 1:
+            return event.msg.reply(u'Found the following users for your query: ```{}```'.format(
+                '\n'.join(map(str, users))
+            ))
+        else:
+            user = users[0]
+
         embed = MessageEmbed()
 
-        embed.thumbnail = MessageEmbedThumbnail(url=user.avatar_url)
+        avatar = 'https://discordapp.com/api/users/{}/avatars/{}.jpg'.format(
+            user.user_id,
+            user.avatar,
+        )
+
+        member = event.guild.get_member(user.user_id)
+
+        embed.thumbnail = MessageEmbedThumbnail(url=avatar)
         embed.fields.append(
             MessageEmbedField(name='Username', value=user.username, inline=True))
 
-        member = event.guild.get_member(user)
-        embed.fields.append(
-            MessageEmbedField(name='Nickname',
-                value=member.nick if member and member.nick else '`No Nickname`', inline=True))
+        if member:
+            embed.fields.append(
+                MessageEmbedField(name='Nickname',
+                    value=member.nick if member.nick else '`No Nickname`', inline=True))
 
         embed.fields.append(
-            MessageEmbedField(name='ID', value=str(user.id), inline=True))
+            MessageEmbedField(name='ID', value=str(user.user_id), inline=True))
 
         embed.fields.append(
-            MessageEmbedField(name='Creation Date', value=str(to_datetime(user.id)), inline=True))
+            MessageEmbedField(name='Creation Date', value=str(to_datetime(user.user_id)), inline=True))
+
+        if member:
+            embed.fields.append(
+                MessageEmbedField(name='Join Date', value=member.joined_at, inline=True))
 
         embed.fields.append(
-            MessageEmbedField(name='Join Date', value=member.joined_at if member else '`Unknown`', inline=True))
+            MessageEmbedField(name='Infractions', value=str(len(user.infractions)), inline=True))
 
-        embed.fields.append(
-            MessageEmbedField(name='Roles', value=', '.join(
-                (event.guild.roles.get(i).name for i in (member.roles if member else []))) or 'no roles', inline=False))
+        if member:
+            embed.fields.append(
+                MessageEmbedField(name='Roles', value=', '.join(
+                    (event.guild.roles.get(i).name for i in member.roles)) or 'no roles', inline=False))
 
-        embed.color = get_dominant_colors_user(user)
+        embed.color = get_dominant_colors_user(user, avatar)
         event.msg.reply('', embed=embed)
 
     @Plugin.command('words', '<target:user|channel|guild>')

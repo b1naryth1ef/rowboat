@@ -139,16 +139,20 @@ class AdminPlugin(Plugin):
         if fmt not in ('txt', 'csv', 'json'):
             return event.msg.reply(':warning: Invalid message format, needs to be one of txt, csv, json')
 
-        if 0 > size >= 5000:
-            return event.msg.reply(':warning: Too many messages, must be between 1-5000')
+        if 0 > size >= 15000:
+            return event.msg.reply(':warning: Too many messages, must be between 1-15000')
 
         q = Message.select().join(User).order_by(Message.timestamp.desc()).limit(size)
 
         if mode in ('all', 'channel'):
             q = q.where((Message.channel_id == (channel or event.channel).id))
         else:
-            q = q.where((Message.author_id == user.id))
+            q = q.where(
+                (Message.author_id == user.id) &
+                (Message.guild_id == event.guild.id)
+            )
 
+        # Grab messages
         msgs = list(reversed(q))
 
         if fmt == 'txt':

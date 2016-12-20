@@ -28,7 +28,10 @@ class Message(BaseModel):
     mentions = BinaryJSONField(default=[], null=True)
     emojis = BinaryJSONField(default=[], null=True)
 
-    SQL = '''CREATE INDEX IF NOT EXISTS message_content_fts ON messages USING gin(to_tsvector('english', content));'''
+    SQL = '''
+        CREATE INDEX IF NOT EXISTS messages_content_fts ON messages USING gin(to_tsvector('english', content));
+        CREATE INDEX IF NOT EXISTS messages_content_trgm ON messages USING gin(content gin_trgm_ops);
+    '''
 
     class Meta:
         db_table = 'messages'
