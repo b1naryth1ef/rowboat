@@ -165,9 +165,13 @@ class AdminPlugin(Plugin):
                 'messages': data,
             })
 
-        r = requests.post('http://hastebin.com/documents', data=result)
+        r = requests.post('http://dpaste.com/api/v2/', data={
+            'content': result,
+            'expiry_days': 90,
+            'poster': 'Rowboat',
+        })
         r.raise_for_status()
-        event.msg.reply('OK, archived {} messages at http://hastebin.com/{}'.format(size, r.json()['key']))
+        event.msg.reply('OK, archived {} messages at {}'.format(size, r.content.strip() + '.txt'))
 
     @Plugin.command('clean all', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
     @Plugin.command('clean bots', '[size:int]', level=CommandLevels.MOD, context={'mode': 'bots'})
