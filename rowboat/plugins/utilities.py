@@ -240,7 +240,7 @@ class UtilitiesPlugin(Plugin):
             msg.timestamp
         ))
 
-    @Plugin.command('jpeg', '<url:str>', global=True)
+    @Plugin.command('jpeg', '<url:str>', global_=True)
     def jpeg(self, event, url):
         url = URL_REGEX.findall(url)
 
