@@ -41,11 +41,11 @@ class UtilitiesConfig(PluginConfig):
 
 
 class UtilitiesPlugin(Plugin):
-    @Plugin.command('coin')
+    @Plugin.command('coin', global_=True)
     def coin(self, event):
         event.msg.reply(random.choice(['heads', 'tails']))
 
-    @Plugin.command('cat')
+    @Plugin.command('cat', global_=True)
     def cat(self, event):
         # Sometimes random.cat gives us gifs (smh)
         for _ in range(3):
@@ -65,7 +65,7 @@ class UtilitiesPlugin(Plugin):
         r.raise_for_status()
         event.msg.reply('', attachment=('cat.jpg', r.content))
 
-    @Plugin.command('urban', '<term:str...>')
+    @Plugin.command('urban', '<term:str...>', global_=True)
     def urban(self, event, term):
         r = requests.get('http://api.urbandictionary.com/v0/define', params={
             'term': term,
@@ -81,7 +81,7 @@ class UtilitiesPlugin(Plugin):
             data['list'][0]['definition'],
         ))
 
-    @Plugin.command('pwnd', '<email:str>')
+    @Plugin.command('pwnd', '<email:str>', global_=True)
     def pwnd(self, event, email):
         r = requests.get('https://haveibeenpwned.com/api/v2/breachedaccount/{}'.format(
             email
@@ -146,7 +146,7 @@ class UtilitiesPlugin(Plugin):
             '\n'.join([u'[{}] {}: {}'.format(m.timestamp, m.author, m.content) for m in q])
         ))
 
-    @Plugin.command('google', '<query:str...>')
+    @Plugin.command('google', '<query:str...>', global_=True)
     def google(self, event, query):
         url = 'https://www.google.com/search?hl=en&q={}&btnG=Google+Search&tbs=0&safe=off&tbm='
         r = requests.get(url.format(query))
@@ -174,7 +174,7 @@ class UtilitiesPlugin(Plugin):
         embed.description = results[0]['text']
         return event.msg.reply('', embed=embed)
 
-    @Plugin.command('emoji', '<emoji:str>')
+    @Plugin.command('emoji', '<emoji:str>', global_=True)
     def emoji(self, event, emoji):
         if not EMOJI_RE.match(emoji):
             return event.msg.reply(u'Unknown emoji: `{}`'.format(emoji))
@@ -225,7 +225,7 @@ class UtilitiesPlugin(Plugin):
         combined.seek(0)
         return event.msg.reply('', attachment=('emoji.png', combined))
 
-    @Plugin.command('seen', '<user:user>')
+    @Plugin.command('seen', '<user:user>', global_=True)
     def seen(self, event, user):
         try:
             msg = Message.select(Message.timestamp).where(
@@ -240,7 +240,7 @@ class UtilitiesPlugin(Plugin):
             msg.timestamp
         ))
 
-    @Plugin.command('jpeg', '<url:str>')
+    @Plugin.command('jpeg', '<url:str>', global=True)
     def jpeg(self, event, url):
         url = URL_REGEX.findall(url)
 
@@ -263,8 +263,8 @@ class UtilitiesPlugin(Plugin):
         output.seek(0)
         event.msg.reply('', attachment=('image.jpg', output))
 
-    @Plugin.command('info', '<query:str>', context={'mode': 'default'})
-    @Plugin.command('search', '<query:str>', context={'mode': 'search'})
+    @Plugin.command('info', '<query:str>', context={'mode': 'default'}, global_=True)
+    @Plugin.command('search', '<query:str>', context={'mode': 'search'}, global_=True)
     def info(self, event, query, mode=None):
         queries = []
 
