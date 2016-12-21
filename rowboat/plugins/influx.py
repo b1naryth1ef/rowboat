@@ -149,12 +149,6 @@ class InfluxPlugin(Plugin):
                     'guild_id': guild.id,
                 }, count)
 
-            for game, count in games.items():
-                self.write_point('guild.members.games', {
-                    'game': game,
-                    'guild_id': guild.id,
-                }, count)
-
             self.write_point('guild.members.streaming', {
                 'guild_id': guild.id,
             }, streaming)
