@@ -263,8 +263,8 @@ class UtilitiesPlugin(Plugin):
         output.seek(0)
         event.msg.reply('', attachment=('image.jpg', output))
 
-    @Plugin.command('info', '<query:str>', context={'mode': 'default'}, global_=True)
-    @Plugin.command('search', '<query:str>', context={'mode': 'search'}, global_=True)
+    @Plugin.command('info', '<query:str...>', context={'mode': 'default'}, global_=True)
+    @Plugin.command('search', '<query:str...>', context={'mode': 'search'}, global_=True)
     def info(self, event, query, mode=None):
         queries = []
 
