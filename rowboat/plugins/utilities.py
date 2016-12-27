@@ -291,7 +291,7 @@ class UtilitiesPlugin(Plugin):
             return event.msg.reply(u'No users found for query `{}`'.format(C(query)))
         elif len(users) > 1:
             return event.msg.reply(u'Found the following users for your query: ```{}```'.format(
-                u'\n'.join(map(str, users))
+                u'\n'.join(map(unicode, users))
             ))
         else:
             user = users[0]
