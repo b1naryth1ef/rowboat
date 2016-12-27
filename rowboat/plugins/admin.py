@@ -102,8 +102,8 @@ class AdminPlugin(Plugin):
             event.msg.reply(':warning: Invalid user!')
 
     @Plugin.command('archive here', '[size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'all'})
-    @Plugin.command('archive user', '<user:user> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'user'})
-    @Plugin.command('archive channel', '<channel:channel> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'channel'})
+    @Plugin.command('archive user', '<user:user|snowflake> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'user'})
+    @Plugin.command('archive channel', '<channel:channel|snowflake> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'channel'})
     def archive(self, event, size=50, fmt='txt', mode=None, user=None, channel=None):
         """
         Archives messages to a given format (txt, csv, json).
