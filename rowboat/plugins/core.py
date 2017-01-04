@@ -1,3 +1,4 @@
+import os
 import time
 import pprint
 import humanize
@@ -88,6 +89,22 @@ class CorePlugin(Plugin):
         # Update 10 at a time
         for guild in to_update[:10]:
             guild.sync_bans(self.client.state.guilds.get(guild.guild_id))
+
+    def send_control_message(self, content, *args, **kwargs):
+        chan = self.client.state.dms.find_one(lambda dm: 80351110224678912 in dm.recipients)
+        if not chan:
+            self.log.warning('Failed to find control channel')
+            return
+
+        chan.send_message(u'[{}] {}'.format(os.getenv('ENV', 'local'), content), *args, **kwargs)
+
+    @Plugin.listen('Resumed')
+    def on_resumed(self, event):
+        self.send_control_message(u'Resumed: {}'.format(', '.join(event.trace)))
+
+    @Plugin.listen('Ready')
+    def on_ready(self, event):
+        self.send_control_message(u'Connected: {}'.format(', '.join(event.trace)))
 
     @Plugin.listen('GuildCreate', priority=Priority.BEFORE, conditional=lambda e: not e.created)
     def on_guild_create(self, event):

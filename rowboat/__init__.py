@@ -1,3 +1,5 @@
+import os
+
 from raven import Client
 from disco.bot import Plugin
 
@@ -14,6 +16,7 @@ raven_client = Client(
         'KeyboardInterrupt',
     ],
     release=VERSION,
+    environment=os.getenv('ENV', 'local')
 )
 
 
