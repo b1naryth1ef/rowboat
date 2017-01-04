@@ -393,6 +393,9 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
+        if event.author.id == self.state.me.id:
+            return
+
         try:
             msg = Message.get(Message.id == event.id)
         except Message.DoesNotExist:
