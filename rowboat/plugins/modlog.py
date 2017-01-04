@@ -402,7 +402,6 @@ class ModLogPlugin(Plugin):
         if not channel or not msg.author:
             return
 
-        print msg.author.id, self.state.me.id
         if msg.author.id == self.state.me.id:
             return
 

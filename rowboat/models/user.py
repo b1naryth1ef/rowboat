@@ -25,6 +25,10 @@ class User(BaseModel):
             (('id', 'username', 'discriminator'), True),
         )
 
+    @property
+    def id(self):
+        return self.user_id
+
     @classmethod
     def ensure(cls, user, should_update=True):
         return cls.from_disco_user(user)
