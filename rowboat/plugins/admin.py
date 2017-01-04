@@ -71,7 +71,7 @@ class AdminPlugin(Plugin):
         else:
             member = event.guild.get_member(user)
             if member:
-                Infraction.ban(self, event, member, reason)
+                Infraction.ban(self, event, member, reason, guild=event.guild)
             else:
                 event.msg.reply(':warning: Invalid user!')
                 return
