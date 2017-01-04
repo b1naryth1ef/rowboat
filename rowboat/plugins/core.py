@@ -16,6 +16,8 @@ from rowboat.redis import rdb
 from rowboat.models.guild import Guild
 from rowboat.plugins.modlog import Actions
 
+ENV = os.getenv('ENV', 'local')
+
 PY_CODE_BLOCK = u'```py\n{}\n```'
 
 INFO_MESSAGE = '''\
@@ -96,7 +98,7 @@ class CorePlugin(Plugin):
             self.log.warning('Failed to find control channel')
             return
 
-        chan.send_message(u'[{}] {}'.format(os.getenv('ENV', 'local'), content), *args, **kwargs)
+        chan.send_message(u'[{}] {}'.format(ENV, content), *args, **kwargs)
 
     @Plugin.listen('Resumed')
     def on_resumed(self, event):
@@ -160,6 +162,11 @@ class CorePlugin(Plugin):
             # Otherwise, default to requiring mentions
             commands = list(self.bot.get_commands_for_message(True, {}, '', event.message))
         else:
+            if ENV != 'prod':
+                if not event.message.content.startswith(ENV + '!'):
+                    return
+                event.message.content = event.message.content[len(ENV) + 1:]
+
             # DM's just use the commands (no prefix/mention)
             commands = list(self.bot.get_commands_for_message(False, {}, '', event.message))
 
