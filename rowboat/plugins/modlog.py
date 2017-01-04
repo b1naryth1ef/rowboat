@@ -173,6 +173,9 @@ class ModLogPlugin(Plugin):
                 ts = pytz.utc.localize(datetime.utcnow()).astimezone(config.tz)
                 msg = '`[{}]` '.format(ts.strftime('%H:%M:%S')) + msg
 
+            if len(msg) > 2000:
+                msg = msg[0:1997] + '...'
+
             return msg, None
 
         for channel, config in config.channels.items():

@@ -113,7 +113,7 @@ class UtilitiesPlugin(Plugin):
         r.raise_for_status()
         data = r.json()
 
-        event.msg.reply('{} - {}, {} ({}) | {}, {}'.format(
+        event.msg.reply(u'{} - {}, {} ({}) | {}, {}'.format(
             data['isp'],
             data['city'],
             data['region'],

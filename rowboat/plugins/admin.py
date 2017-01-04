@@ -60,18 +60,23 @@ class AdminPlugin(Plugin):
             event.msg.reply(':warning: Invalid user!')
 
     @Plugin.command('ban', '<user:user> [reason:str...]', level=CommandLevels.MOD)
+    @Plugin.command('forceban', '<user:snowflake> [reason:str...]', level=CommandLevels.MOD)
     def ban(self, event, user, reason=None):
         """
         Ban a user from the server (with an optional reason for the modlog).
         """
 
-        member = event.guild.get_member(user)
-        if member:
-            Infraction.ban(self, event, member, reason)
-            if event.config.confirm_actions:
-                event.msg.reply(u':ok_hand: banned {} for `{}`'.format(user, reason or 'no reason given'))
+        if isinstance(user, (int, long)):
+            Infraction.ban(self, event, user, reason, guild=event.guild)
         else:
-            event.msg.reply(':warning: Invalid user!')
+            member = event.guild.get_member(user)
+            if member:
+                Infraction.ban(self, event, member, reason)
+            else:
+                event.msg.reply(':warning: Invalid user!')
+                return
+
+        event.msg.reply(u':ok_hand: banned {} for `{}`'.format(user, reason or 'no reason given'))
 
     @Plugin.command('softban', '<user:user> [reason:str...]', level=CommandLevels.MOD)
     def softban(self, event, user, reason=None):

@@ -69,7 +69,8 @@ class Infraction(BaseModel):
     )
 
     guild = ForeignKeyField(Guild, related_name='infractions')
-    user = ForeignKeyField(User, related_name='infractions')
+    # user = ForeignKeyField(User, related_name='infractions')
+    user_id = IntegerField()
     actor = ForeignKeyField(User, null=True)
 
     type_ = IntegerField(db_column='type')
@@ -83,30 +84,22 @@ class Infraction(BaseModel):
         db_table = 'infractions'
 
         indexes = (
-            (('guild', 'user'), False),
+            (('guild', 'user_id'), False),
         )
 
     @classmethod
     def kick(cls, plugin, event, member, reason):
         User.from_disco_user(member.user)
-        cls.create(guild=member.guild_id, user=member.user.id, actor=event.author.id, type_=cls.Types.KICK, reason=reason)
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'kick',
             actor=str(event.author),
             reason=reason or 'no reason')
         member.kick()
+        cls.create(guild=member.guild_id, user_id=member.user.id, actor=event.author.id, type_=cls.Types.KICK, reason=reason)
 
     @classmethod
     def tempban(cls, plugin, event, member, reason, duration):
         User.from_disco_user(member.user)
         expires_at = datetime.utcnow() + timedelta(seconds=duration)
-
-        cls.create(
-            guild=member.guild_id,
-            user=member.user.id,
-            actor=event.author.id,
-            type_=cls.Types.TEMPBAN,
-            reason=reason,
-            expires_at=expires_at)
 
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
             actor=str(event.author),
@@ -116,28 +109,47 @@ class Infraction(BaseModel):
 
         member.ban()
 
+        cls.create(
+            guild=member.guild_id,
+            user=member.user.id,
+            actor=event.author.id,
+            type_=cls.Types.TEMPBAN,
+            reason=reason,
+            expires_at=expires_at)
+
     @classmethod
     def softban(cls, plugin, event, member, reason):
         User.from_disco_user(member.user)
-        cls.create(guild=member.guild_id, user=member.user.id, actor=event.author.id, type_=cls.Types.SOFTBAN, reason=reason)
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
             actor=str(event.author),
             temp=True,
             expires=None,
             reason=reason or 'no reason')
 
-        member.ban()
+        member.ban(delete_message_days=7)
         member.unban()
+        cls.create(guild=member.guild_id, user=member.user.id, actor=event.author.id, type_=cls.Types.SOFTBAN, reason=reason)
 
     @classmethod
-    def ban(cls, plugin, event, member, reason):
-        User.from_disco_user(member.user)
-        cls.create(guild=member.guild_id, user=member.user.id, actor=event.author.id, type_=cls.Types.BAN, reason=reason)
+    def ban(cls, plugin, event, member, reason, guild=None):
+        if isinstance(member, (int, long)):
+            user_id = member
+        else:
+            User.from_disco_user(member.user)
+            user_id = member.user.id
 
-        plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
-            actor=str(event.author),
-            temp=False,
-            expires=None,
-            reason=reason or 'no reason')
+        if user_id != member:
+            plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
+                actor=str(event.author),
+                temp=False,
+                expires=None,
+                reason=reason or 'no reason')
 
-        member.ban()
+        guild.create_ban(user_id)
+
+        cls.create(
+            guild=(guild and guild.id) or member.guild_id,
+            user=user_id,
+            actor=event.author.id,
+            type_=cls.Types.BAN,
+            reason=reason)
