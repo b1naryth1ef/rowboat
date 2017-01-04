@@ -5,12 +5,13 @@ import requests
 import urlparse
 
 from peewee import (
-    BigIntegerField, CharField, BooleanField, DateTimeField
+    BigIntegerField, CharField, TextField, BooleanField, DateTimeField, CompositeKey
 )
 from datetime import datetime
 from playhouse.postgres_ext import BinaryJSONField
 
 from rowboat.sql import BaseModel
+from rowboat.models.user import User
 
 ALLOWED_DOMAINS = {
     'github.com',
@@ -42,6 +43,15 @@ def validate_config_url(url):
 @BaseModel.register
 class Guild(BaseModel):
     guild_id = BigIntegerField(primary_key=True)
+    owner_id = BigIntegerField(null=True)
+    name = TextField(null=True)
+    icon = TextField(null=True)
+    splash = TextField(null=True)
+    region = TextField(null=True)
+
+    last_ban_sync = DateTimeField(null=True)
+
+    # Rowboat specific data
     config = BinaryJSONField(null=True)
     config_url = CharField()
 
@@ -69,7 +79,7 @@ class Guild(BaseModel):
         return cls.get(guild_id=guild_id)
 
     @classmethod
-    def create_from_url(cls, guild_id, url):
+    def create_from_url(cls, guild, url):
         url = validate_config_url(url)
         if not url:
             raise Exception('Invalid Configuration URL')
@@ -77,9 +87,24 @@ class Guild(BaseModel):
         _, raw = cls.load_from_url(url)
 
         return cls.create(
-            guild_id=guild_id,
+            guild_id=guild.id,
+            owner_id=guild.owner_id,
+            name=guild.name,
+            icon=guild.icon,
+            splash=guild.splash,
+            region=guild.region,
             config=raw,
             config_url=url)
+
+    def sync(self, guild):
+        updates = {}
+
+        for key in ['owner_id', 'name', 'icon', 'splash', 'region']:
+            if getattr(guild, key) != getattr(self, key):
+                updates[key] = getattr(guild, key)
+
+        if updates:
+            Guild.update(**updates).where(Guild.guild_id == self.guild_id).execute()
 
     def reload(self):
         _, raw = self.load_from_url(self.config_url)
@@ -97,6 +122,14 @@ class Guild(BaseModel):
         if not hasattr(self, '_cached_config'):
             self._cached_config = GuildConfig(self.config)
         return self._cached_config
+
+    def sync_bans(self, guild):
+        for ban in guild.get_bans().values():
+            GuildBan.ensure(guild, ban)
+
+        # Update last synced time
+        Guild.update(
+            last_ban_sync=datetime.utcnow()).where(Guild.guild_id == self.guild_id).execute()
 
 
 @BaseModel.register
@@ -130,3 +163,19 @@ class GuildEmoji(BaseModel):
         ge.roles = emoji.roles
         ge.save(force_insert=new)
         return ge
+
+
+@BaseModel.register
+class GuildBan(BaseModel):
+    user_id = BigIntegerField()
+    guild_id = BigIntegerField()
+    reason = TextField(null=True)
+
+    class Meta:
+        db_table = 'guildbans'
+        primary_key = CompositeKey('user_id', 'guild_id')
+
+    @classmethod
+    def ensure(cls, guild, ban):
+        User.ensure(ban.user)
+        return cls.create(guild_id=guild.id, user_id=ban.user.id, reason=ban.reason)

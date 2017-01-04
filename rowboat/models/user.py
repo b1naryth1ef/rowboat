@@ -3,8 +3,6 @@ from holster.enum import Enum
 from peewee import *
 from rowboat.sql import BaseModel
 
-from rowboat.models.guild import Guild
-
 
 @BaseModel.register
 class User(BaseModel):
@@ -28,7 +26,12 @@ class User(BaseModel):
         )
 
     @classmethod
+    def ensure(cls, user, should_update=True):
+        return cls.from_disco_user(user)
+
+    @classmethod
     def from_disco_user(cls, user, should_update=True):
+        # DEPRECATED
         obj, _ = cls.get_or_create(
             user_id=user.id,
             defaults={
@@ -68,10 +71,12 @@ class Infraction(BaseModel):
         'BAN',
     )
 
-    guild = ForeignKeyField(Guild, related_name='infractions')
+    # guild = ForeignKeyField(Guild, related_name='infractions')
     # user = ForeignKeyField(User, related_name='infractions')
-    user_id = IntegerField()
-    actor = ForeignKeyField(User, null=True)
+    # actor = ForeignKeyField(User, null=True)
+    guild_id = BigIntegerField()
+    user_id = BigIntegerField()
+    actor_id = BigIntegerField(null=True)
 
     type_ = IntegerField(db_column='type')
     reason = TextField(null=True)

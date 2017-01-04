@@ -1,8 +1,9 @@
+import time
 import pprint
 import humanize
 import functools
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from holster.emitter import Priority
 from disco.api.http import APIException
 from disco.bot.command import CommandEvent, CommandLevels
@@ -72,13 +73,31 @@ class CorePlugin(Plugin):
         event.config = getattr(config.plugins, plugin_name)
         return event
 
+    @Plugin.schedule(290)
+    def update_guild_bans(self):
+        # TODO: disco calls this function right away, need guilds to be synced
+        time.sleep(10)
+
+        to_update = [
+            guild for guild in Guild.select().where(
+                (Guild.last_ban_sync < (datetime.utcnow() - timedelta(days=1))) |
+                (Guild.last_ban_sync >> None)
+            )
+            if guild.guild_id in self.client.state.guilds]
+
+        # Update 10 at a time
+        for guild in to_update[:10]:
+            guild.sync_bans(self.client.state.guilds.get(guild.guild_id))
+
     @Plugin.listen('GuildCreate', priority=Priority.BEFORE, conditional=lambda e: not e.created)
     def on_guild_create(self, event):
         try:
             guild = Guild.with_id(event.id)
         except Guild.DoesNotExist:
-            # self.log.warning('Guild {} is not setup'.format(event.id))
             return
+
+        # Ensure we're updated
+        guild.sync(event.guild)
 
         self.guilds[event.id] = guild
 
@@ -242,7 +261,7 @@ class CorePlugin(Plugin):
             return event.msg.reply(':warning: bot must have the Administrator permission')
 
         try:
-            guild = Guild.create_from_url(event.guild.id, url)
+            guild = Guild.create_from_url(event.guild, url)
             self.guilds[event.guild.id] = guild
             event.msg.reply(':ok_hand: successfully loaded configuration')
         except Exception as e:
