@@ -275,7 +275,7 @@ class UtilitiesPlugin(Plugin):
         if len(q) and q[0].isdigit():
             queries.append((User.user_id == q[0]))
         elif mode == 'search':
-            queries.append((User.username ** '%{}%'.format(query.replace('%', ''))))
+            queries.append((User.username ** u'%{}%'.format(query.replace('%', ''))))
         else:
             queries.append((User.username ** query.replace('%', '')))
 
@@ -298,7 +298,7 @@ class UtilitiesPlugin(Plugin):
 
         embed = MessageEmbed()
 
-        avatar = 'https://discordapp.com/api/users/{}/avatars/{}.jpg'.format(
+        avatar = u'https://discordapp.com/api/users/{}/avatars/{}.jpg'.format(
             user.user_id,
             user.avatar,
         )
