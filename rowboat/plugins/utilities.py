@@ -12,14 +12,14 @@ from datetime import datetime, timedelta
 from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
 from disco.util.snowflake import to_datetime
 
-from disco.types.user import User as DiscoUser, Infraction
+from disco.types.user import User as DiscoUser
 from disco.types.guild import Guild as DiscoGuild
 from disco.types.channel import Channel as DiscoChannel
 
 from rowboat import RowboatPlugin as Plugin
 from rowboat.util import C
 from rowboat.types.plugin import PluginConfig
-from rowboat.models.user import User
+from rowboat.models.user import User, Infraction
 from rowboat.models.message import Message
 from rowboat.util.images import get_dominant_colors_user
 
