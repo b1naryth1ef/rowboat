@@ -13,7 +13,7 @@ from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, M
 from disco.util.snowflake import to_datetime
 
 from disco.types.user import User as DiscoUser
-from disco.types.guild import Guild as DiscoGuild
+from disco.types.guild import Guild as DiscoGuild, Infraction
 from disco.types.channel import Channel as DiscoChannel
 
 from rowboat import RowboatPlugin as Plugin
@@ -324,8 +324,9 @@ class UtilitiesPlugin(Plugin):
             embed.fields.append(
                 MessageEmbedField(name='Join Date', value=member.joined_at, inline=True))
 
+        infractions = Infraction.select().where(Infraction.user_id == user.id).count()
         embed.fields.append(
-            MessageEmbedField(name='Infractions', value=str(len(user.infractions)), inline=True))
+            MessageEmbedField(name='Infractions', value=str(infractions), inline=True))
 
         if member:
             embed.fields.append(
