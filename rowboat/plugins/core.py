@@ -3,6 +3,7 @@ import time
 import pprint
 import humanize
 import functools
+import subprocess
 
 from datetime import datetime, timedelta
 from holster.emitter import Priority
@@ -231,6 +232,19 @@ class CorePlugin(Plugin):
             return event.msg.reply(':recycle: reloaded all plugins')
         self.bot.plugins.get(plugin).reload()
         event.msg.reply(':recycle: reloaded plugin `{}`'.format(plugin))
+
+    @Plugin.command('update', group='control', level=-1, oob=True)
+    def commnad_update(self, event):
+        proc = subprocess.Popen(['git', 'pull', 'origin', 'master'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+
+        if proc.returncode != 0:
+            return event.msg.reply(':warning: failed to update: ```{}```'.format(proc.stderr.read()))
+
+        for plugin in self.bot.plugins.values():
+            plugin.reload()
+        event.msg.reply(':ok_hand: updated: ```{}```'.format(proc.stdout.read()))
 
     @Plugin.command('wl add', '<plugin:str> [guild:snowflake]', group='control', level=-1)
     def control_whitelist_add(self, event, plugin, guild=None):
