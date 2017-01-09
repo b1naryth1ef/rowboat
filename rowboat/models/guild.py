@@ -178,4 +178,5 @@ class GuildBan(BaseModel):
     @classmethod
     def ensure(cls, guild, ban):
         User.ensure(ban.user)
-        return cls.create(guild_id=guild.id, user_id=ban.user.id, reason=ban.reason)
+        obj, _ = cls.get_or_create(guild_id=guild.id, user_id=ban.user.id, defaults=dict(reason=ban.reason))
+        return obj
