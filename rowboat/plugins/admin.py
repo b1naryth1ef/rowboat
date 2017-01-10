@@ -153,7 +153,7 @@ class AdminPlugin(Plugin):
             q = q.where((Message.channel_id == (channel or event.channel).id))
         else:
             q = q.where(
-                (Message.author_id == user if isinstance(user, (int, long)) else user.id) &
+                (Message.author_id == (user if isinstance(user, (int, long)) else user.id)) &
                 (Message.guild_id == event.guild.id)
             )
 
