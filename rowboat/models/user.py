@@ -140,7 +140,7 @@ class Infraction(BaseModel):
         cls.create(guild=member.guild_id, user=member.user.id, actor=event.author.id, type_=cls.Types.SOFTBAN, reason=reason)
 
     @classmethod
-    def ban(cls, plugin, event, member, reason, guild=None):
+    def ban(cls, plugin, event, member, reason, guild):
         if isinstance(member, (int, long)):
             user_id = member
         else:
@@ -157,7 +157,7 @@ class Infraction(BaseModel):
         guild.create_ban(user_id)
 
         cls.create(
-            guild=(guild and guild.id) or member.guild_id,
+            guild=guild.id,
             user=user_id,
             actor=event.author.id,
             type_=cls.Types.BAN,

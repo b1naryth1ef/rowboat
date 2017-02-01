@@ -45,7 +45,7 @@ class RavenPlugin(object):
             if event.guild:
                 extra['guild'] = {
                     'id': event.guild.id,
-                    'name': event.guild.id,
+                    'name': event.guild.name,
                 }
         elif isinstance(event, GatewayEvent):
             extra['event'] = {

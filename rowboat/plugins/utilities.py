@@ -208,7 +208,11 @@ class UtilitiesPlugin(Plugin):
         width, height, images = 0, 0, []
 
         for r in Pool(6).imap(requests.get, urls):
-            r.raise_for_status()
+            try:
+                r.raise_for_status()
+            except requests.HTTPError:
+                return
+
             img = Image.open(BytesIO(r.content))
             height = img.height if img.height > height else height
             width += img.width + 10
