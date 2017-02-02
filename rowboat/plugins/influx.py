@@ -1,9 +1,7 @@
 from gevent.lock import Semaphore
 from datetime import datetime
 from influxdb import InfluxDBClient
-from collections import Counter
 
-from disco.types.user import GameType, Status
 from rowboat import BasePlugin as Plugin, raven_client
 
 
@@ -41,6 +39,17 @@ class InfluxPlugin(Plugin):
                 'value': value,
             }
         })
+
+    @Plugin.listen('')
+    def on_gateway_event(self, event):
+        metadata = {}
+
+        if hasattr(event, 'guild_id'):
+            metadata['guild_id'] = event.guild_id
+        elif hasattr(event, 'guild'):
+            metadata['guild'] = event.guild.id
+
+        self.write_point('gateway.event.{}'.format(event.__class__.__name__), metadata)
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
@@ -95,60 +104,3 @@ class InfluxPlugin(Plugin):
             'emoji_id': event.emoji.id,
             'emoji_name': event.emoji.name,
         })
-
-    @Plugin.listen('GuildMemberAdd')
-    def on_guild_member_add(self, event):
-        guild = self.state.guilds.get(event.guild_id)
-        if not guild:
-            return
-
-        self.write_point('guild.members.count', {
-            'guild_id': event.guild_id,
-        }, len(guild.members))
-
-    @Plugin.listen('GuildMemberRemove')
-    def on_guild_member_remove(self, event):
-        guild = self.state.guilds.get(event.guild_id)
-        if not guild:
-            return
-
-        self.write_point('guild.members.count', {
-            'guild_id': event.guild_id,
-        }, len(guild.members))
-
-    @Plugin.listen('GuildCreate')
-    def on_guild_create(self, event):
-        if event.guild.member_count:
-            self.write_point('guild.members.count', {
-                'guild_id': event.guild.id,
-            }, event.guild.member_count)
-
-    @Plugin.schedule(10, init=False)
-    def on_presence_update(self):
-        for guild in self.state.guilds.values():
-            status = Counter()
-            games = Counter()
-            streaming = 0
-
-            for member in guild.members.values():
-                if not member.user.presence:
-                    status[Status.OFFLINE.name] += 1
-                    continue
-
-                status[member.user.presence.status.name] += 1
-
-                if member.user.presence.game and member.user.presence.game.type:
-                    if member.user.presence.game.type == GameType.DEFAULT:
-                        games[member.user.presence.game.name] += 1
-                    else:
-                        streaming += 1
-
-            for status, count in status.items():
-                self.write_point('guild.members.status', {
-                    'status': status,
-                    'guild_id': guild.id,
-                }, count)
-
-            self.write_point('guild.members.streaming', {
-                'guild_id': guild.id,
-            }, streaming)
