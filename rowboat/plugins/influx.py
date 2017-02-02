@@ -42,14 +42,16 @@ class InfluxPlugin(Plugin):
 
     @Plugin.listen('')
     def on_gateway_event(self, event):
-        metadata = {}
+        metadata = {
+            'event': event.__class__.__name__,
+        }
 
         if hasattr(event, 'guild_id'):
             metadata['guild_id'] = event.guild_id
         elif hasattr(event, 'guild') and event.guild:
             metadata['guild_id'] = event.guild.id
 
-        self.write_point('gateway.event.{}'.format(event.__class__.__name__), metadata)
+        self.write_point('gateway.recv', metadata)
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
