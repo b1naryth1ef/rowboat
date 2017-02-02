@@ -46,8 +46,8 @@ class InfluxPlugin(Plugin):
 
         if hasattr(event, 'guild_id'):
             metadata['guild_id'] = event.guild_id
-        elif hasattr(event, 'guild'):
-            metadata['guild'] = event.guild.id
+        elif hasattr(event, 'guild') and event.guild:
+            metadata['guild_id'] = event.guild.id
 
         self.write_point('gateway.event.{}'.format(event.__class__.__name__), metadata)
 
