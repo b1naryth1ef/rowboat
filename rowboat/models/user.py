@@ -103,7 +103,12 @@ class Infraction(BaseModel):
             actor=str(event.author),
             reason=reason or 'no reason')
         member.kick()
-        cls.create(guild=member.guild_id, user_id=member.user.id, actor=event.author.id, type_=cls.Types.KICK, reason=reason)
+        cls.create(
+            guild_id=member.guild_id,
+            user_id=member.user.id,
+            actor_id=event.author.id,
+            type_=cls.Types.KICK,
+            reason=reason)
 
     @classmethod
     def tempban(cls, plugin, event, member, reason, duration):
@@ -119,9 +124,9 @@ class Infraction(BaseModel):
         member.ban()
 
         cls.create(
-            guild=member.guild_id,
-            user=member.user.id,
-            actor=event.author.id,
+            guild_id=member.guild_id,
+            user_id=member.user.id,
+            actor_id=event.author.id,
             type_=cls.Types.TEMPBAN,
             reason=reason,
             expires_at=expires_at)
@@ -137,7 +142,12 @@ class Infraction(BaseModel):
 
         member.ban(delete_message_days=7)
         member.unban()
-        cls.create(guild=member.guild_id, user=member.user.id, actor=event.author.id, type_=cls.Types.SOFTBAN, reason=reason)
+        cls.create(
+            guild_id=member.guild_id,
+            user_id=member.user.id,
+            actor_id=event.author.id,
+            type_=cls.Types.SOFTBAN,
+            reason=reason)
 
     @classmethod
     def ban(cls, plugin, event, member, reason, guild):
@@ -157,8 +167,8 @@ class Infraction(BaseModel):
         guild.create_ban(user_id)
 
         cls.create(
-            guild=guild.id,
-            user=user_id,
-            actor=event.author.id,
+            guild_id=guild.id,
+            user_id=user_id,
+            actor_id=event.author.id,
             type_=cls.Types.BAN,
             reason=reason)
