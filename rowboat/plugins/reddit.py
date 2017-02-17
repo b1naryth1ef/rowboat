@@ -95,7 +95,7 @@ class RedditPlugin(Plugin):
                 if 'images' in data['preview']:
                     image = data['preview']['images'][0]['source']['url']
 
-            if 'selftext' in data:
+            if 'selftext' in data and data['selftext']:
                 # TODO better place for validation
                 sz = min(64, max(config.text_length, 1900))
                 embed.description = data['selftext'][:sz]
