@@ -72,7 +72,7 @@ CHANGE_NICK:
 
 CHANGE_USERNAME:
   emoji: name_badge
-  format: '`{before}#{e.user.discriminator}` (`{e.user.id}`) changed their username to `{after}#{e.user.discriminator}`'
+  format: '{before}#{e.user.discriminator} (`{e.user.id}`) changed their username to `{after}#{e.user.discriminator}`'
 
 MESSAGE_EDIT:
   emoji: pencil
