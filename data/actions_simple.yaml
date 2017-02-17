@@ -8,35 +8,35 @@ CHANNEL_DELETE:
 
 GUILD_BAN_ADD:
   emoji: rotating_light
-  format: 'user {e.user} (`{e.user.id}`) was banned'
+  format: '{e.user} (`{e.user.id}`) was banned'
 
 GUILD_SOFTBAN_ADD:
   emoji: rotating_light
-  format: 'user {e.user} (`{e.user.id}`) was soft-banned by **{actor}**: `{reason}`'
+  format: '{e.user} (`{e.user.id}`) was soft-banned by **{actor}**: `{reason}`'
 
 GUILD_TEMPBAN_ADD:
   emoji: rotating_light
-  format: 'user {e.user} (`{e.user.id}`) was temp-banned until {expires} by **{actor}**: `{reason}`'
+  format: '{e.user} (`{e.user.id}`) was temp-banned until {expires} by **{actor}**: `{reason}`'
 
 GUILD_BAN_ADD_REASON:
   emoji: rotating_light
-  format: 'user {e.user} (`{e.user.id}`) was banned by **{actor}**: `{reason}`'
+  format: '{e.user} (`{e.user.id}`) was banned by **{actor}**: `{reason}`'
 
 GUILD_BAN_REMOVE:
   emoji: rotating_light
-  format: 'user {e.user} (`{e.user.id}`) was unbanned'
+  format: '{e.user} (`{e.user.id}`) was unbanned'
 
 GUILD_MEMBER_ADD:
   emoji: inbox_tray
-  format: 'user {e.user} (`{e.user.id}`) joined the server{new}'
+  format: '{e.user} (`{e.user.id}`) joined the server{new}'
 
 GUILD_MEMBER_REMOVE:
   emoji: outbox_tray
-  format: 'user {e.user} (`{e.user.id}`) left (or was kicked from) the server'
+  format: '{e.user} (`{e.user.id}`) left (or was kicked from) the server'
 
 GUILD_MEMBER_KICK:
   emoji: boot
-  format: 'user {e.user} (`{e.user.id}`) was kicked from the server by **{actor}**: `{reason}`'
+  format: '{e.user} (`{e.user.id}`) was kicked from the server by **{actor}**: `{reason}`'
 
 GUILD_MEMBER_ROLES_ADD:
   emoji: key
