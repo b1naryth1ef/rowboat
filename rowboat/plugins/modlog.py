@@ -421,14 +421,14 @@ class ModLogPlugin(Plugin):
         except Message.DoesNotExist:
             return
 
-        if event.author.id in event.config.ignored_users:
-            return
-
         channel = self.state.channels.get(msg.channel_id)
         if not channel or not msg.author:
             return
 
         if msg.author.id == self.state.me.id:
+            return
+
+        if event.author.id in event.config.ignored_users:
             return
 
         self.log_action(Actions.MESSAGE_DELETE, event,
