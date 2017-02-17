@@ -91,7 +91,10 @@ class RedditPlugin(Plugin):
 
             image = None
 
-            if 'preview' in data:
+            if 'media' in data:
+                if 'oembed' in data['media']:
+                    image = data['media']['oembed']['thumbnail_url']
+            elif 'preview' in data:
                 if 'images' in data['preview']:
                     image = data['preview']['images'][0]['source']['url']
 
