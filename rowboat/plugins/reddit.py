@@ -41,6 +41,8 @@ class RedditPlugin(Plugin):
         subs_raw = list(Guild.select(
             Guild.guild_id,
             Guild.config['plugins']['reddit']
+        ).where(
+            ~(Guild.config['plugins']['reddit'] >> None)
         ).tuples())
 
         # Group all subreddits, iterate, update channels
