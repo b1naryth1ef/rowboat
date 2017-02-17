@@ -106,14 +106,7 @@ class AdminPlugin(Plugin):
         else:
             event.msg.reply(':warning: Invalid user!')
 
-    @Plugin.command('archive here', '[size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'all'})
-    @Plugin.command('archive user', '<user:user|snowflake> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'user'})
-    @Plugin.command('archive channel', '<channel:channel|snowflake> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'channel'})
-    def archive(self, event, size=50, fmt='txt', mode=None, user=None, channel=None):
-        """
-        Archives messages to a given format (txt, csv, json).
-        """
-
+    def archive_messages(self, message_q, fmt, expiry=365):
         def encode_txt(msg):
             return u'{m.timestamp} {m.author}: {m.content}'.format(m=msg)
 
@@ -141,24 +134,7 @@ class AdminPlugin(Plugin):
                 'deleted': msg.deleted,
             }
 
-        if fmt not in ('txt', 'csv', 'json'):
-            return event.msg.reply(':warning: Invalid message format, needs to be one of txt, csv, json')
-
-        if 0 > size >= 15000:
-            return event.msg.reply(':warning: Too many messages, must be between 1-15000')
-
-        q = Message.select().join(User).order_by(Message.timestamp.desc()).limit(size)
-
-        if mode in ('all', 'channel'):
-            q = q.where((Message.channel_id == (channel or event.channel).id))
-        else:
-            q = q.where(
-                (Message.author_id == (user if isinstance(user, (int, long)) else user.id)) &
-                (Message.guild_id == event.guild.id)
-            )
-
-        # Grab messages
-        msgs = list(reversed(q))
+        msgs = list(reversed(message_q))
 
         if fmt == 'txt':
             data = map(encode_txt, msgs)
@@ -176,11 +152,38 @@ class AdminPlugin(Plugin):
 
         r = requests.post('http://dpaste.com/api/v2/', data={
             'content': result,
-            'expiry_days': 90,
+            'expiry_days': expiry,
             'poster': 'Rowboat',
         })
         r.raise_for_status()
-        event.msg.reply('OK, archived {} messages at {}'.format(size, r.content.strip() + '.txt'))
+        return r.content.strip() + '.txt'
+
+    @Plugin.command('archive here', '[size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'all'})
+    @Plugin.command('archive user', '<user:user|snowflake> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'user'})
+    @Plugin.command('archive channel', '<channel:channel|snowflake> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'channel'})
+    def archive(self, event, size=50, fmt='txt', mode=None, user=None, channel=None):
+        """
+        Archives messages to a given format (txt, csv, json).
+        """
+
+        if fmt not in ('txt', 'csv', 'json'):
+            return event.msg.reply(':warning: Invalid message format, needs to be one of txt, csv, json')
+
+        if 0 > size >= 15000:
+            return event.msg.reply(':warning: Too many messages, must be between 1-15000')
+
+        q = Message.select().join(User).order_by(Message.id.desc()).limit(size)
+
+        if mode in ('all', 'channel'):
+            q = q.where((Message.channel_id == (channel or event.channel).id))
+        else:
+            q = q.where(
+                (Message.author_id == (user if isinstance(user, (int, long)) else user.id)) &
+                (Message.guild_id == event.guild.id)
+            )
+
+        url = self.archive_messages(q, fmt, expiry=90)
+        event.msg.reply('OK, archived {} messages at {}'.format(size, url))
 
     @Plugin.command('clean all', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
     @Plugin.command('clean bots', '[size:int]', level=CommandLevels.MOD, context={'mode': 'bots'})

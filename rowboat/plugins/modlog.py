@@ -292,11 +292,22 @@ class ModLogPlugin(Plugin):
             return
 
         if pre_member.nick != event.nick:
-            self.log_action(
-                Actions.CHANGE_NICK,
-                event,
-                before=pre_member.nick or '<NO_NICK>',
-                after=event.nick or '<NO_NICK>')
+            if not pre_member.nick:
+                self.log_action(
+                    Actions.ADD_NICK,
+                    event,
+                    nickname=event.nick)
+            elif not event.nick:
+                self.log_action(
+                    Actions.RMV_NICK,
+                    event,
+                    nickname=pre_member.nick)
+            else:
+                self.log_action(
+                    Actions.CHANGE_NICK,
+                    event,
+                    before=pre_member.nick or '<NO_NICK>',
+                    after=event.nick or '<NO_NICK>')
 
         pre_roles = set(pre_member.roles)
         post_roles = set(event.roles)
@@ -421,5 +432,21 @@ class ModLogPlugin(Plugin):
         if not channel:
             return
 
+        msgs = Message.select(
+            Message.id,
+            Message.timestamp,
+            Message.author,
+            Message.content,
+            Message.deleted
+        ).where(
+            Message.id << event.ids
+        ).order_by(Message.id.desc())
+
+        try:
+            url = self.bot.plugins.get('AdminPlugin').archive_messages(msgs, 'txt')
+        except:
+            self.log.exception('Failed to dump message log for bulk delete: ')
+            url = ''
+
         # TODO: upload messages in txt file
-        self.log_action(Actions.MESSAGE_DELETE_BULK, event, channel=channel, count=len(event.ids))
+        self.log_action(Actions.MESSAGE_DELETE_BULK, event, log=url, channel=channel, count=len(event.ids))

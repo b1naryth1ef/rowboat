@@ -8,47 +8,47 @@ CHANNEL_DELETE:
 
 GUILD_BAN_ADD:
   emoji: rotating_light
-  format: 'user {e.user} was banned'
+  format: 'user {e.user} (`{e.user.id}`) was banned'
 
 GUILD_SOFTBAN_ADD:
   emoji: rotating_light
-  format: 'user {e.user} was soft-banned by **{actor}**: `{reason}`'
+  format: 'user {e.user} (`{e.user.id}`) was soft-banned by **{actor}**: `{reason}`'
 
 GUILD_TEMPBAN_ADD:
   emoji: rotating_light
-  format: 'user {e.user} was temp-banned until {expires} by **{actor}**: `{reason}`'
+  format: 'user {e.user} (`{e.user.id}`) was temp-banned until {expires} by **{actor}**: `{reason}`'
 
 GUILD_BAN_ADD_REASON:
   emoji: rotating_light
-  format: 'user {e.user} was banned by **{actor}**: `{reason}`'
+  format: 'user {e.user} (`{e.user.id}`) was banned by **{actor}**: `{reason}`'
 
 GUILD_BAN_REMOVE:
   emoji: rotating_light
-  format: 'user {e.user} was unbanned'
+  format: 'user {e.user} (`{e.user.id}`) was unbanned'
 
 GUILD_MEMBER_ADD:
   emoji: inbox_tray
-  format: 'user {e.user} joined the server{new}'
+  format: 'user {e.user} (`{e.user.id}`) joined the server{new}'
 
 GUILD_MEMBER_REMOVE:
   emoji: outbox_tray
-  format: 'user {e.user} left (or was kicked from) the server'
+  format: 'user {e.user} (`{e.user.id}`) left (or was kicked from) the server'
 
 GUILD_MEMBER_KICK:
   emoji: boot
-  format: 'user {e.user} was kicked from the server by **{actor}**: `{reason}`'
+  format: 'user {e.user} (`{e.user.id}`) was kicked from the server by **{actor}**: `{reason}`'
 
 GUILD_MEMBER_ROLES_ADD:
   emoji: key
-  format: "{e.user} was given the role **{role.name}**"
+  format: "{e.user} (`{e.user.id}`) was given the role **{role.name}**"
 
 GUILD_MEMBER_ROLES_RMV:
   emoji: key
-  format: "{e.user} was removed from the role **{role.name}**"
+  format: "{e.user} (`{e.user.id}`) was removed from the role **{role.name}**"
 
 GUILD_MEMBER_AVATAR_CHANGE:
   emoji: camera
-  format: '{e.user} changed their avatar'
+  format: '{e.user} (`{e.user.id}`) changed their avatar'
 
 GUILD_ROLE_CREATE:
   emoji: pen_ballpoint
@@ -58,30 +58,38 @@ GUILD_ROLE_DELETE:
   emoji: wastebasket
   format: 'role {pre_role} was deleted'
 
+ADD_NICK:
+  emoij: name_badge
+  format: '{e.user} (`{e.user.id}`) added a nickname `{nickname}`'
+
+RMV_NICK:
+  emoji: name_badge
+  format: '{e.user} (`{e.user.id}`) removed their nickname `{nickname}`'
+
 CHANGE_NICK:
   emoji: name_badge
-  format: 'user {e.user} changed their nick from `{before}` to `{after}`'
+  format: '{e.user} (`{e.user.id}`) changed their nick from `{before}` to `{after}`'
 
 CHANGE_USERNAME:
   emoji: name_badge
-  format: 'user {e.user} changed their username from `{before}` to `{after}`'
+  format: '`{before}#{e.user.discriminator}` (`{e.user.id}`) changed their username to `{after}#{e.user.discriminator}`'
 
 MESSAGE_EDIT:
   emoji: pencil
-  format: "{e.author} edited their message in **{e.channel}**:\n**B:** {before}\n**A:** {after}"
+  format: "{e.author} (`{e.author.id}`) edited their message in **{e.channel}**:\n**B:** {before}\n**A:** {after}"
 
 MESSAGE_DELETE:
   emoji: wastebasket
-  format: "{author} deleted their message in **{channel}**:\n{msg}"
+  format: "{author} (`{e.author.id}`) deleted their message in **{channel}**:\n{msg}"
 
 MESSAGE_DELETE_BULK:
   emoji: wastebasket
-  format: "{count} messages where delted from **{channel}**"
+  format: "{count} messages where deleted from **{channel}** (<{log}>)"
 
 COMMAND_USED:
   emoji: wrench
-  format: "{e.author} used the command: `{e.content}` in **{e.channel}**"
+  format: "{e.author} (`{e.author.id}`) used the command: `{e.content}` in **{e.channel}**"
 
 SPAM_DEBUG:
   emoji: helmet_with_cross
-  format: "{v.member} violated {v.label}: {v.msg}"
+  format: "{v.member} (`{v.member.id}`) violated {v.label}: {v.msg}"

@@ -116,6 +116,20 @@ GUILD_ROLE_DELETE:
     role-id: '`{e.role_id}`'
   text: 'role deleted'
 
+ADD_NICK:
+  color: orange
+  fields:
+    user: '{e.user}'
+    user-id: '`{e.user.id}`'
+    nickname: '`{nickname}`'
+
+RMV_NICK:
+  color: orange
+  fields:
+    user: '{e.user}'
+    user-id: '`{e.user.id}`'
+    nickname: '`{nickname}`'
+
 CHANGE_NICK:
   color: orange
   fields:
