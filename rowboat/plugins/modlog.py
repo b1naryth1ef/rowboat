@@ -63,6 +63,8 @@ class ChannelConfig(SlottedModel):
 class ModLogConfig(PluginConfig):
     resolved = Field(bool, default=False, private=True)
 
+    ignored_users = ListField(Actions)
+
     channels = DictField(ChannelField, ChannelConfig)
     new_member_threshold = Field(int, default=(15 * 60))
 
@@ -341,6 +343,9 @@ class ModLogPlugin(Plugin):
             if not config.plugins.modlog:
                 continue
 
+            if event.user.id in config.plugins.modlog.ignored_users:
+                continue
+
             for act in {Actions.CHANGE_USERNAME, Actions.GUILD_MEMBER_AVATAR_CHANGE}:
                 if {act} & config.plugins.modlog.subscribed:
                     subscribed_guilds[act].append((guild, config))
@@ -391,6 +396,9 @@ class ModLogPlugin(Plugin):
         if event.author.id == self.state.me.id:
             return
 
+        if event.author.id in event.config.ignored_users:
+            return
+
         try:
             msg = Message.get(Message.id == event.id)
         except Message.DoesNotExist:
@@ -411,6 +419,9 @@ class ModLogPlugin(Plugin):
         try:
             msg = Message.get(Message.id == event.id)
         except Message.DoesNotExist:
+            return
+
+        if event.author.id in event.config.ignored_users:
             return
 
         channel = self.state.channels.get(msg.channel_id)
