@@ -13,7 +13,7 @@ local key = KEYS[1]
 redis.call("ZREMRANGEBYSCORE", KEYS[1], "-inf", ARGV[2])
 
 -- Add our keys
-for i=0,ARGV[1] do
+for i=1,ARGV[1] do
   redis.call("ZADD", KEYS[1], ARGV[3], ARGV[3] + i)
 end
 

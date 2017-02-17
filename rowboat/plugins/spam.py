@@ -15,7 +15,7 @@ from rowboat.types import SlottedModel, DictField, Field
 #  - detect normal spam
 
 
-class RoleConfig(SlottedModel):
+class SubConfig(SlottedModel):
     max_messages_check = Field(bool, desc='Whether to limit the max number of messages during a time period.', default=False)
     max_messages_count = Field(int, desc='The max number of messages per interval this user can send')
     max_messages_interval = Field(int, desc='The interval (in seconds) for the max messages count')
@@ -40,24 +40,31 @@ class RoleConfig(SlottedModel):
             return None
 
         if not hasattr(self, '_max_mentions_bucket'):
-            return LeakyBucket(rdb, 'msgs:{}:'.format(guild_id), self.max_mentions_count, self.max_mentions_interval * 1000)
+            return LeakyBucket(rdb, 'mnts:{}:'.format(guild_id), self.max_mentions_count, self.max_mentions_interval * 1000)
 
         return self._max_mentions_bucket
 
 
 class SpamConfig(PluginConfig):
-    roles = DictField(str, RoleConfig)
+    roles = DictField(str, SubConfig)
+    levels = DictField(int, SubConfig)
 
-    def compute_relevant_rules(self, member):
-        if '*' in self.roles:
-            yield self.roles['*']
+    def compute_relevant_rules(self, member, level):
+        if self.roles:
+            if '*' in self.roles:
+                yield self.roles['*']
 
-        for rid in member.roles:
-            if rid in self.roles:
-                yield self.roles[rid]
-            rname = member.guild.roles.get(rid)
-            if rname and rname.name in self.roles:
-                yield self.roles[rname.name]
+            for rid in member.roles.keys():
+                if rid in self.roles:
+                    yield self.roles[rid]
+                rname = member.guild.roles.get(rid)
+                if rname and rname.name in self.roles:
+                    yield self.roles[rname.name]
+
+        if self.levels:
+            for lvl in self.levels.keys():
+                if lvl <= level:
+                    yield self.levels[lvl]
 
 
 class Violation(Exception):
@@ -80,8 +87,9 @@ class SpamPlugin(Plugin):
 
     def check_message(self, event):
         member = event.guild.get_member(event.author)
+        level = int(self.bot.get_level(event.author))
 
-        for rule in event.config.compute_relevant_rules(member):
+        for rule in event.config.compute_relevant_rules(member, level):
             # First, check the max messages rules
             bucket = rule.max_messages_bucket(event.guild.id)
             if bucket:
