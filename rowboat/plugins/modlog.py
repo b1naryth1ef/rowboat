@@ -428,7 +428,7 @@ class ModLogPlugin(Plugin):
         if msg.author.id == self.state.me.id:
             return
 
-        if event.author.id in event.config.ignored_users:
+        if msg.author.id in event.config.ignored_users:
             return
 
         self.log_action(Actions.MESSAGE_DELETE, event,
