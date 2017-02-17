@@ -82,11 +82,11 @@ class RedditPlugin(Plugin):
                 embed.color = 0xff6961
             else:
                 embed.color = 0xaecfc8
-            embed.title = '**' + data['title'] + '**'
-            embed.url = 'https://reddit.com{}'.format(data['permalink'])
+            embed.title = data['title']
+            embed.url = u'https://reddit.com{}'.format(data['permalink'])
             embed.set_author(
                 name=data['author'],
-                url='https://reddit.com/u/{}'.format(data['author'])
+                url=u'https://reddit.com/u/{}'.format(data['author'])
             )
 
             image = None
@@ -100,7 +100,7 @@ class RedditPlugin(Plugin):
                 sz = min(64, max(config.text_length, 1900))
                 embed.description = data['selftext'][:sz]
                 if len(data['selftext']) > sz:
-                    embed.description += '...'
+                    embed.description += u'...'
                 if image:
                     embed.set_thumbnail(url=image)
             elif image:
