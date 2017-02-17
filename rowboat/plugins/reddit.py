@@ -25,6 +25,7 @@ class SubRedditConfig(SlottedModel):
     mode = Field(FormatMode, default=FormatMode.PRETTY)
     nsfw = Field(bool, default=False)
     text_length = Field(int, default=256)
+    include_stats = Field(bool, default=False)
 
 
 class RedditConfig(PluginConfig):
@@ -98,9 +99,10 @@ class RedditPlugin(Plugin):
                 if len(data['selftext']) > sz:
                     embed.description += '...'
 
-            embed.set_footer(text=emoji.emojize('{} upvotes | {} downvotes | {} comments'.format(
-                data['ups'], data['downs'], data['num_comments']
-            )))
+            if config.include_stats:
+                embed.set_footer(text=emoji.emojize('{} upvotes | {} downvotes | {} comments'.format(
+                    data['ups'], data['downs'], data['num_comments']
+                )))
 
             channel.send_message('', embed=embed)
 
