@@ -31,7 +31,7 @@ class SubConfig(SlottedModel):
             return None
 
         if not hasattr(self, '_max_messages_bucket'):
-            return LeakyBucket(rdb, 'msgs:{}:'.format(guild_id), self.max_messages_count, self.max_messages_interval * 1000)
+            return LeakyBucket(rdb, 'msgs:{}:{}'.format(guild_id, '{}'), self.max_messages_count, self.max_messages_interval * 1000)
 
         return self._max_messages_bucket
 
@@ -40,7 +40,7 @@ class SubConfig(SlottedModel):
             return None
 
         if not hasattr(self, '_max_mentions_bucket'):
-            return LeakyBucket(rdb, 'mnts:{}:'.format(guild_id), self.max_mentions_count, self.max_mentions_interval * 1000)
+            return LeakyBucket(rdb, 'mnts:{}:{}'.format(guild_id, '{}'), self.max_mentions_count, self.max_mentions_interval * 1000)
 
         return self._max_mentions_bucket
 
