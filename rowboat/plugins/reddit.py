@@ -89,17 +89,22 @@ class RedditPlugin(Plugin):
                 url='https://reddit.com/u/{}'.format(data['author'])
             )
 
+            image = None
+
             if 'preview' in data:
                 if 'images' in data['preview']:
-                    embed.set_image(
-                        url=data['preview']['images'][0]['source']['url']
-                    )
-            elif 'selftext' in data:
+                    image = data['preview']['images'][0]['source']['url']
+
+            if 'selftext' in data:
                 # TODO better place for validation
                 sz = min(64, max(config.text_length, 1900))
                 embed.description = data['selftext'][:sz]
                 if len(data['selftext']) > sz:
                     embed.description += '...'
+                if image:
+                    embed.set_thumbnail(url=image)
+            elif image:
+                embed.set_image(url=image)
 
             if config.include_stats:
                 embed.set_footer(text=emoji.emojize('{} upvotes | {} downvotes | {} comments'.format(
