@@ -81,3 +81,7 @@ MESSAGE_DELETE_BULK:
 COMMAND_USED:
   emoji: wrench
   format: "{e.author} used the command: `{e.content}` in **{e.channel}**"
+
+SPAM_DEBUG:
+  emoji: helmet_with_cross
+  format: "{v.member} violated {v.label}: {v.msg}"

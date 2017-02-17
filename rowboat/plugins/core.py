@@ -65,16 +65,16 @@ class CorePlugin(Plugin):
         if guild_id not in self.guilds:
             return
 
-        config = self.guilds[guild_id].get_config()
+        event.base_config = self.guilds[guild_id].get_config()
 
         plugin_name = plugin.name.lower().replace('plugin', '')
-        if not getattr(config.plugins, plugin_name, None):
+        if not getattr(event.base_config.plugins, plugin_name, None):
             return
 
         if plugin.whitelisted and plugin_name not in self.guilds[guild_id].whitelist:
             return
 
-        event.config = getattr(config.plugins, plugin_name)
+        event.config = getattr(event.base_config.plugins, plugin_name)
         return event
 
     @Plugin.schedule(290)

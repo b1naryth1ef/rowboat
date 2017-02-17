@@ -124,7 +124,12 @@ class Guild(BaseModel):
         return self._cached_config
 
     def sync_bans(self, guild):
-        for ban in guild.get_bans().values():
+        try:
+            bans = guild.get_bans()
+        except:
+            return
+
+        for ban in bans.values():
             GuildBan.ensure(guild, ban)
 
         # Update last synced time

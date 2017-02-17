@@ -23,7 +23,7 @@ class Channel(BaseModel):
         try:
             return Message.select(Message.id).where(
                 (Message.channel_id == channel_id)
-            ).order_by(Message.timestamp.asc()).limit(1).get().id
+            ).order_by(Message.id.asc()).limit(1).get().id
         except Message.DoesNotExist:
             return None
 

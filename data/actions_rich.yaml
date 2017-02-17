@@ -170,3 +170,11 @@ COMMAND_USED:
     channel: '{e.channel}'
     command: '{e.content}'
   text: 'command used'
+
+SPAM_DEBUG:
+  color: green
+  fields:
+    user: '{v.member}'
+    label: '{v.label}'
+    message: '{v.message}'
+  text: 'spam debug'

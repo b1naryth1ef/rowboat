@@ -127,6 +127,10 @@ class ModLogPlugin(Plugin):
         ctx['debounce'] = self.debounce
         super(ModLogPlugin, self).unload(ctx)
 
+    def log_action_ext(self, action, event, attachment=None, **details):
+        assert hasattr(event.base_config.plugins, 'modlog')
+        return self.log_action_raw(action, event, event.guild, getattr(event.base_config.plugins, 'modlog'), attachment, **details)
+
     def log_action(self, action, event, attachment=None, **details):
         return self.log_action_raw(action, event, event.guild, event.config, attachment, **details)
 
@@ -417,4 +421,5 @@ class ModLogPlugin(Plugin):
         if not channel:
             return
 
+        # TODO: upload messages in txt file
         self.log_action(Actions.MESSAGE_DELETE_BULK, event, channel=channel, count=len(event.ids))

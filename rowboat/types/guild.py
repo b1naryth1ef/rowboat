@@ -5,6 +5,7 @@ from rowboat.plugins.modlog import ModLogConfig
 from rowboat.plugins.reactions import ReactionsConfig
 from rowboat.plugins.admin import AdminConfig
 from rowboat.plugins.utilities import UtilitiesConfig
+from rowboat.plugins.spam import SpamConfig
 
 
 CooldownMode = Enum(
@@ -18,6 +19,7 @@ class PluginsConfig(SlottedModel):
     modlog = Field(ModLogConfig, default=None)
     reactions = Field(ReactionsConfig, default=None)
     admin = Field(AdminConfig, default=None)
+    spam = Field(SpamConfig, default=None)
     utilities = Field(UtilitiesConfig, default=None)
 
 
