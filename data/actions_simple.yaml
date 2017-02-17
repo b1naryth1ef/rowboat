@@ -59,7 +59,7 @@ GUILD_ROLE_DELETE:
   format: 'role {pre_role} was deleted'
 
 ADD_NICK:
-  emoij: name_badge
+  emoji: name_badge
   format: '{e.user} (`{e.user.id}`) added a nickname `{nickname}`'
 
 RMV_NICK:
@@ -80,7 +80,7 @@ MESSAGE_EDIT:
 
 MESSAGE_DELETE:
   emoji: wastebasket
-  format: "{author} (`{e.author.id}`) deleted their message in **{channel}**:\n{msg}"
+  format: "{author} (`{author.id}`) deleted their message in **{channel}**:\n{msg}"
 
 MESSAGE_DELETE_BULK:
   emoji: wastebasket
