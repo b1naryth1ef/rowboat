@@ -16,7 +16,7 @@ from disco.types.user import User as DiscoUser
 from disco.types.guild import Guild as DiscoGuild
 from disco.types.channel import Channel as DiscoChannel
 
-from rowboat import RowboatPlugin as Plugin
+from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.util import C
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.user import User, Infraction
@@ -40,6 +40,7 @@ class UtilitiesConfig(PluginConfig):
     pass
 
 
+@Plugin.with_config(UtilitiesConfig)
 class UtilitiesPlugin(Plugin):
     @Plugin.command('coin', global_=True)
     def coin(self, event):

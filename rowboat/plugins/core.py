@@ -1,5 +1,4 @@
 import os
-import time
 import pprint
 import humanize
 import functools
@@ -10,8 +9,9 @@ from holster.emitter import Priority
 from disco.api.http import APIException
 from disco.bot.command import CommandEvent, CommandLevels
 
-from rowboat import BasePlugin as Plugin
-from rowboat import RowboatPlugin, VERSION
+from rowboat import VERSION
+from rowboat.plugins import BasePlugin as Plugin
+from rowboat.plugins import RowboatPlugin
 from rowboat.sql import init_db
 from rowboat.redis import rdb
 from rowboat.models.guild import Guild
@@ -33,6 +33,7 @@ class CorePlugin(Plugin):
 
         self.startup = ctx.get('startup', datetime.utcnow())
         self.guilds = ctx.get('guilds', {})
+
         super(CorePlugin, self).load(ctx)
 
         for plugin in self.bot.plugins.values():
@@ -71,17 +72,11 @@ class CorePlugin(Plugin):
         if not getattr(event.base_config.plugins, plugin_name, None):
             return
 
-        if plugin.whitelisted and plugin_name not in self.guilds[guild_id].whitelist:
-            return
-
         event.config = getattr(event.base_config.plugins, plugin_name)
         return event
 
-    @Plugin.schedule(290)
+    @Plugin.schedule(290, init=False)
     def update_guild_bans(self):
-        # TODO: disco calls this function right away, need guilds to be synced
-        time.sleep(10)
-
         to_update = [
             guild for guild in Guild.select().where(
                 (Guild.last_ban_sync < (datetime.utcnow() - timedelta(days=1))) |
@@ -247,37 +242,6 @@ class CorePlugin(Plugin):
         for plugin in self.bot.plugins.values():
             plugin.reload()
         event.msg.reply(':ok_hand: updated: ```{}```'.format(proc.stdout.read()))
-
-    @Plugin.command('wl add', '<plugin:str> [guild:snowflake]', group='control', level=-1)
-    def control_whitelist_add(self, event, plugin, guild=None):
-        guild = self.guilds.get(guild or event.guild.id)
-        if not guild:
-            return event.msg.reply(':warning: this guild isnt setup yet')
-
-        guild.whitelist.append(plugin)
-        guild.save()
-        event.msg.reply(':ok_hand: this guild has been whitelisted for {}'.format(plugin))
-
-    @Plugin.command('wl rmv', '<plugin:str> [guild:snowflake]', group='control', level=-1)
-    def control_whitelist_rmv(self, event, plugin, guild=None):
-        guild = self.guilds.get(guild or event.guild.id)
-        if not guild:
-            return event.msg.reply(':warning: this guild isnt setup yet')
-
-        if plugin not in guild.whitelist:
-            return event.msg.reply(':warning: this guild isnt whitelisted for {}'.format(plugin))
-
-        guild.whitelist.remove(plugin)
-        guild.save()
-        event.msg.reply(':ok_hand: this guild has been unwhitelisted for {}'.format(plugin))
-
-    @Plugin.command('wl list', '[guild:snowflake]', group='control', level=-1)
-    def control_whitelist_list(self, event, guild=None):
-        guild = self.guilds.get(guild or event.guild.id)
-        if not guild:
-            return event.msg.reply(':warning: this guild isnt setup yet')
-
-        event.msg.reply('`{}`'.format(', '.join(guild.whitelist)))
 
     @Plugin.command('setup', '<url:str>')
     def command_setup(self, event, url):

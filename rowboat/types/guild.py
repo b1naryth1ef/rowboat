@@ -1,13 +1,6 @@
 from holster.enum import Enum
 
-from rowboat.types import SlottedModel, Field, DictField, text
-from rowboat.plugins.modlog import ModLogConfig
-from rowboat.plugins.reactions import ReactionsConfig
-from rowboat.plugins.admin import AdminConfig
-from rowboat.plugins.utilities import UtilitiesConfig
-from rowboat.plugins.spam import SpamConfig
-from rowboat.plugins.reddit import RedditConfig
-
+from rowboat.types import Model, SlottedModel, Field, DictField, text
 
 CooldownMode = Enum(
     'GUILD',
@@ -16,13 +9,20 @@ CooldownMode = Enum(
 )
 
 
-class PluginsConfig(SlottedModel):
-    modlog = Field(ModLogConfig, default=None)
-    reactions = Field(ReactionsConfig, default=None)
-    admin = Field(AdminConfig, default=None)
-    spam = Field(SpamConfig, default=None)
-    reddit = Field(RedditConfig, default=None)
-    utilities = Field(UtilitiesConfig, default=None)
+class PluginConfigObj(object):
+    client = None
+
+
+class PluginsConfig(Model):
+    def __init__(self, inst, obj):
+        self.client = None
+        self.load_into(inst, obj)
+
+    @classmethod
+    def parse(cls, obj, *args, **kwargs):
+        inst = PluginConfigObj()
+        cls(inst, obj)
+        return inst
 
 
 class CommandCooldownConfig(SlottedModel):
@@ -49,7 +49,7 @@ class GuildConfig(SlottedModel):
 
     commands = Field(CommandsConfig, default=None, create=False)
     levels = DictField(int, int)
-    plugins = Field(PluginsConfig)
+    plugins = Field(PluginsConfig.parse)
 
     # TODO
     def validate(self):

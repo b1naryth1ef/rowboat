@@ -18,8 +18,8 @@ from disco.types.message import MessageEmbed, MessageEmbedField
 from disco.util.functional import cached_property
 from disco.util.snowflake import to_unix, to_datetime
 
-from rowboat import RowboatPlugin as Plugin
-from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField
+from rowboat.plugins import RowboatPlugin as Plugin
+from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.message import Message
 from rowboat.util import ordered_load, C
@@ -63,7 +63,7 @@ class ChannelConfig(SlottedModel):
 class ModLogConfig(PluginConfig):
     resolved = Field(bool, default=False, private=True)
 
-    ignored_users = ListField(Actions)
+    ignored_users = ListField(snowflake)
 
     channels = DictField(ChannelField, ChannelConfig)
     new_member_threshold = Field(int, default=(15 * 60))
@@ -73,6 +73,7 @@ class ModLogConfig(PluginConfig):
         return reduce(operator.or_, (i.subscribed for i in self.channels.values())) if self.channels else set()
 
 
+@Plugin.with_config(ModLogConfig)
 class ModLogPlugin(Plugin):
     def create_debounce(self, event, user, typ, **kwargs):
         kwargs.update({

@@ -2,7 +2,7 @@ from gevent.lock import Semaphore
 from datetime import datetime
 from influxdb import InfluxDBClient
 
-from rowboat import BasePlugin as Plugin, raven_client
+from rowboat.plugins import BasePlugin as Plugin, raven_client
 
 
 class InfluxPlugin(Plugin):

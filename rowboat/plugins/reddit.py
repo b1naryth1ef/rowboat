@@ -7,7 +7,7 @@ from collections import defaultdict
 from holster.enum import Enum
 from disco.types.message import MessageEmbed
 
-from rowboat import RowboatPlugin as Plugin
+from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.redis import rdb
 from rowboat.models.guild import Guild
 from rowboat.types.plugin import PluginConfig
@@ -32,7 +32,14 @@ class RedditConfig(PluginConfig):
     # TODO: validate they have less than 3 reddits selected
     subs = DictField(str, SubRedditConfig)
 
+    def validate(self):
+        if len(self.subs) > 3:
+            raise Exception('Cannot have more than 3 subreddits configured')
 
+        # TODO: validate each subreddit
+
+
+@Plugin.with_config(RedditConfig)
 class RedditPlugin(Plugin):
     @Plugin.schedule(30, init=False)
     def check_subreddits(self):
@@ -119,6 +126,8 @@ class RedditPlugin(Plugin):
 
     def update_subreddit(self, sub, configs):
         self.log.info('Updating subreddit %s', sub)
+
+        # TODO: use before on this request
         r = requests.get(
             'https://www.reddit.com/r/{}/new.json'.format(sub),
             headers={
@@ -128,6 +137,10 @@ class RedditPlugin(Plugin):
         r.raise_for_status()
 
         data = list(reversed(map(lambda i: i['data'], r.json()['data']['children'])))
+
+        # TODO:
+        #  1. instead of tracking per guild, just track globally per subreddit
+        #  2. fan-out posts to each subscribed channel
 
         for gid, config in configs:
             guild = self.state.guilds.get(gid)

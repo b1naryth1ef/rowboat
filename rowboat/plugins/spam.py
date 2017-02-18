@@ -2,7 +2,7 @@ import time
 
 from holster.emitter import Priority
 
-from rowboat import RowboatPlugin as Plugin
+from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.redis import rdb
 from rowboat.plugins.modlog import Actions
 from rowboat.util.leakybucket import LeakyBucket
@@ -76,6 +76,7 @@ class Violation(Exception):
         self.info = info
 
 
+@Plugin.with_config(SpamConfig)
 class SpamPlugin(Plugin):
     def violate(self, violation):
         key = 'lv:{e.member.guild_id}:{e.member.id}'.format(e=violation.event)

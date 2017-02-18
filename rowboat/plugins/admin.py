@@ -7,7 +7,7 @@ from disco.bot import CommandLevels
 from disco.types.channel import Channel
 from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
 
-from rowboat import RowboatPlugin as Plugin
+from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.util import C
 from rowboat.util.images import get_dominant_colors_user
 from rowboat.redis import rdb
@@ -36,8 +36,7 @@ class AdminConfig(PluginConfig):
     confirm_actions = Field(bool, default=True)
 
 
-# TODO: unban tempbans
-
+@Plugin.with_config(AdminConfig)
 class AdminPlugin(Plugin):
     @Plugin.command('roles', level=CommandLevels.MOD)
     def roles(self, event):

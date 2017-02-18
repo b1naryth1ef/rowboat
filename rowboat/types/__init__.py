@@ -1,6 +1,6 @@
-from disco.types.base import SlottedModel, Field, ListField, DictField, text, snowflake
+from disco.types.base import Model, SlottedModel, Field, ListField, DictField, text, snowflake
 
-__all__ = ['SlottedModel', 'Field', 'ListField', 'DictField', 'text', 'snowflake', 'channel']
+__all__ = ['Model', 'SlottedModel', 'Field', 'ListField', 'DictField', 'text', 'snowflake', 'channel']
 
 
 def ChannelField(raw):
