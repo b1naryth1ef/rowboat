@@ -479,7 +479,7 @@ class ModLogPlugin(Plugin):
                 Actions.VOICE_CHANNEL_LEAVE,
                 event,
                 channel=old_vs.channel)
-        else:
+        elif not old_vs:
             self.log_action(
                 Actions.VOICE_CHANNEL_JOIN,
                 event)
