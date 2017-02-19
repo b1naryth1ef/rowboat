@@ -468,7 +468,7 @@ class ModLogPlugin(Plugin):
         old_vs = self.state.voice_states.get(event.session_id)
 
         # Moving channels
-        if old_vs:
+        if old_vs and event.channel_id:
             if old_vs.channel_id != event.channel_id:
                 self.log_action(
                     Actions.VOICE_CHANNEL_MOVE,
