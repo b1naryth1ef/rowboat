@@ -482,5 +482,3 @@ class ModLogPlugin(Plugin):
             self.log_action(
                 Actions.VOICE_CHANNEL_JOIN,
                 event)
-
-        print '\n\n\n'
