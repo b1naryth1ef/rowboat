@@ -111,6 +111,9 @@ class CorePlugin(Plugin):
         except Guild.DoesNotExist:
             return
 
+        if not guild.enabled:
+            return
+
         # Ensure we're updated
         guild.sync(event.guild)
 

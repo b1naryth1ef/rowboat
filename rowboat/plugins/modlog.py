@@ -462,3 +462,25 @@ class ModLogPlugin(Plugin):
 
         # TODO: upload messages in txt file
         self.log_action(Actions.MESSAGE_DELETE_BULK, event, log=url, channel=channel, count=len(event.ids))
+
+    @Plugin.listen('VoiceStateUpdate', priority=Priority.BEFORE)
+    def on_voice_state_update(self, event):
+        old_vs = self.state.voice_states.get(event.session_id)
+
+        # Moving channels
+        if old_vs and event.channel_id:
+            self.log_action(
+                Actions.VOICE_CHANNEL_MOVE,
+                event,
+                before_channel=old_vs.channel)
+        elif not event.channel_id:
+            self.log_action(
+                Actions.VOICE_CHANNEL_LEAVE,
+                event,
+                channel=old_vs.channel)
+        else:
+            self.log_action(
+                Actions.VOICE_CHANNEL_JOIN,
+                event)
+
+        print '\n\n\n'

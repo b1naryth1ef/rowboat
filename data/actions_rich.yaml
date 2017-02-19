@@ -177,6 +177,36 @@ MESSAGE_DELETE_BULK:
     count: '{count}'
   text: 'multiple messages deleted'
 
+
+VOICE_CHANNEL_JOIN:
+  color: green
+  fields:
+    channel: '{e.channel}'
+    channel-id: '{e.channel.id}'
+    user: '{e.user}'
+    user-id: '{e.user.id}'
+  text: 'joined voice channel'
+
+VOICE_CHANNEL_LEAVE:
+  color: green
+  fields:
+    channel: '{channel}'
+    channel-id: '{channel.id}'
+    user: '{e.user}'
+    user-id: '{e.user.id}'
+  text: 'left voice channel'
+
+VOICE_CHANNEL_MOVE:
+  color: green
+  fields:
+    from: '{before_channel}'
+    from-id: '{before_channel.id}'
+    channel: '{e.channel}'
+    channel-id: '{e.channel.id}'
+    user: '{e.user}'
+    user-id: '{e.user.id}'
+  text: 'moved voice channels'
+
 COMMAND_USED:
   color: green
   fields:
