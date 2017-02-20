@@ -1,5 +1,7 @@
 import time
 
+from gevent.lock import Semaphore
+
 from holster.emitter import Priority
 
 from rowboat.plugins import RowboatPlugin as Plugin
@@ -78,6 +80,10 @@ class Violation(Exception):
 
 @Plugin.with_config(SpamConfig)
 class SpamPlugin(Plugin):
+    def load(self, ctx):
+        super(SpamPlugin, self).load(ctx)
+        self.guild_locks = {}
+
     def violate(self, violation):
         key = 'lv:{e.member.guild_id}:{e.member.id}'.format(e=violation.event)
         last_violated = int(rdb.get(key) or 0)
@@ -123,10 +129,17 @@ class SpamPlugin(Plugin):
         if event.author.id == self.state.me.id:
             return
 
+        # Lineralize events by guild ID to prevent spamming events
+        if event.guild.id not in self.guild_locks:
+            self.guild_locks[event.guild.id] = Semaphore()
+        self.guild_locks[event.guild.id].acquire()
+
         try:
             self.check_message(event)
         except Violation as v:
             self.violate(v)
+        finally:
+            self.guild_locks[event.guild.id].release()
 
     def calculate_mentions(self, event):
         pass
