@@ -43,7 +43,6 @@ class RedditConfig(PluginConfig):
 class RedditPlugin(Plugin):
     @Plugin.schedule(30, init=False)
     def check_subreddits(self):
-        self.log.info('Checking subreddits')
         # TODO: sharding
         # TODO: filter in query
         subs_raw = list(Guild.select(
@@ -125,8 +124,6 @@ class RedditPlugin(Plugin):
             channel.send_message('', embed=embed)
 
     def update_subreddit(self, sub, configs):
-        self.log.info('Updating subreddit %s', sub)
-
         # TODO: use before on this request
         r = requests.get(
             'https://www.reddit.com/r/{}/new.json'.format(sub),

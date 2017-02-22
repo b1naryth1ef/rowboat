@@ -355,6 +355,7 @@ class ModLogPlugin(Plugin):
             return
 
         pre_user = self.state.users.get(event.user.id)
+        before = unicode(pre_user)
 
         if Actions.CHANGE_USERNAME in subscribed_guilds:
             if event.user.username is not UNSET and event.user.username != pre_user.username:
@@ -364,8 +365,8 @@ class ModLogPlugin(Plugin):
                         event,
                         guild,
                         config.plugins.modlog,
-                        before=pre_user.username,
-                        after=event.user.username)
+                        before=before,
+                        after=unicode(event.user))
 
         if Actions.GUILD_MEMBER_AVATAR_CHANGE in subscribed_guilds:
             if event.user.avatar is not UNSET and event.user.avatar != pre_user.avatar:

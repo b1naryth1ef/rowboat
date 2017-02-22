@@ -72,7 +72,7 @@ CHANGE_NICK:
 
 CHANGE_USERNAME:
   emoji: name_badge
-  format: '{before}#{e.user.discriminator} (`{e.user.id}`) changed their username to `{after}#{e.user.discriminator}`'
+  format: '{before} (`{e.user.id}`) changed their username to `{after}`'
 
 MESSAGE_EDIT:
   emoji: pencil
@@ -84,7 +84,7 @@ MESSAGE_DELETE:
 
 MESSAGE_DELETE_BULK:
   emoji: wastebasket
-  format: "{count} messages where deleted from **{channel}** (<{log}>)"
+  format: "{count} messages were deleted from **{channel}** (<{log}>)"
 
 VOICE_CHANNEL_JOIN:
   emoji: telephone
