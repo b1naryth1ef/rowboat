@@ -10,6 +10,7 @@ from rowboat.plugins.modlog import Actions
 from rowboat.util.leakybucket import LeakyBucket
 from rowboat.types.plugin import PluginConfig
 from rowboat.types import SlottedModel, DictField, Field
+from rowboat.models.user import Infraction
 
 
 # TODO:
@@ -26,7 +27,11 @@ class SubConfig(SlottedModel):
     max_mentions_count = Field(int, desc='The max number of mentions per interval')
     max_mentions_interval = Field(int, desc='The interval (in seconds) for the max mentions count')
 
+    ban_duration = Field(int, desc='Duration of ban (0 == perma) in seconds', default=604800)
+
     max_mentions_per_message = Field(int, desc='The max number of mentions a single message can have')
+
+    advanced_heuristics = Field(bool, desc='Enable advanced spam detection (unconfigurable)', default=False)
 
     def max_messages_bucket(self, guild_id):
         if not self.max_messages_check:
@@ -97,6 +102,18 @@ class SpamPlugin(Plugin):
                     violation.member.id,
                     violation.event.guild,
                     violation.event.guild.id))
+
+            if violation.event.config.ban_duration == 0:
+                Infraction.ban(self, violation.event, violation.member, 'Spam Detected')
+            else:
+                Infraction.tempban(
+                    self,
+                    violation.event,
+                    violation.member,
+                    'Spam Detected',
+                    violation.event.config.ban_duration)
+
+            # TODO: clean messages
 
     def check_message(self, event):
         member = event.guild.get_member(event.author)
