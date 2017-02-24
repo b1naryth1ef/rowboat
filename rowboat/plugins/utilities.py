@@ -327,7 +327,7 @@ class UtilitiesPlugin(Plugin):
 
         if member:
             embed.fields.append(
-                MessageEmbedField(name='Join Date', value=member.joined_at, inline=True))
+                MessageEmbedField(name='Join Date', value=str(member.joined_at), inline=True))
 
         infractions = Infraction.select().where(Infraction.user_id == user.id).count()
         embed.fields.append(
