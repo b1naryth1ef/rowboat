@@ -9,7 +9,7 @@ class User(BaseModel):
     user_id = BigIntegerField(primary_key=True)
     username = TextField()
     discriminator = SmallIntegerField()
-    avatar = TextField()
+    avatar = TextField(null=True)
     bot = BooleanField()
 
     created_at = DateTimeField(default=datetime.utcnow)
