@@ -4,7 +4,6 @@ import time
 def get_ms_time():
     return int(time.time() * 1000)
 
-
 # function(keys=[rl_key], args=[time.time() - (time_period * max_actions), time.time()]
 INCR_SCRIPT = '''
 local key = KEYS[1]

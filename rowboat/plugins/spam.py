@@ -82,7 +82,8 @@ class SpamConfig(PluginConfig):
 
 
 class Violation(Exception):
-    def __init__(self, event, member, label, msg, **info):
+    def __init__(self, rule, event, member, label, msg, **info):
+        self.rule = rule
         self.event = event
         self.member = member
         self.label = label
@@ -110,7 +111,7 @@ class SpamPlugin(Plugin):
                     violation.event.guild,
                     violation.event.guild.id))
 
-            if violation.event.config.ban_duration == 0:
+            if violation.rule.ban_duration == 0:
                 Infraction.ban(self, violation.event, violation.member, 'Spam Detected')
             else:
                 Infraction.tempban(
@@ -118,7 +119,7 @@ class SpamPlugin(Plugin):
                     violation.event,
                     violation.member,
                     'Spam Detected',
-                    violation.event.config.ban_duration)
+                    violation.rule.ban_duration)
 
             # TODO: clean messages
 
@@ -128,6 +129,7 @@ class SpamPlugin(Plugin):
         if bucket:
             if not bucket.check(event.author.id):
                 raise Violation(
+                    rule,
                     event,
                     member,
                     'MAX_MESSAGES',
@@ -136,6 +138,7 @@ class SpamPlugin(Plugin):
         # Next, check max mentions rules
         if rule.max_mentions_per_message and len(event.mentions) > rule.max_mentions_per_message:
             raise Violation(
+                rule,
                 event,
                 member,
                 'MAX_MENTIONS_PER_MESSAGE',
@@ -145,6 +148,7 @@ class SpamPlugin(Plugin):
         if bucket:
             if not bucket.check(event.author.id, len(event.mentions)):
                 raise Violation(
+                    rule,
                     event,
                     member,
                     'MAX_MENTIONS',

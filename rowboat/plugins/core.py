@@ -309,6 +309,10 @@ class CorePlugin(Plugin):
             humanize.naturaltime(datetime.utcnow() - self.startup)
         ))
 
+    @Plugin.command('test', level=-1)
+    def command_test(self, event):
+        raise Exception('testing')
+
     @Plugin.command('eval', level=-1)
     def command_eval(self, event):
         ctx = {
