@@ -1,9 +1,10 @@
 import time
+import gevent
 import psycopg2
 import markovify
 
+from holster.enum import Enum
 from holster.emitter import Priority
-from disco.api.http import APIException
 from disco.types.message import MessageTable
 from disco.types.user import User as DiscoUser
 
@@ -18,7 +19,7 @@ from rowboat.models.message import Message, Reaction
 class SQLPlugin(Plugin):
     def load(self, ctx):
         self.models = ctx.get('models', {})
-        self.backfill_status = None
+        self.backfills = {}
         super(SQLPlugin, self).load(ctx)
 
     def unload(self, ctx):
@@ -168,79 +169,115 @@ class SQLPlugin(Plugin):
         self.models = {}
         event.msg.reply(':ok_hand: cleared models')
 
-    @Plugin.command('backfill global', level=-1, global_=True)
-    def command_backfill_global(self, event):
-        if self.backfill_status:
-            return event.msg.reply(':warning: already backfilling')
-
-        event.msg.reply(':ok_hand: starting backfill on {} channels'.format(len(self.state.channels)))
-
-        self.backfill_status = [None, len(self.state.channels), 0, 0]
-        for channel in list(self.state.channels.values()):
-            self.backfill_status[0] = channel
-            self.backfill_status[2] += 1
-            try:
-                self.backfill_channel(channel)
-            except APIException:
-                continue
-
-        self.backfill_status = None
-
-    @Plugin.command('backfill status', level=-1, global_=True)
-    def command_backfill_status(self, event):
-        if not self.backfill_status:
-            return event.msg.reply(':warning: no backfill')
-
-        channel, chan_count, chan_current, messages = self.backfill_status
-        if chan_count == 1:
-            event.msg.reply('Backfilling {}, loaded {} messages so far'.format(channel, messages))
-        else:
-            event.msg.reply('[{}/{}] current channel {} ({}), {} messages so far'.format(
-                chan_current,
-                chan_count,
-                channel,
-                channel.guild.name if channel.guild_id else '',
-                messages
-            ))
-
-    @Plugin.command('backfill one', '[channel:channel]', level=-1, global_=True)
-    def command_backfill(self, event, channel=None):
-        if self.backfill_status:
-            return event.msg.reply(':warning: already backfilling')
-
+    @Plugin.command('backfill channel', '[channel:channel] [mode:str] [direction:str]', level=-1, global_=True)
+    def command_backfill_channel(self, event, channel=None, mode=None, direction=None):
         channel = channel or event.channel
-        self.backfill_status = [channel, 1, 1, 0]
-        g = self.spawn(self.backfill_channel, channel)
-        event.msg.reply(':ok_hand: started backfill on {}'.format(channel))
-        count = g.get()
-        self.backfill_status = None
-        event.msg.reply('{} backfill on {} completed, {} messages stored'.format(event.author.mention, channel, count))
+        mode = Backfill.Mode.get(mode) if mode else Backfill.Mode.SPARSE
+        direction = Backfill.Direction.get(direction) if direction else Backfill.Direction.UP
 
-    def backfill_channel(self, channel, full=False):
-        self.backfill_status[3] = 0
-        total = 0
-        start = channel.last_message_id
+        if not mode:
+            return event.msg.reply(u':warning: unknown mode')
 
-        if not full:
-            try:
-                start = Message.select().where(
-                    (Message.channel_id == channel.id)
-                ).order_by(Message.id.asc()).limit(1).get().id
-            except Message.DoesNotExist:
-                pass
+        if not direction:
+            return event.msg.reply(u':warning: unknown direction')
 
-        if not start:
+        if channel.id in self.backfills:
+            event.msg.reply(':warning: a backfill is already running for that channel')
             return
 
-        for chunk in channel.messages_iter(bulk=True, before=start):
-            existing = [i.id for i in Message.select(Message.id).where((Message.id << [i.id for i in chunk]))]
-            Message.from_disco_message_many([i for i in chunk if i.id not in existing])
-            total += len(chunk)
-            self.backfill_status[3] = total
-            self.log.info('%s - backfilled %s messages', channel, total)
+        self.backfills[channel.id] = Backfill(self.log, channel, mode)
+        self.spawn(self.backfills[channel.id].start).get()
+        event.msg.reply('Completed backfill: {} scanned / {} inserted'.format(
+            self.backfills[channel.id].scanned,
+            self.backfills[channel.id].inserted,
+        ))
+        del self.backfills[channel.id]
 
-        Channel.update(first_message_id=Channel.generate_first_message_id(channel.id)).where(
-            Channel.channel_id == channel.id
-        ).execute()
+    @Plugin.command('backfill guild', '[guild:guild] [mode:str] [direction:str]', level=-1, global_=True)
+    def command_backfill_guild(self, event, guild=None, mode=None, direction=None):
+        guild = guild or event.guild
+        mode = Backfill.Mode.get(mode) if mode else Backfill.Mode.SPARSE
+        direction = Backfill.Direction.get(direction) if direction else Backfill.Direction.UP
 
-        return total
+        if not mode:
+            return event.msg.reply(u':warning: unknown mode')
+
+        if not direction:
+            return event.msg.reply(u':warning: unknown direction')
+
+        p = gevent.pool.Pool(5)
+
+        for channel in guild.channels.values():
+            if channel.id in self.backfills:
+                continue
+
+            def backfill_one(c):
+                self.backfills[c.id] = Backfill(self.log, c, mode)
+                self.spawn(self.backfills[c.id].start).get()
+                event.msg.reply(u'Completed backfill on {}: {} scanned / {} inserted'.format(
+                    c,
+                    self.backfills[c.id].scanned,
+                    self.backfills[c.id].inserted,
+                ))
+                del self.backfills[c.id]
+
+            p.add(self.spawn(backfill_one, channel))
+
+        p.join()
+        event.msg.reply(u'Completed backfill on {}'.format(guild.name))
+
+
+class Backfill(object):
+    Mode = Enum('FULL', 'SPARSE', 'BACKFILL')
+    Direction = Enum('UP', 'DOWN')
+
+    def __init__(self, log, channel, mode, direction=Direction.UP):
+        self.log = log
+        self.channel = channel
+        self.mode = mode
+        self.direction = direction
+
+        self.scanned = 0
+        self.inserted = 0
+
+    def start(self):
+        # First, generate a starting point
+        self.log.info('Starting %s backfill on %s going %s', self.mode, self.channel, self.direction)
+
+        start = None
+
+        if self.mode in (Backfill.Mode.FULL, Backfill.Mode.SPARSE):
+            # If we are going newest - oldest
+            if self.direction is Backfill.Direction.UP:
+                start = self.channel.last_message_id
+                if not start:
+                    raise Exception('Invalid last_message_id for {}'.format(self.channel))
+            else:
+                start = 0
+        elif self.mode is Backfill.Mode.BACKFILL:
+            q = Message.for_channel(self.channel)
+            if self.direction is Backfill.Direction.UP:
+                q = q.order_by(Message.id.asc()).limit(1).get().id
+            else:
+                q = q.order_by(Message.id.desc()).limit(1).get().id
+
+        if self.direction is Backfill.Direction.UP:
+            msgs = self.channel.messages_iter(bulk=True, before=start)
+        else:
+            msgs = self.channel.messages_iter(bulk=True, after=start)
+
+        for chunk in msgs:
+            self.scanned += len(chunk)
+            existing = {i.id for i in Message.select(Message.id).where((Message.id << [i.id for i in chunk]))}
+
+            if len(existing) < len(chunk):
+                Message.from_disco_message_many([i for i in chunk if i.id not in existing])
+                self.inserted += len(chunk) - len(existing)
+
+            if len(existing) and self.mode is Backfill.Mode.BACKFILL:
+                self.log.info('Found %s existing messages, breaking', len(existing))
+                break
+
+            if len(existing) == len(chunk) and self.mode is Backfill.Mode.Sparse:
+                self.log.info('Found %s existing messages, breaking', len(existing))
+                break

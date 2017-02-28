@@ -93,6 +93,10 @@ class Message(BaseModel):
             'emojis': list(map(int, EMOJI_RE.findall(obj.content))),
         } for obj in objs]).execute()
 
+    @classmethod
+    def for_channel(cls, channel):
+        return cls.select().where(cls.channel_id == channel.id)
+
 
 @BaseModel.register
 class Reaction(BaseModel):
