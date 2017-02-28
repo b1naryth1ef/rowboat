@@ -5,7 +5,7 @@ VERSION = '0.0.1'
 
 
 raven_client = Client(
-    'https://d4e453a9eaf940ca9ddcc73c139120de:f173949164834738aaac632708dac695@sentry.io/119318',
+    'https://7814a66f7ec44069be50f954f969e6e6:0e51337d3c1442a0b3521422b4db3bca@sentry.hydr0.com/2',
     ignore_exceptions=[
         'KeyboardInterrupt',
     ],
