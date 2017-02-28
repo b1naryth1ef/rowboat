@@ -205,10 +205,13 @@ class SQLPlugin(Plugin):
         if not direction:
             return event.msg.reply(u':warning: unknown direction')
 
-        p = gevent.pool.Pool(5)
+        p = gevent.pool.Pool(4)
 
         for channel in guild.channels.values():
             if channel.id in self.backfills:
+                continue
+
+            if channel.is_voice:
                 continue
 
             def backfill_one(c):
@@ -251,7 +254,8 @@ class Backfill(object):
             if self.direction is Backfill.Direction.UP:
                 start = self.channel.last_message_id
                 if not start:
-                    raise Exception('Invalid last_message_id for {}'.format(self.channel))
+                    self.log.warning('Invalid last_message_id for {}'.format(self.channel))
+                    return
             else:
                 start = 0
         elif self.mode is Backfill.Mode.BACKFILL:
