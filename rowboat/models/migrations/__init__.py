@@ -40,9 +40,9 @@ class Migrate(object):
         print 'Executing {} raw queries'.format(len(self.raw_actions))
         conn = database.obj.get_conn()
         for query, args in self.raw_actions:
-            print args
             with conn.cursor() as cur:
                 cur.execute(query, args)
+            conn.commit()
 
     def add_columns(self, table, *fields):
         for field in fields:
