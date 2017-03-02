@@ -19,6 +19,7 @@ class Migrate(object):
         self.rules = rules
         self.func = func
         self.actions = []
+        self.raw_actions = []
         self.m = PostgresqlMigrator(database)
 
     def run(self):
@@ -36,6 +37,13 @@ class Migrate(object):
         print 'Applying {} actions'.format(len(self.actions))
         migrate(*self.actions)
 
+        print 'Executing {} raw queries'.format(len(self.raw_actions))
+        conn = database.obj.get_conn()
+        for query, args in self.raw_actions:
+            print args
+            with conn.cursor() as cur:
+                cur.execute(query, args)
+
     def add_columns(self, table, *fields):
         for field in fields:
             self.actions.append(self.m.add_column(table._meta.db_table, field.name, field))
@@ -47,6 +55,9 @@ class Migrate(object):
     def add_not_nulls(self, table, *fields):
         for field in fields:
             self.actions.append(self.m.add_not_null(table._meta.db_table, field.name))
+
+    def execute(self, query, params=None):
+        self.raw_actions.append((query, params or []))
 
     @staticmethod
     def missing(table, field):
@@ -76,6 +87,12 @@ class Migrate(object):
         def deco(func):
             rules = [check(table, i) for i in fields]
             cls(rules, func).run()
+        return deco
+
+    @classmethod
+    def always(cls):
+        def deco(func):
+            cls([lambda c: True], func).run()
         return deco
 
 init_db()

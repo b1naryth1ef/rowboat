@@ -68,16 +68,15 @@ class User(BaseModel):
 
 @BaseModel.register
 class Infraction(BaseModel):
-    Types = Enum(
+    AfterTypes = Enum(
+        'MUTE',
         'KICK',
         'TEMPBAN',
         'SOFTBAN',
         'BAN',
+        bitmask=False,
     )
 
-    # guild = ForeignKeyField(Guild, related_name='infractions')
-    # user = ForeignKeyField(User, related_name='infractions')
-    # actor = ForeignKeyField(User, null=True)
     guild_id = BigIntegerField()
     user_id = BigIntegerField()
     actor_id = BigIntegerField(null=True)
