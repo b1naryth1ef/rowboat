@@ -3,6 +3,7 @@ import time
 
 from gevent.lock import Semaphore
 from datetime import datetime
+from holster.enum import Enum
 from holster.emitter import Priority
 
 from disco.types.guild import VerificationLevel
@@ -24,6 +25,14 @@ INVITE_LINK_RE = re.compile(r'(discord.me|discord.gg)(?:/#)?(?:/invite)?/([a-z0-
 URL_RE = re.compile(r'(https?://[^\s]+)')
 BAD_WORDS_RE = re.compile('({})'.format('|'.join(open('data/badwords.txt', 'r').read())))
 
+PunishmentType = Enum(
+    'NONE',
+    'MUTE',
+    'KICK',
+    'TEMPBAN',
+    'BAN'
+)
+
 
 class SubConfig(SlottedModel):
     max_messages_check = Field(bool, desc='Whether to limit the max number of messages during a time period.', default=False)
@@ -34,11 +43,12 @@ class SubConfig(SlottedModel):
     max_mentions_count = Field(int, desc='The max number of mentions per interval')
     max_mentions_interval = Field(int, desc='The interval (in seconds) for the max mentions count')
 
-    ban_duration = Field(int, desc='Duration of ban (0 == perma) in seconds', default=604800)
-
     max_mentions_per_message = Field(int, desc='The max number of mentions a single message can have')
 
     advanced_heuristics = Field(bool, desc='Enable advanced spam detection', default=False)
+
+    punishment = Field(PunishmentType, default=PunishmentType.NONE)
+    punishment_duration = Field(int, default=300)
 
     def get_max_messages_bucket(self, guild_id):
         if not self.max_messages_check:
@@ -111,16 +121,27 @@ class SpamPlugin(Plugin):
                     violation.event.guild,
                     violation.event.guild.id))
 
-            if violation.rule.ban_duration == 0:
-                Infraction.ban(self, violation.event, violation.member, 'Spam Detected')
-            else:
+            if violation.rule.punishment is PunishmentType.MUTE:
+                pass
+            elif violation.rule.punishment is PunishmentType.KICK:
+                Infraction.kick(
+                    self,
+                    violation.event,
+                    violation.member,
+                    'Spam Detected')
+            elif violation.rule.punishment is PunishmentType.TEMPBAN:
                 Infraction.tempban(
                     self,
                     violation.event,
                     violation.member,
                     'Spam Detected',
-                    violation.rule.ban_duration)
-
+                    violation.rule.punishment_duration)
+            else:
+                Infraction.ban(
+                    self,
+                    violation.event,
+                    violation.member,
+                    'Spam Detected')
             # TODO: clean messages
 
     def check_message_simple(self, event, member, rule):
