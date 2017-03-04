@@ -27,6 +27,7 @@ class Message(BaseModel):
 
     mentions = BinaryJSONField(default=[], null=True)
     emojis = BinaryJSONField(default=[], null=True)
+    attachments = BinaryJSONField(default=[], null=True)
 
     SQL = '''
         CREATE INDEX IF NOT EXISTS messages_content_fts ON messages USING gin(to_tsvector('english', content));
@@ -56,6 +57,9 @@ class Message(BaseModel):
             to_update['content'] = obj.with_proper_mentions
             to_update['emojis'] = list(map(int, EMOJI_RE.findall(obj.content)))
 
+        if obj.attachments is not UNSET:
+            to_update['attachments'] = [i.url for i in obj.attachments.values()]
+
         cls.update(**to_update).where(cls.id == obj.id).execute()
 
     @classmethod
@@ -71,7 +75,8 @@ class Message(BaseModel):
                 edited_timestamp=obj.edited_timestamp,
                 num_edits=(0 if not obj.edited_timestamp else 1),
                 mentions=list(obj.mentions.keys()),
-                emojis=list(map(int, EMOJI_RE.findall(obj.content)))))
+                emojis=list(map(int, EMOJI_RE.findall(obj.content))),
+                attachments=[i.url for i in obj.attachments.values()]))
 
         for user in obj.mentions.values():
             User.from_disco_user(user)
@@ -91,6 +96,7 @@ class Message(BaseModel):
             'num_edits': (0 if not obj.edited_timestamp else 1),
             'mentions': list(obj.mentions.keys()),
             'emojis': list(map(int, EMOJI_RE.findall(obj.content))),
+            'attachments': [i.url for i in obj.attachments.values()],
         } for obj in objs]).execute()
 
     @classmethod
