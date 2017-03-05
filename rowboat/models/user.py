@@ -68,7 +68,7 @@ class User(BaseModel):
 
 @BaseModel.register
 class Infraction(BaseModel):
-    AfterTypes = Enum(
+    Types = Enum(
         'MUTE',
         'KICK',
         'TEMPBAN',
