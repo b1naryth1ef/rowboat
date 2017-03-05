@@ -141,7 +141,8 @@ class SpamPlugin(Plugin):
                     self,
                     violation.event,
                     violation.member,
-                    'Spam Detected')
+                    'Spam Detected',
+                    violation.event.guild)
             # TODO: clean messages
 
     def check_message_simple(self, event, member, rule):
