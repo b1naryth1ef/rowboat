@@ -49,7 +49,7 @@ class LeakyBucket(object):
                 amount,
                 get_ms_time() - self.time_period,
                 get_ms_time(),
-                (get_ms_time() + (self.time_period * 2)) / 1000,
+                (self.time_period * 2) / 1000,
             ]))
 
     def check(self, key, amount=1):

@@ -125,10 +125,11 @@ class SpamPlugin(Plugin):
         if not last_violated > time.time() - 10:
             self.bot.plugins.get('ModLogPlugin').log_action_ext(Actions.SPAM_DEBUG, violation.event, v=violation)
             self.bot.plugins.get('CorePlugin').send_control_message(
-                u'Spam detected by {} ({}) in guild {} ({})'.format(
+                u'Spam ({}) detected by {} ({}) in guild {} ({})'.format(
+                    violation.label,
                     violation.member,
                     violation.member.id,
-                    violation.event.guild,
+                    violation.event.guild.name,
                     violation.event.guild.id))
 
             if violation.rule.punishment is PunishmentType.MUTE:

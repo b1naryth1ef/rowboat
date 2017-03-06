@@ -5,4 +5,8 @@ Rowboat is a public Discord bot focused on moderation and assiting in running la
 
 ## TODO
 
+- Temp ban and temp mute
+  - Need scheduler to remove infractions
+  - Need ability to block a roles write access everywhere
 - Feature to auto add roles back
+- Autoreloadp lugins in dev
