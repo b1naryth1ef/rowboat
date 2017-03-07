@@ -74,7 +74,7 @@ def guild_config_raw(gid):
     except Guild.DoesNotExist:
         return 'Invalid Guild', 404
 
-    return str(guild.config_raw) or yaml.safe_dump(guild.config)
+    return str(guild.config_raw) if guild.config_raw else yaml.safe_dump(guild.config)
 
 
 @dashboard.route('/notification/ack/<id>', methods=['POST'])
