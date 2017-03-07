@@ -58,9 +58,14 @@ def auth_discord_callback():
     discord = make_discord_session(token=token)
 
     data = discord.get(current_app.config['DISCORD_API_BASE_URL'] + '/users/@me').json()
-    g.user = User.with_id(data['id'])
+    user = User.with_id(data['id'])
 
-    if not g.user:
-        return 'unknown user', 400
+    if not user:
+        return 'Unknown User', 403
+
+    if not user.admin:
+        return 'Invalid User', 403
+
+    g.user = user
 
     return redirect('/')
