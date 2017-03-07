@@ -8,6 +8,19 @@ from rowboat.types import Field
 from rowboat.types.guild import PluginsConfig
 
 
+class SafePluginInterface(object):
+    def __init__(self, plugin):
+        self.plugin = plugin
+
+    def __getattr__(self, name):
+        def wrapped(*args, **kwargs):
+            if not self.plugin:
+                return None
+
+            return getattr(self.plugin, name)(*args, **kwargs)
+        return wrapped
+
+
 class RavenPlugin(object):
     """
     The RavenPlugin base plugin class manages tracking exceptions on a plugin
@@ -61,6 +74,9 @@ class RowboatPlugin(RavenPlugin, Plugin):
     A plugin which wraps events to load guild configuration.
     """
     _shallow = True
+
+    def get_safe_plugin(self, name):
+        return SafePluginInterface(self.bot.plugins.get(name))
 
     @classmethod
     def with_config(cls, config_cls):

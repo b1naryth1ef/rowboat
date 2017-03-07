@@ -271,6 +271,8 @@ class SpamPlugin(Plugin):
         return self._vision_client
 
     def check_nsfw_images(self, event, member, rule):
+        influx = self.get_safe_plugin('InfluxPlugin')
+
         def is_bad_image(url):
             try:
                 data = requests.get(url)
@@ -279,6 +281,9 @@ class SpamPlugin(Plugin):
                 key = 'nsfw:{}'.format(hsh.digest())
 
                 if rdb.exists(key):
+                    influx.write_point('spam.nsfw.check_image', {
+                        'cached': True,
+                    })
                     if int(rdb.get(key)):
                         return True
                     return False
@@ -295,6 +300,11 @@ class SpamPlugin(Plugin):
                 safe.medical in [Likelihood.LIKELY, Likelihood.VERY_LIKELY] or
                 safe.violence in [Likelihood.LIKELY, Likelihood.VERY_LIKELY]
             )
+
+            influx.write_point('spam.nsfw.check_image', {
+                'cached': False,
+                'value': value,
+            })
 
             rdb.set(key, int(value))
             return value
