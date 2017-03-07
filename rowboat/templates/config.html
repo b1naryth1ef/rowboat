@@ -47,8 +47,6 @@
       url: "/config/" + guildID + "/update"
     }).done(function (event) {
       notify('success', 'Saved Configuration');
-    }).failure(function (event) {
-      notify('danger', 'Failed to save Configuration');
     });
   });
 
