@@ -3,7 +3,7 @@ from gevent import monkey; monkey.patch_all()
 
 from werkzeug.serving import run_with_reloader
 from gevent import wsgi
-from rowboat.web import rowboat, before_first_request
+from rowboat.web import rowboat
 
 import logging
 import click
@@ -45,7 +45,6 @@ class RestarterHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 @click.group()
 def cli():
-    before_first_request()
     logging.getLogger().setLevel(logging.INFO)
 
 
