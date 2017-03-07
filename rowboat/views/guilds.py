@@ -1,6 +1,8 @@
-import json
 import yaml
-from flask import Blueprint, render_template, request, jsonify
+import pygal
+
+from pygal.style import DarkSolarizedStyle
+from flask import Blueprint, render_template, request
 from peewee import fn, SQL
 from datetime import datetime, timedelta
 
@@ -75,26 +77,29 @@ def guild_config_raw(gid):
     return str(guild.config_raw) if guild.config_raw else yaml.safe_dump(guild.config)
 
 
-@guilds.route('/<gid>/stats')
-@authed
-def guild_stats(gid):
+@guilds.route('/<gid>/stats/messages.svg')
+def guild_stats_messages(gid):
     try:
         guild = Guild.get(Guild.guild_id == gid)
     except Guild.DoesNotExist:
         return 'Invalid Guild', 404
 
     key = 'web:stats:guild:{}'.format(gid)
-    data = json.loads((rdb.get(key) or '{}'))
+    if rdb.exists(key):
+        return rdb.get(key)
 
-    if not data:
-        data['messages'] = [{'date': int(i[0].strftime('%s')), 'value': i[1]} for i in Message.select(
-            fn.date_trunc('hour', Message.timestamp).alias('ts'),
-            fn.count('*')
-        ).where(
-            (Message.guild_id == guild.guild_id) &
-            (Message.timestamp > (datetime.utcnow() - timedelta(days=7)))
-        ).group_by(fn.date_trunc('hour', Message.timestamp)).order_by(SQL('ts').asc()).tuples()]
+    data = list(Message.select(
+        fn.date_trunc('hour', Message.timestamp).alias('ts'),
+        fn.count('*')
+    ).where(
+        (Message.guild_id == guild.guild_id) &
+        (Message.timestamp > (datetime.utcnow() - timedelta(days=5)))
+    ).group_by(fn.date_trunc('hour', Message.timestamp)).order_by(SQL('ts').asc()).tuples())
 
-        # rdb.setex(key, json.dumps(data), 600)
+    chart = pygal.Line(x_label_rotation=20, width=1000, height=500,  style=DarkSolarizedStyle)
+    chart.x_labels = [i[0].strftime('%Y-%m-%d %H') for i in data]
+    chart.add('Messages', [i[1] for i in data])
 
-    return jsonify(data)
+    data = chart.render()
+    rdb.setex(key, data, 600)
+    return data

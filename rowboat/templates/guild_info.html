@@ -13,33 +13,11 @@
         Messages
       </div>
       <div class="panel-body">
-        <div id="messages-graph"></div>
+        <figure>
+          <embed type="image/svg+xml" src="/guilds/{{ guild.guild_id }}/stats/messages.svg" height=500 width=1000 />
+        </figure>
       </div>
     </div>
   </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-
-d3.json("/guilds/{{ guild.guild_id }}/stats", function (data) {
-  var messagesData = $.map(data.messages, function (obj) {
-    return {date: new Date(obj.date * 1000), value: obj.value};
-  });
-
-  MG.data_graphic({
-    title: "Messages",
-    data: messagesData,
-    interpolate: d3.curveLinear,
-    missing_is_zero: true,
-    width: $("#messages-graph").width(),
-    height: 450,
-    target: "#messages-graph",
-    x_accessor: 'date',
-    y_accessor: 'value'
-  });
-});
-
-</script>
 {% endblock %}
