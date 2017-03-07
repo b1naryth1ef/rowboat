@@ -8,6 +8,7 @@
     <link href="/static/metisMenu.min.css" rel="stylesheet" type="text/css">
   </head>
   <body>
+    {% block realbody %}
     <div id="wrapper">
       {% if g.user %}
       <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
@@ -27,5 +28,8 @@
     <script src="/static/script.js"></script>
     <script src="/static/metisMenu.min.js"></script>
     <script src="/static/app.js"></script>
+    {% block scripts %}
+    {% endblock %}
+    {% endblock %}
   </body>
 </html>

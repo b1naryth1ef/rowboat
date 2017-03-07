@@ -4,3 +4,9 @@ $('.topbar-noti').click(function (event) {
   $.post("/notification/ack/" + $(event.currentTarget).attr('id'));
   $(event.currentTarget).remove();
 });
+
+function notify(level, msg) {
+  var div = $('<div class="alert alert-' + level + '">' + msg + '</div>');
+  $("#page-wrapper").prepend(div);
+  div.delay(2000).fadeOut().remove();
+}

@@ -1,43 +1,14 @@
-import re
-import yaml
-import time
-import requests
-import urlparse
+import json
 
 from peewee import (
-    BigIntegerField, CharField, TextField, BooleanField, DateTimeField, CompositeKey
+    BigIntegerField, CharField, TextField, BooleanField, DateTimeField, CompositeKey, BlobField
 )
 from datetime import datetime
 from playhouse.postgres_ext import BinaryJSONField
 
 from rowboat.sql import BaseModel
+from rowboat.redis import rdb
 from rowboat.models.user import User
-
-ALLOWED_DOMAINS = {
-    'github.com',
-    'githubusercontent.com',
-    'pastebin.com',
-    'hastebin.com',
-    'gitlab.com',
-    'bitbucket.org',
-}
-
-GIST_RE = re.compile('https://gist.githubusercontent.com/(.*)/(.*)/raw/.*/(.*)')
-GIST_FMT = 'https://gist.githubusercontent.com/{}/{}/raw/{}'
-
-
-def validate_config_url(url):
-    parsed = urlparse.urlparse(url)
-    if not any(parsed.netloc.endswith(i) for i in ALLOWED_DOMAINS):
-        return None
-
-    # Gists can have the revision in them, so lets strip those
-    if parsed.netloc.startswith('gist'):
-        match = GIST_RE.match(url)
-        if match:
-            return GIST_FMT.format(*match.groups())
-
-    return url
 
 
 @BaseModel.register
@@ -53,7 +24,7 @@ class Guild(BaseModel):
 
     # Rowboat specific data
     config = BinaryJSONField(null=True)
-    config_url = CharField()
+    config_raw = BlobField(null=True)
 
     enabled = BooleanField(default=True)
     whitelist = BinaryJSONField(default=[])
@@ -63,38 +34,25 @@ class Guild(BaseModel):
     class Meta:
         db_table = 'guilds'
 
-    @staticmethod
-    def load_from_url(url):
-        from rowboat.types.guild import GuildConfig
-        r = requests.get(url, timeout=15, params={'_t': time.time()})
-        r.raise_for_status()
-
-        obj = yaml.load(r.content)
-        gc = GuildConfig(obj)
-        gc.validate()
-        return gc, obj
-
     @classmethod
     def with_id(cls, guild_id):
         return cls.get(guild_id=guild_id)
 
     @classmethod
-    def create_from_url(cls, guild, url):
-        url = validate_config_url(url)
-        if not url:
-            raise Exception('Invalid Configuration URL')
-
-        _, raw = cls.load_from_url(url)
-
+    def setup(cls, guild):
         return cls.create(
             guild_id=guild.id,
-            owner_id=guild.owner_id,
+            owner_id=guild.owner.id,
             name=guild.name,
             icon=guild.icon,
             splash=guild.splash,
-            region=guild.region,
-            config=raw,
-            config_url=url)
+            region=guild.region)
+
+    def emit_update(self):
+        rdb.publish('guild-updates', json.dumps({
+            'type': 'UPDATE',
+            'id': self.guild_id,
+        }))
 
     def sync(self, guild):
         updates = {}
@@ -106,20 +64,13 @@ class Guild(BaseModel):
         if updates:
             Guild.update(**updates).where(Guild.guild_id == self.guild_id).execute()
 
-    def reload(self):
-        _, raw = self.load_from_url(self.config_url)
-        self.config = raw
-        self.save()
-
-        if hasattr(self, '_cached_config'):
-            delattr(self, '_cached_config')
-
-    def get_config(self):
+    def get_config(self, refresh=False):
         from rowboat.types.guild import GuildConfig
-        if not self.config:
-            self.reload()
 
-        if not hasattr(self, '_cached_config'):
+        if refresh:
+            self.config = Guild.select(Guild.config).where(Guild.guild_id == self.guild_id).get().config
+
+        if refresh or not hasattr(self, '_cached_config'):
             self._cached_config = GuildConfig(self.config)
         return self._cached_config
 

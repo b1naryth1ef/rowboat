@@ -1,8 +1,8 @@
 import os
+import json
 import pprint
 import humanize
 import functools
-import subprocess
 
 from datetime import datetime, timedelta
 from holster.emitter import Priority
@@ -44,12 +44,32 @@ class CorePlugin(Plugin):
             plugin.register_trigger('command', 'pre', functools.partial(self.on_pre, plugin))
             plugin.register_trigger('listener', 'pre', functools.partial(self.on_pre, plugin))
 
+        self.spawn(self.wait_for_updates)
+
+    def wait_for_updates(self):
+        ps = rdb.pubsub()
+        ps.subscribe('guild-updates')
+
+        for item in ps.listen():
+            if item['type'] != 'message':
+                continue
+
+            data = json.loads(item['data'])
+            if data['type'] == 'UPDATE' and data['id'] in self.guilds:
+                self.log.info('Reloading config for guild %s', self.guilds[data['id']].name)
+                self.guilds[data['id']].get_config(refresh=True)
+
     def unload(self, ctx):
         ctx['guilds'] = self.guilds
         ctx['startup'] = self.startup
         super(CorePlugin, self).unload(ctx)
 
     def on_pre(self, plugin, func, event, args, kwargs):
+        """
+        This function handles dynamically dispatching and modifying events based
+        on a specific guilds configuration. It is called before any handler of
+        either commands or listeners.
+        """
         if isinstance(event, CommandEvent):
             if event.command.metadata.get('global_', False):
                 return event
@@ -140,6 +160,10 @@ class CorePlugin(Plugin):
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
+        """
+        This monstrosity of a function handles the parsing and dispatching of
+        commands.
+        """
         # Ignore messages sent by bots
         if event.message.author.bot:
             return
@@ -233,30 +257,11 @@ class CorePlugin(Plugin):
 
             return
 
-    @Plugin.command('reload', '[plugin:str]', group='control', level=-1, oob=True)
-    def command_control_reload(self, event, plugin=None):
-        if not plugin:
-            for plugin in self.bot.plugins.values():
-                plugin.reload()
-            return event.msg.reply(':recycle: reloaded all plugins')
-        self.bot.plugins.get(plugin).reload()
-        event.msg.reply(':recycle: reloaded plugin `{}`'.format(plugin))
-
-    @Plugin.command('update', group='control', level=-1, oob=True)
-    def commnad_update(self, event):
-        proc = subprocess.Popen(['git', 'pull', 'origin', 'master'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-
-        if proc.returncode != 0:
-            return event.msg.reply(':warning: failed to update: ```{}```'.format(proc.stderr.read()))
-
-        for plugin in self.bot.plugins.values():
-            plugin.reload()
-        event.msg.reply(':ok_hand: updated: ```{}```'.format(proc.stdout.read()))
-
-    @Plugin.command('setup', '<url:str>')
-    def command_setup(self, event, url):
+    @Plugin.command('setup')
+    def command_setup(self, event):
+        """
+        Setup a new Guild with Rowboat
+        """
         if not event.guild:
             return event.msg.reply(':warning: this command can only be used in servers')
 
@@ -276,51 +281,19 @@ class CorePlugin(Plugin):
         if not m.permissions.administrator and not global_admin:
             return event.msg.reply(':warning: bot must have the Administrator permission')
 
-        try:
-            guild = Guild.create_from_url(event.guild, url)
-            self.guilds[event.guild.id] = guild
-            event.msg.reply(':ok_hand: successfully loaded configuration')
-        except Exception as e:
-            raise
-            event.msg.reply(':no_entry: {}'.format(e))
-
-    @Plugin.command('reload', level=CommandLevels.ADMIN)
-    def command_reload(self, event):
-        if not event.guild:
-            return
-
-        guild = self.guilds.get(event.guild.id)
-        if not guild:
-            return event.msg.reply(':warning: this guild is not setup yet')
-
-        try:
-            guild.reload()
-        except Exception as e:
-            raise
-            return event.msg.reply(':no_entry: {}'.format(e))
-
-        event.msg.reply(':ok_hand: guild configuration reloaded')
+        guild = Guild.setup(event.guild)
+        self.guilds[event.guild.id] = guild
+        event.msg.reply(':ok_hand: successfully loaded configuration')
 
     @Plugin.command('about', level=CommandLevels.ADMIN)
     def command_help(self, event):
         event.msg.reply(INFO_MESSAGE)
-
-    @Plugin.command('config', level=CommandLevels.ADMIN)
-    def command_config(self, event):
-        if not event.guild or event.guild.id not in self.guilds:
-            return
-
-        event.msg.reply('Current configuration URL: <{}>'.format(self.guilds[event.guild.id].config_url))
 
     @Plugin.command('uptime', level=-1)
     def command_uptime(self, event):
         event.msg.reply('Rowboat was started {}'.format(
             humanize.naturaltime(datetime.utcnow() - self.startup)
         ))
-
-    @Plugin.command('test', level=-1)
-    def command_test(self, event):
-        raise Exception('testing')
 
     @Plugin.command('eval', level=-1)
     def command_eval(self, event):
