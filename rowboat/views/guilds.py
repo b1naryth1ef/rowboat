@@ -1,16 +1,13 @@
+import time
+import requests
 import yaml
-import pygal
 
-from pygal.style import DarkSolarizedStyle
-from flask import Blueprint, render_template, request
-from peewee import fn, SQL
-from datetime import datetime, timedelta
+from flask import Blueprint, render_template, request, current_app, make_response
 
 from rowboat.redis import rdb
 from rowboat.util.decos import authed
 from rowboat.types.guild import GuildConfig
 from rowboat.models.guild import Guild
-from rowboat.models.message import Message
 
 
 guilds = Blueprint('guilds', __name__, url_prefix='/guilds')
@@ -77,29 +74,25 @@ def guild_config_raw(gid):
     return str(guild.config_raw) if guild.config_raw else yaml.safe_dump(guild.config)
 
 
-@guilds.route('/<gid>/stats/messages.svg')
+@guilds.route('/<gid>/stats/messages.png')
 def guild_stats_messages(gid):
-    try:
-        guild = Guild.get(Guild.guild_id == gid)
-    except Guild.DoesNotExist:
-        return 'Invalid Guild', 404
-
-    key = 'web:stats:guild:{}'.format(gid)
+    key = 'web:graphs:guild_msgs:{}'.format(gid)
     if rdb.exists(key):
-        return rdb.get(key)
+        data = rdb.get(key)
+    else:
+        r = requests.get('http://zek.hydr0.com:3000/render/dashboard-solo/db/events', params={
+            'from': str(int((time.time() - 604800) * 1000)),
+            'to': str(int((time.time() * 1000))),
+            'var-event': 'MessageCreate',
+            'var-guild_id': gid,
+            'panelId': 1,
+            'width': 1200,
+        }, headers={
+            'Authorization': 'Bearer {}'.format(current_app.config['GRAFANA_KEY'])
+        })
+        data = r.content
+        rdb.setex(key, data, 30)
 
-    data = list(Message.select(
-        fn.date_trunc('hour', Message.timestamp).alias('ts'),
-        fn.count('*')
-    ).where(
-        (Message.guild_id == guild.guild_id) &
-        (Message.timestamp > (datetime.utcnow() - timedelta(days=7)))
-    ).group_by(fn.date_trunc('hour', Message.timestamp)).order_by(SQL('ts').asc()).tuples())
-
-    chart = pygal.Line(x_label_rotation=20, width=1700, height=800,  style=DarkSolarizedStyle)
-    chart.x_labels = [i[0].strftime('%m/%d %H') for i in data]
-    chart.add('Messages', [i[1] for i in data])
-
-    data = chart.render()
-    rdb.setex(key, data, 600)
-    return data
+    res = make_response(data)
+    res.headers['Content-Type'] = 'image/png'
+    return res
