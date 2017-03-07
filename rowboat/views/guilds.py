@@ -96,7 +96,7 @@ def guild_stats_messages(gid):
         (Message.timestamp > (datetime.utcnow() - timedelta(days=5)))
     ).group_by(fn.date_trunc('hour', Message.timestamp)).order_by(SQL('ts').asc()).tuples())
 
-    chart = pygal.Line(x_label_rotation=20, width=1000, height=500,  style=DarkSolarizedStyle)
+    chart = pygal.Line(x_label_rotation=20, width=1700, height=800,  style=DarkSolarizedStyle)
     chart.x_labels = [i[0].strftime('%Y-%m-%d %H') for i in data]
     chart.add('Messages', [i[1] for i in data])
 
