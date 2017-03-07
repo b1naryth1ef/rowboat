@@ -1,3 +1,12 @@
+#!/usr/bin/env python
+from gevent import monkey; monkey.patch_all()
+
+from werkzeug.serving import run_with_reloader
+from gevent import wsgi
+from rowboat.web import rowboat, before_first_request
+
+import logging
+import click
 import BaseHTTPServer
 import subprocess
 
@@ -34,7 +43,28 @@ class RestarterHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         SUPERVISOR.restart()
 
 
-if __name__ == '__main__':
+@click.group()
+def cli():
+    before_first_request()
+    logging.getLogger().setLevel(logging.INFO)
+
+
+@cli.command()
+@click.option('--reloader/--no-reloader', '-r', default=False)
+def serve(reloader):
+    def run():
+        wsgi.WSGIServer(('0.0.0.0', 8686), rowboat.app).serve_forever()
+
+    if reloader:
+        run_with_reloader(run)
+    else:
+        run()
+
+
+@cli.command()
+def bot():
+    global SUPERVISOR
+
     SUPERVISOR = BotSupervisor()
     httpd = BaseHTTPServer.HTTPServer(('0.0.0.0', 8080), RestarterHandler)
 
@@ -44,3 +74,6 @@ if __name__ == '__main__':
         pass
 
     httpd.server_close()
+
+if __name__ == '__main__':
+    cli()

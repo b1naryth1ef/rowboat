@@ -15,6 +15,7 @@ from rowboat.plugins import RowboatPlugin
 from rowboat.sql import init_db
 from rowboat.redis import rdb
 from rowboat.models.guild import Guild
+from rowboat.models.notification import Notification
 from rowboat.plugins.modlog import Actions
 
 ENV = os.getenv('ENV', 'local')
@@ -98,11 +99,19 @@ class CorePlugin(Plugin):
 
     @Plugin.listen('Resumed')
     def on_resumed(self, event):
-        self.send_control_message(u'Resumed: {}'.format(', '.join(event.trace)))
+        Notification.dispatch(
+            Notification.Types.RESUME,
+            trace=event.trace,
+            env=ENV,
+        )
 
     @Plugin.listen('Ready')
     def on_ready(self, event):
-        self.send_control_message(u'Connected: {}'.format(', '.join(event.trace)))
+        Notification.dispatch(
+            Notification.Types.CONNECT,
+            trace=event.trace,
+            env=ENV,
+        )
 
     @Plugin.listen('GuildCreate', priority=Priority.BEFORE, conditional=lambda e: not e.created)
     def on_guild_create(self, event):

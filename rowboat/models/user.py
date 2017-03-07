@@ -22,7 +22,7 @@ class User(BaseModel):
         db_table = 'users'
 
         indexes = (
-            (('id', 'username', 'discriminator'), True),
+            (('user_id', 'username', 'discriminator'), True),
         )
 
     @property
@@ -32,6 +32,13 @@ class User(BaseModel):
     @classmethod
     def ensure(cls, user, should_update=True):
         return cls.from_disco_user(user)
+
+    @classmethod
+    def with_id(cls, uid):
+        try:
+            return User.get(user_id=uid)
+        except User.DoesNotExist:
+            return
 
     @classmethod
     def from_disco_user(cls, user, should_update=True):
