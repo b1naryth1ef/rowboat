@@ -432,10 +432,14 @@ table.dataTable thead .sorting:after {
     border-left-width: 0;
   }
 }
-#editor { 
+#editor {
   top: 0;
   right: 0;
   bottom: 0;
   left: 0;
   min-height: 1000px;
+}
+
+.row:first-of-type {
+  padding-top: 10px;
 }

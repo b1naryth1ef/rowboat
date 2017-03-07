@@ -34,7 +34,7 @@
   editor.setTheme("ace/theme/monokai");
   editor.getSession().setMode("ace/mode/yaml");
 
-  $.get("/config/" + guildID + "/raw").done(function (data) {
+  $.get("/guilds/" + guildID + "/config/raw").done(function (data) {
     editor.setValue(data);
   });
 
@@ -44,7 +44,7 @@
     $.ajax({
       type: "POST",
       data: {"data": editor.getValue()},
-      url: "/config/" + guildID + "/update"
+      url: "/guilds/" + guildID + "/config/update"
     }).done(function (event) {
       notify('success', 'Saved Configuration');
     });
