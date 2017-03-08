@@ -42,7 +42,7 @@ class Guild(BaseModel):
     def setup(cls, guild):
         return cls.create(
             guild_id=guild.id,
-            owner_id=guild.owner.id,
+            owner_id=guild.owner_id,
             name=guild.name,
             icon=guild.icon,
             splash=guild.splash,
