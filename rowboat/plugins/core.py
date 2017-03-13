@@ -45,6 +45,23 @@ class CorePlugin(Plugin):
             plugin.register_trigger('listener', 'pre', functools.partial(self.on_pre, plugin))
 
         self.spawn(self.wait_for_updates)
+        self.spawn(self.wait_for_dispatches)
+
+    def wait_for_dispatches(self):
+        ps = rdb.pubsub()
+        ps.subscribe('notifications')
+
+        for item in ps.listen():
+            if item['type'] != 'message':
+                continue
+
+            obj = json.loads(item['data'])
+
+            self.bot.client.api.channels_messages_create(
+                290924692057882635,
+                u'**{}**\n{}'.format(
+                    obj['title'],
+                    obj['content']))
 
     def wait_for_updates(self):
         ps = rdb.pubsub()

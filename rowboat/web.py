@@ -20,7 +20,7 @@ def before_first_request():
     with open('config.yaml', 'r') as f:
         data = load(f)
 
-    rowboat.app.secret_key = data['web'].get('secret_key')
+    rowboat.app.secret_key = data.get('SECRET_KEY')
     rowboat.app.config.update(data['web'])
 
 

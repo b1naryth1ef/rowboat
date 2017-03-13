@@ -1,3 +1,4 @@
+import json
 import arrow
 
 from datetime import datetime
@@ -48,7 +49,7 @@ class Notification(BaseModel):
             metadata=kwargs
         )
 
-        rdb.publish('notification', obj.id)
+        rdb.publish('notifications', json.dumps(obj.to_user()))
         return obj
 
     def to_user(self):

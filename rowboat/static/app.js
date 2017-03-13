@@ -11,3 +11,15 @@ function notify(level, msg) {
   $("#page-wrapper").prepend(div);
   div.delay(2000).fadeOut();
 }
+
+Notification.requestPermission().then(function(result) {
+  if (Notification.permission === "granted") {
+    var source = new EventSource("/notifications/realtime");
+    source.onmessage = function (event) {
+      var payload = JSON.parse(event.data);
+      new Notification(payload.title, {
+        body: payload.content,
+      });
+    }
+  }
+});

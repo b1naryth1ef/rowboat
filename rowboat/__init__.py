@@ -13,5 +13,4 @@ raven_client = Client(
     release=VERSION,
     environment=os.getenv('ENV', 'local'),
     transport=GeventedHTTPTransport,
-
 )
