@@ -46,7 +46,9 @@ class Guild(BaseModel):
             name=guild.name,
             icon=guild.icon,
             splash=guild.splash,
-            region=guild.region)
+            region=guild.region,
+            config={},
+            config_raw='')
 
     def emit_update(self):
         rdb.publish('guild-updates', json.dumps({
