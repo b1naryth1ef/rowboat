@@ -163,10 +163,10 @@ class MessageArchive(BaseModel):
         q = Message.select(
             Message.id,
             Message.timestamp,
-            Message.author,
             Message.content,
             Message.deleted,
-            Message.attachments
+            Message.attachments,
+            User
         ).join(
             User
         ).where(
