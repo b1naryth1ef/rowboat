@@ -1,5 +1,4 @@
-import os
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+import os; os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 from flask import Flask, g, session
 from holster.flask_ext import Holster
@@ -40,6 +39,7 @@ def save_auth(response):
         del session['uid']
 
     return response
+
 
 @rowboat.app.context_processor
 def inject_data():
