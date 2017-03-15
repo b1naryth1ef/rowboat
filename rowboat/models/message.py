@@ -1,9 +1,13 @@
 import re
+import six
+import json
+import uuid
 
 from peewee import (
     BigIntegerField, ForeignKeyField, TextField, DateTimeField,
-    BooleanField
+    BooleanField, UUIDField
 )
+from datetime import datetime, timedelta
 from playhouse.postgres_ext import BinaryJSONField
 from disco.types.base import UNSET
 
@@ -121,3 +125,92 @@ class Reaction(BaseModel):
             user_id=obj.user_id,
             emoji_id=obj.emoji.id or None,
             emoji_name=obj.emoji.name or None)
+
+
+@BaseModel.register
+class MessageArchive(BaseModel):
+    FORMATS = ['txt', 'csv', 'json']
+
+    archive_id = UUIDField(primary_key=True, default=uuid.uuid4)
+
+    message_ids = BinaryJSONField()
+
+    created_at = DateTimeField(default=datetime.utcnow)
+    expires_at = DateTimeField(default=lambda: datetime.utcnow() + timedelta(days=7))
+
+    class Meta:
+        db_table = 'message_archives'
+
+        indexes = (
+            (('created_at', ), False),
+            (('expires_at', ), False)
+        )
+
+    @classmethod
+    def create_from_message_ids(cls, message_ids):
+        return cls.create(message_ids=message_ids)
+
+    @property
+    def url(self):
+        return 'https://rowboat.party/archive/{}.txt'.format(self.archive_id)
+
+    def encode(self, fmt='txt'):
+        from rowboat.models.user import User
+
+        if fmt not in self.FORMATS:
+            raise Exception('Invalid format {}'.format(fmt))
+
+        q = Message.select(
+            Message.id,
+            Message.timestamp,
+            Message.author,
+            Message.content,
+            Message.deleted,
+            Message.attachments
+        ).join(
+            User
+        ).where(
+            (Message.id << self.message_ids)
+        )
+
+        if fmt == 'txt':
+            return u'\n'.join(map(self.encode_message_text, q))
+        elif fmt == 'csv':
+            return u'\n'.join(
+                ['id,timestamp,author_id,author,content,deleted,attachments'] + map(self.encode_message_csv, q))
+        elif fmt == 'json':
+            return json.dumps({
+                'messages': map(self.encode_message_json, q)
+            })
+
+    @staticmethod
+    def encode_message_text(msg):
+        return u'{m.timestamp} ({m.id} / {m.author.id}) {m.author}: {m.content} ({attach})'.format(
+            m=msg, attach=', '.join(map(unicode, msg.attachments or [])))
+
+    @staticmethod
+    def encode_message_csv(msg):
+        def wrap(i):
+            return u'"{}"'.format(six.text_type(i).replace('"', '""'))
+
+        return ','.join(map(wrap, [
+            msg.id,
+            msg.timestamp,
+            msg.author.id,
+            msg.author,
+            msg.content,
+            str(msg.deleted).lower(),
+            ' '.join(msg.attachments or [])
+        ]))
+
+    @staticmethod
+    def encode_message_json(msg):
+        return dict(
+            id=str(msg.id),
+            timestamp=str(msg.timestamp),
+            author_id=str(msg.author.id),
+            username=msg.author.username,
+            discriminator=msg.author.discriminator,
+            content=msg.content,
+            deleted=msg.deleted,
+            attachments=msg.attachments)

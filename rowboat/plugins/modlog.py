@@ -21,7 +21,7 @@ from disco.util.snowflake import to_unix, to_datetime
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
 from rowboat.types.plugin import PluginConfig
-from rowboat.models.message import Message
+from rowboat.models.message import Message, MessageArchive
 from rowboat.util import ordered_load, C
 
 
@@ -445,24 +445,8 @@ class ModLogPlugin(Plugin):
         if not channel:
             return
 
-        msgs = Message.select(
-            Message.id,
-            Message.timestamp,
-            Message.author,
-            Message.content,
-            Message.deleted
-        ).where(
-            Message.id << event.ids
-        ).order_by(Message.id.desc())
-
-        try:
-            url = self.bot.plugins.get('AdminPlugin').archive_messages(msgs, 'txt')
-        except:
-            self.log.exception('Failed to dump message log for bulk delete: ')
-            url = ''
-
-        # TODO: upload messages in txt file
-        self.log_action(Actions.MESSAGE_DELETE_BULK, event, log=url, channel=channel, count=len(event.ids))
+        archive = MessageArchive.create_from_message_ids(event.ids)
+        self.log_action(Actions.MESSAGE_DELETE_BULK, event, log=archive.url, channel=channel, count=len(event.ids))
 
     @Plugin.listen('VoiceStateUpdate', priority=Priority.BEFORE)
     def on_voice_state_update(self, event):

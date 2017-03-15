@@ -1,11 +1,12 @@
 import json
 
-from flask import Blueprint, render_template, jsonify, request, g, Response
+from flask import Blueprint, render_template, jsonify, request, g, Response, make_response
+from datetime import datetime
 
 from rowboat.redis import rdb
 from rowboat.util.decos import authed
 from rowboat.models.notification import Notification
-from rowboat.models.message import Message
+from rowboat.models.message import Message, MessageArchive
 from rowboat.models.guild import Guild
 from rowboat.models.user import User
 from rowboat.models.channel import Channel
@@ -74,3 +75,26 @@ def subscribe():
             yield ServerSentEvent(item['data']).encode()
 
     return Response(thread(), mimetype="text/event-stream")
+
+
+@dashboard.route('/archive/<aid>.<fmt>')
+def archive(aid, fmt):
+    try:
+        archive = MessageArchive.select().where(
+            (MessageArchive.archive_id == aid) &
+            (MessageArchive.expires_at > datetime.utcnow())
+        ).get()
+    except MessageArchive.DoesNotExist:
+        return 'Invalid or Expires Archive ID', 404
+
+    mime_type = None
+    if fmt == 'json':
+        mime_type == 'application/json'
+    elif fmt == 'txt':
+        mime_type = 'text/plain'
+    elif fmt == 'csv':
+        mime_type = 'text/csv'
+
+    res = make_response(archive.encode(fmt))
+    res.headers['Content-Type'] = mime_type
+    return res

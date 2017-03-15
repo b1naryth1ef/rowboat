@@ -1,4 +1,5 @@
 import json
+import yaml
 
 from peewee import (
     BigIntegerField, CharField, TextField, BooleanField, DateTimeField, CompositeKey, BlobField
@@ -49,6 +50,21 @@ class Guild(BaseModel):
             region=guild.region,
             config={},
             config_raw='')
+
+    def update_config(self, actor_id, raw):
+        from rowboat.types.guild import GuildConfig
+
+        parsed = yaml.load(raw)
+        GuildConfig(parsed).validate()
+
+        GuildConfigChange.create(
+            user_id=actor_id,
+            guild_id=self.guild_id,
+            before_raw=self.config_raw,
+            after_raw=raw)
+
+        self.update(config=parsed, config_raw=raw).where(Guild.guild_id == self.guild_id).execute()
+        self.emit_update()
 
     def emit_update(self):
         rdb.publish('guild-updates', json.dumps({
@@ -138,3 +154,33 @@ class GuildBan(BaseModel):
         User.ensure(ban.user)
         obj, _ = cls.get_or_create(guild_id=guild.id, user_id=ban.user.id, defaults=dict(reason=ban.reason))
         return obj
+
+
+@BaseModel.register
+class GuildConfigChange(BaseModel):
+    user_id = BigIntegerField(null=True)
+    guild_id = BigIntegerField()
+
+    before_raw = BlobField()
+    after_raw = BlobField()
+
+    created_at = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        db_table = 'guild_config_changes'
+
+        indexes = (
+            (('user_id', 'guild_id'), False),
+        )
+
+    def rollback_to(self):
+        Guild.update(
+            config_raw=self.after_raw,
+            config=yaml.load(self.after_raw)
+        ).where(Guild.guild_id == self.guild_id).execute()
+
+    def revert(self):
+        Guild.update(
+            config_raw=self.before_raw,
+            config=yaml.load(self.before_raw)
+        ).where(Guild.guild_id == self.guild_id).execute()

@@ -1,7 +1,3 @@
-import six
-import json
-import requests
-
 from peewee import fn
 from disco.bot import CommandLevels
 from disco.types.channel import Channel
@@ -14,7 +10,7 @@ from rowboat.redis import rdb
 from rowboat.types import Field
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.user import User, Infraction
-from rowboat.models.message import Message
+from rowboat.models.message import Message, MessageArchive
 
 
 EMOJI_STATS_SQL = """
@@ -105,59 +101,8 @@ class AdminPlugin(Plugin):
         else:
             event.msg.reply(':warning: Invalid user!')
 
-    def archive_messages(self, message_q, fmt, expiry=365):
-        def encode_txt(msg):
-            return u'{m.timestamp} {m.author}: {m.content}'.format(m=msg)
-
-        def encode_csv(msg):
-            def wrap(i):
-                return u'"{}"'.format(six.text_type(i).replace('"', '""'))
-
-            return ','.join(map(wrap, [
-                msg.id,
-                msg.timestamp,
-                msg.author.id,
-                msg.author,
-                msg.content,
-                str(msg.deleted).lower(),
-            ]))
-
-        def encode_json(msg):
-            return {
-                'id': str(msg.id),
-                'timestamp': str(msg.timestamp),
-                'user_id': str(msg.author.id),
-                'username': msg.author.username,
-                'discriminator': msg.author.discriminator,
-                'content': msg.content,
-                'deleted': msg.deleted,
-            }
-
-        msgs = list(reversed(message_q))
-
-        if fmt == 'txt':
-            data = map(encode_txt, msgs)
-            result = u'\n'.join(data)
-        elif fmt == 'csv':
-            data = map(encode_csv, msgs)
-            data = ['id,timestamp,author_id,author,content,deleted'] + data
-            result = u'\n'.join(data)
-        elif fmt == 'json':
-            data = list(map(encode_json, msgs))
-            result = json.dumps({
-                'count': len(data),
-                'messages': data,
-            })
-
-        r = requests.post('http://dpaste.com/api/v2/', data={
-            'content': result,
-            'expiry_days': expiry,
-            'poster': 'Rowboat',
-        })
-        r.raise_for_status()
-        return r.content.strip() + '.txt'
-
     @Plugin.command('archive here', '[size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'all'})
+    @Plugin.command('archive all', '[size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'all'})
     @Plugin.command('archive user', '<user:user|snowflake> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'user'})
     @Plugin.command('archive channel', '<channel:channel|snowflake> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'channel'})
     def archive(self, event, size=50, fmt='txt', mode=None, user=None, channel=None):
@@ -171,7 +116,7 @@ class AdminPlugin(Plugin):
         if 0 > size >= 15000:
             return event.msg.reply(':warning: Too many messages, must be between 1-15000')
 
-        q = Message.select().join(User).order_by(Message.id.desc()).limit(size)
+        q = Message.select(Message.id).join(User).order_by(Message.id.desc()).limit(size)
 
         if mode in ('all', 'channel'):
             q = q.where((Message.channel_id == (channel or event.channel).id))
@@ -181,8 +126,8 @@ class AdminPlugin(Plugin):
                 (Message.guild_id == event.guild.id)
             )
 
-        url = self.archive_messages(q, fmt, expiry=90)
-        event.msg.reply('OK, archived {} messages at {}'.format(size, url))
+        archive = MessageArchive.create_from_message_ids([i.id for i in q])
+        event.msg.reply('OK, archived {} messages at {}'.format(len(archive.message_ids), archive.url))
 
     @Plugin.command('clean all', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
     @Plugin.command('clean bots', '[size:int]', level=CommandLevels.MOD, context={'mode': 'bots'})
