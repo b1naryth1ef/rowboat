@@ -17,8 +17,8 @@ def with_guild(f):
     @functools.wraps(f)
     def func(*args, **kwargs):
         try:
-            guild = Guild.get(Guild.guild_id == args[0])
-            f(guild, *args[1:], **kwargs)
+            guild = Guild.get(Guild.guild_id == kwargs.pop('gid'))
+            return f(guild, *args, **kwargs)
         except Guild.DoesNotExist:
             return 'Invalid Guild', 404
     return func

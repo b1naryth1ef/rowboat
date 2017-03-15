@@ -1,5 +1,7 @@
 import os; os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
+import logging
+
 from flask import Flask, g, session
 from holster.flask_ext import Holster
 
@@ -10,6 +12,7 @@ from rowboat.models.notification import Notification
 from yaml import load
 
 rowboat = Holster(Flask(__name__))
+logging.getLogger('peewee').setLevel(logging.DEBUG)
 
 
 @rowboat.app.before_first_request

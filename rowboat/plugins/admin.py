@@ -101,18 +101,11 @@ class AdminPlugin(Plugin):
         else:
             event.msg.reply(':warning: Invalid user!')
 
-    @Plugin.command('archive here', '[size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'all'})
-    @Plugin.command('archive all', '[size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'all'})
-    @Plugin.command('archive user', '<user:user|snowflake> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'user'})
-    @Plugin.command('archive channel', '<channel:channel|snowflake> [size:int] [fmt:str]', level=CommandLevels.MOD, context={'mode': 'channel'})
-    def archive(self, event, size=50, fmt='txt', mode=None, user=None, channel=None):
-        """
-        Archives messages to a given format (txt, csv, json).
-        """
-
-        if fmt not in ('txt', 'csv', 'json'):
-            return event.msg.reply(':warning: Invalid message format, needs to be one of txt, csv, json')
-
+    @Plugin.command('archive here', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
+    @Plugin.command('archive all', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
+    @Plugin.command('archive user', '<user:user|snowflake> [size:int]', level=CommandLevels.MOD, context={'mode': 'user'})
+    @Plugin.command('archive channel', '<channel:channel|snowflake> [size:int]', level=CommandLevels.MOD, context={'mode': 'channel'})
+    def archive(self, event, size=50, mode=None, user=None, channel=None):
         if 0 > size >= 15000:
             return event.msg.reply(':warning: Too many messages, must be between 1-15000')
 
