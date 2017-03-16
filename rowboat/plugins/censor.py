@@ -33,12 +33,14 @@ class CensorSubConfig(SlottedModel):
     domains_blacklist = ListField(str, default=[])
 
     blocked_words = ListField(str, default=[])
+    blocked_tokens = ListField(str, default=[])
 
     @cached_property
     def blocked_words_re(self):
         return re.compile('({})'.format('|'.join(
-            self.blocked_words
-        )), re.I)
+            map(re.escape, self.blocked_tokens) + map(lambda k: r'\b{}\b'.format(re.escape(k)), self.blocked_words)
+        )
+    ), re.I)
 
 
 class CensorConfig(PluginConfig):
