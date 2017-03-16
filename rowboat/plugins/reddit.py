@@ -159,7 +159,10 @@ class RedditPlugin(Plugin):
             item_count, high_time = 0, last
             for item in data:
                 if item['created_utc'] > last:
-                    self.send_post(config, channel, item)
+                    try:
+                        self.send_post(config, channel, item)
+                    except:
+                        self.log.exception('Failed to post reddit content from %s\n\n', item)
                     item_count += 1
 
                     if item['created_utc'] > high_time:
