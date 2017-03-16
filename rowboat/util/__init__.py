@@ -1,3 +1,4 @@
+import re
 import yaml
 from collections import OrderedDict
 
@@ -17,5 +18,10 @@ def ordered_load(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):
     return yaml.load(stream, OrderedLoader)
 
 
+INVITE_DOMAIN_RE = re.compile(r'(discord.me|discord.gg)')
+
 def C(txt):
-    return txt.replace('@', '@' + ZERO_WIDTH_SPACE)
+    # Do some basic safety checks:
+    txt = txt.replace('@', '@' + ZERO_WIDTH_SPACE).replace('`', '`' + ZERO_WIDTH_SPACE)
+
+    return INVITE_DOMAIN_RE.sub('\g<0>' + ZERO_WIDTH_SPACE, txt)

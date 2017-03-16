@@ -109,3 +109,7 @@ SPAM_DEBUG:
 MEMBER_RESTORE:
   emoji: helmet_with_cross
   format: "{e.member} was restored"
+
+CENSORED:
+  emoji: no_mouth
+  format: "censored message by {e.author} (`{e.author.id}`) {c.details}:\n```{c.content}```"

@@ -97,7 +97,7 @@ class SpamConfig(PluginConfig):
 
         if self.levels:
             for lvl in self.levels.keys():
-                if lvl <= level:
+                if level <= lvl:
                     yield self.levels[lvl]
 
 

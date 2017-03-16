@@ -306,6 +306,7 @@ class ModLogPlugin(Plugin):
 
         # Debounce member persist restores
         debounce = self.get_debounce(event.guild.id, event.user.id, 'restore')
+        self.delete_debounce(event.guild.id, event.user.id, 'restore')
 
         if pre_member.nick != event.nick:
             if not pre_member.nick:
@@ -440,6 +441,11 @@ class ModLogPlugin(Plugin):
 
         channel = self.state.channels.get(msg.channel_id)
         if not channel or not msg.author:
+            return
+
+        debounce = self.get_debounce(event.guild.id, msg.author.id, 'censor')
+        if debounce:
+            self.delete_debounce(event.guild.id, msg.author.id, 'censor')
             return
 
         if msg.author.id == self.state.me.id:

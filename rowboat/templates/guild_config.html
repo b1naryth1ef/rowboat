@@ -33,6 +33,8 @@
   var editor = ace.edit("editor");
   editor.setTheme("ace/theme/monokai");
   editor.getSession().setMode("ace/mode/yaml");
+  editor.getSession().setTabSize(2);
+  editor.getSession().setUseSoftTabs(true);
 
   $.get("/guilds/" + guildID + "/config/raw").done(function (data) {
     editor.setValue(data);

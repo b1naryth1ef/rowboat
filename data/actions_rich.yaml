@@ -228,3 +228,12 @@ MEMBER_RESTORE:
   fields:
     user: '{e.member}'
   text: 'restored'
+
+CENSORED:
+  color: red
+  fields:
+    author: '{e.author}'
+    author-id: '{e.author.id}'
+    content: '{c.content}'
+    details: '{c.details}'
+  text: 'censored'
