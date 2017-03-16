@@ -19,7 +19,7 @@ CensorReason = Enum(
     'WORD',
 )
 
-INVITE_LINK_RE = re.compile(r'(discord.me|discord.gg)(?:/#)?(?:/invite)?/([a-z0-9\-]+)')
+INVITE_LINK_RE = re.compile(r'(discord.me|discord.gg)(?:/#)?(?:/invite)?/([a-z0-9\-]+)', re.I)
 URL_RE = re.compile(r'(https?://[^\s]+)')
 
 
@@ -38,9 +38,9 @@ class CensorSubConfig(SlottedModel):
     @cached_property
     def blocked_words_re(self):
         return re.compile('({})'.format('|'.join(
-            map(re.escape, self.blocked_tokens) + map(lambda k: r'\b{}\b'.format(re.escape(k)), self.blocked_words)
-        )
-    ), re.I)
+            map(re.escape, self.blocked_tokens) +
+            map(lambda k: r'\b{}\b'.format(re.escape(k)), self.blocked_words)
+        )), re.I)
 
 
 class CensorConfig(PluginConfig):
