@@ -258,7 +258,7 @@ class ModLogPlugin(Plugin):
         # Check for debounce to avoid unban notis on softban
         debounce = self.get_debounce(event.guild_id, event.user.id, 'ban_reason')
 
-        if debounce['temp'] and not debounce['expires']:
+        if debounce and debounce['temp'] and not debounce['expires']:
             return
 
         self.log_action(Actions.GUILD_BAN_REMOVE, event)
