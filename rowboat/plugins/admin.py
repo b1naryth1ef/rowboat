@@ -87,6 +87,9 @@ class AdminPlugin(Plugin):
             kwargs['mute'] = backup.mute
             kwargs['deaf'] = backup.deaf
 
+        if not kwargs:
+            return
+
         self.bot.plugins.get('ModLogPlugin').create_debounce(event, event.member.user, 'restore')
         event.member.modify(**kwargs)
         self.bot.plugins.get('ModLogPlugin').log_action_ext(Actions.MEMBER_RESTORE, event)
