@@ -118,7 +118,7 @@ class CensorPlugin(Plugin):
                 if config.filter_domains:
                     self.filter_domains(event, config)
 
-                if config.blocked_words or config.blocked_word_lists:
+                if config.blocked_words:
                     self.filter_blocked_words(event, config)
         except Censorship as c:
             self.bot.plugins.get('ModLogPlugin').log_action_ext(

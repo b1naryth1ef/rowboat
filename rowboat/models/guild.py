@@ -161,7 +161,7 @@ class GuildConfigChange(BaseModel):
     user_id = BigIntegerField(null=True)
     guild_id = BigIntegerField()
 
-    before_raw = BlobField()
+    before_raw = BlobField(null=True)
     after_raw = BlobField()
 
     created_at = DateTimeField(default=datetime.utcnow)
