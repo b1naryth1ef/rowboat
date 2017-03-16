@@ -73,6 +73,7 @@ class CorePlugin(Plugin):
 
             data = json.loads(item['data'])
             if data['type'] == 'UPDATE' and data['id'] in self.guilds:
+                self.send_control_message(u'Reloaded config for Guild {}'.format(self.guilds[data['id']].name))
                 self.log.info('Reloading config for guild %s', self.guilds[data['id']].name)
                 self.guilds[data['id']].get_config(refresh=True)
 
@@ -127,12 +128,9 @@ class CorePlugin(Plugin):
             guild.sync_bans(self.client.state.guilds.get(guild.guild_id))
 
     def send_control_message(self, content, *args, **kwargs):
-        chan = self.client.state.dms.find_one(lambda dm: 80351110224678912 in dm.recipients)
-        if not chan:
-            self.log.warning('Failed to find control channel')
-            return
-
-        chan.send_message(u'[{}] {}'.format(ENV, content), *args, **kwargs)
+        self.bot.client.api.channels_messages_create(
+            290924692057882635,
+            u'**{}**\n{}'.format(ENV, content), *args, **kwargs)
 
     @Plugin.listen('Resumed')
     def on_resumed(self, event):

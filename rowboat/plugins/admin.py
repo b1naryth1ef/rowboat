@@ -1,4 +1,6 @@
 from peewee import fn
+from holster.emitter import Priority
+
 from disco.bot import CommandLevels
 from disco.types.channel import Channel
 from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
@@ -7,9 +9,11 @@ from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.util import C
 from rowboat.util.images import get_dominant_colors_user
 from rowboat.redis import rdb
-from rowboat.types import Field
+from rowboat.types import Field, ListField, snowflake, SlottedModel
 from rowboat.types.plugin import PluginConfig
+from rowboat.plugins.modlog import Actions
 from rowboat.models.user import User, Infraction
+from rowboat.models.guild import GuildMemberBackup
 from rowboat.models.message import Message, MessageArchive
 
 
@@ -28,8 +32,19 @@ LIMIT 10;
 """
 
 
+class PersistConfig(SlottedModel):
+    roles = Field(bool, default=False)
+    nickname = Field(bool, default=False)
+    voice = Field(bool, default=False)
+
+    role_ids = ListField(snowflake, default=[])
+
+
 class AdminConfig(PluginConfig):
     confirm_actions = Field(bool, default=True)
+
+    # Role saving information
+    persist = Field(PersistConfig, default=None)
 
 
 @Plugin.with_config(AdminConfig)
@@ -38,8 +53,43 @@ class AdminPlugin(Plugin):
     def roles(self, event):
         roles = []
         for role in event.guild.roles.values():
-            roles.append('{} - {}'.format(role.id, role.name))
-        return event.msg.reply('```{}```'.format('\n'.join(roles)))
+            roles.append(u'{} - {}'.format(role.id, role.name))
+        return event.msg.reply(C(u'```{}```'.format('\n'.join(roles))))
+
+    @Plugin.listen('GuildMemberRemove', priority=Priority.BEFORE)
+    def on_guild_member_remove(self, event):
+        GuildMemberBackup.create_from_member(event.guild.members.get(event.user.id))
+
+    @Plugin.listen('GuildMemberAdd')
+    def on_guild_member_add(self, event):
+        if not event.config.persist:
+            return
+
+        try:
+            backup = GuildMemberBackup.get(guild_id=event.guild_id, user_id=event.user.id)
+        except GuildMemberBackup.DoesNotExist:
+            return
+
+        kwargs = {}
+
+        if event.config.persist.roles:
+            roles = set(event.guild.roles.keys())
+
+            if event.config.persist.role_ids:
+                roles &= set(event.config.persist.role_ids)
+
+            kwargs['roles'] = list(roles)
+
+        if event.config.persist.nickname and backup.nick is not None:
+            kwargs['nick'] = backup.nick
+
+        if event.config.persist.voice:
+            kwargs['mute'] = backup.mute
+            kwargs['deaf'] = backup.deaf
+
+        self.bot.plugins.get('ModLogPlugin').create_debounce(event, event.member.user, 'restore')
+        event.member.modify(**kwargs)
+        self.bot.plugins.get('ModLogPlugin').log_action_ext(Actions.MEMBER_RESTORE, event)
 
     @Plugin.command('kick', '<user:user> [reason:str...]', level=CommandLevels.MOD)
     def kick(self, event, user, reason=None):

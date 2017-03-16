@@ -80,9 +80,15 @@ class ModLogPlugin(Plugin):
             'type': typ,
             'time': time.time(),
         })
-        # TODO: check if we should even track this
 
-        self.debounce[event.guild.id][user.id] = kwargs
+        self.debounce[event.guild.id][user.id][typ] = kwargs
+
+    def get_debounce(self, guild_id, user_id, typ):
+        return self.debounce[guild_id][user_id].get(typ)
+
+    def delete_debounce(self, guild_id, user_id, typ):
+        if typ in self.debounce[guild_id][user_id]:
+            del self.debounce[guild_id][user_id][typ]
 
     def resolve_channels(self, guild, config):
         new_channels = {}
@@ -120,7 +126,7 @@ class ModLogPlugin(Plugin):
             self.action_rich = ctx['action_rich']
             self.action_simple = ctx['action_simple']
 
-        self.debounce = ctx.get('debounce', defaultdict(dict))
+        self.debounce = ctx.get('debounce', defaultdict(lambda: defaultdict(dict)))
 
         super(ModLogPlugin, self).load(ctx)
 
@@ -201,9 +207,15 @@ class ModLogPlugin(Plugin):
     @Plugin.schedule(120)
     def cleanup_debounce(self):
         for obj in six.itervalues(self.debounce):
-            for k, v in list(six.iteritems(obj)):
-                if v['time'] + 30 > time.time():
-                    del obj[k]
+            # Copy items so we can mutate
+            for uid, uobj in list(six.iteritems(obj)):
+                for typ, tobj in list(six.iteritems(uobj)):
+
+                    if tobj['time'] + 30 > time.time():
+                        del uobj[typ]
+
+                        if not uobj:
+                            del obj[uid]
 
     @Plugin.listen('ChannelCreate')
     def on_channel_create(self, event):
@@ -216,9 +228,9 @@ class ModLogPlugin(Plugin):
     @Plugin.listen('GuildBanAdd')
     def on_guild_ban_add(self, event):
         if event.user.id in self.debounce[event.guild.id]:
-            debounce = self.debounce[event.guild.id][event.user.id]
+            debounce = self.get_debounce(event.guild.id, event.user.id, 'ban_reason')
 
-            if debounce['type'] == 'ban_reason':
+            if debounce:
                 if debounce['temp']:
                     if debounce['expires']:
                         self.log_action(Actions.GUILD_TEMPBAN_ADD,
@@ -243,13 +255,11 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):
-        if event.user.id in self.debounce[event.guild_id]:
-            debounce = self.debounce[event.guild_id][event.user.id]
+        # Check for debounce to avoid unban notis on softban
+        debounce = self.get_debounce(event.guild_id, event.user.id, 'ban_reason')
 
-            # Ignore softbans
-            if debounce['type'] == 'ban_reason':
-                if debounce['temp'] and not debounce['expires']:
-                    return
+        if debounce['temp'] and not debounce['expires']:
+            return
 
         self.log_action(Actions.GUILD_BAN_REMOVE, event)
 
@@ -266,14 +276,12 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('GuildMemberRemove')
     def on_guild_member_remove(self, event):
-        if event.user.id in self.debounce[event.guild.id]:
-            debounce = self.debounce[event.guild.id][event.user.id]
+        debounce = self.get_debounce(event.guild.id, event.user.id, 'kick')
 
-            if debounce['type'] == 'kick':
-                self.log_action(Actions.GUILD_MEMBER_KICK, event,
-                    actor=debounce['actor'],
-                    reason=debounce['reason'])
-
+        if debounce:
+            self.log_action(Actions.GUILD_MEMBER_KICK, event,
+                actor=debounce['actor'],
+                reason=debounce['reason'])
             return
 
         self.log_action(Actions.GUILD_MEMBER_REMOVE, event)
@@ -294,12 +302,18 @@ class ModLogPlugin(Plugin):
         if not pre_member:
             return
 
+        # TODO: server mute/deafen
+
+        # Debounce member persist restores
+        debounce = self.get_debounce(event.guild.id, event.user.id, 'restore')
+
         if pre_member.nick != event.nick:
             if not pre_member.nick:
-                self.log_action(
-                    Actions.ADD_NICK,
-                    event,
-                    nickname=event.nick)
+                if not debounce:
+                    self.log_action(
+                        Actions.ADD_NICK,
+                        event,
+                        nickname=event.nick)
             elif not event.nick:
                 self.log_action(
                     Actions.RMV_NICK,
@@ -318,8 +332,9 @@ class ModLogPlugin(Plugin):
             added = post_roles - pre_roles
             removed = pre_roles - post_roles
 
-            for role in filter(bool, map(event.guild.roles.get, added)):
-                self.log_action(Actions.GUILD_MEMBER_ROLES_ADD, event, role=role)
+            if not debounce:
+                for role in filter(bool, map(event.guild.roles.get, added)):
+                    self.log_action(Actions.GUILD_MEMBER_ROLES_ADD, event, role=role)
 
             for role in filter(bool, map(event.guild.roles.get, removed)):
                 self.log_action(Actions.GUILD_MEMBER_ROLES_RMV, event, role=role)

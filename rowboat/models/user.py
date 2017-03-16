@@ -104,6 +104,8 @@ class Infraction(BaseModel):
             (('guild', 'user_id'), False),
         )
 
+    # TODO: debounces should not blow dick here, use real types n such
+
     @classmethod
     def kick(cls, plugin, event, member, reason):
         User.from_disco_user(member.user)

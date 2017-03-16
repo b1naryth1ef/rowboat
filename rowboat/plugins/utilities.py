@@ -8,7 +8,7 @@ from six import BytesIO
 from PIL import Image
 from pyquery import PyQuery
 from gevent.pool import Pool
-from datetime import datetime, timedelta
+from datetime import datetime
 from disco.types.message import MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
 from disco.util.snowflake import to_datetime
 
@@ -117,30 +117,6 @@ class UtilitiesPlugin(Plugin):
             data['country_code'],
             data['latitude'],
             data['longitude'],
-        ))
-
-    @Plugin.command('mentions', global_=True)
-    def mentions(self, event):
-        q = Message.select().where(
-            (Message.deleted == 1) &
-            (Message.mentions.contains(str(event.author.id))) &
-            (Message.timestamp > (datetime.utcnow() - timedelta(days=7)))
-        ).limit(5)
-
-        q = Message.raw('''
-            SELECT * FROM messages
-            WHERE deleted=true
-            AND timestamp > %s
-            AND mentions @> %s
-            ORDER BY timestamp DESC
-            LIMIT 5;
-        ''', datetime.utcnow() - timedelta(days=7), str(event.author.id)).execute()
-
-        if not len(q):
-            return event.msg.reply('No recent mentions that have been deleted')
-
-        return event.msg.reply(u'```{}```'.format(
-            '\n'.join([u'[{}] {}: {}'.format(m.timestamp, m.author, m.content) for m in q])
         ))
 
     @Plugin.command('google', '<query:str...>', global_=True)

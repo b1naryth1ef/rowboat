@@ -184,3 +184,35 @@ class GuildConfigChange(BaseModel):
             config_raw=self.before_raw,
             config=yaml.load(self.before_raw)
         ).where(Guild.guild_id == self.guild_id).execute()
+
+
+@BaseModel.register
+class GuildMemberBackup(BaseModel):
+    user_id = BigIntegerField()
+    guild_id = BigIntegerField()
+
+    nick = CharField(null=True)
+    roles = BinaryJSONField(default=[])
+
+    mute = BooleanField(null=True)
+    deaf = BooleanField(null=True)
+
+    class Meta:
+        db_table = 'guild_member_backups'
+        primary_key = CompositeKey('user_id', 'guild_id')
+
+    @classmethod
+    def create_from_member(cls, member):
+        cls.delete().where(
+            (cls.user_id == member.user.id) &
+            (cls.guild_id == member.guild_id)
+        ).execute()
+
+        return cls.create(
+            user_id=member.user.id,
+            guild_id=member.guild_id,
+            nick=member.nick,
+            roles=member.roles,
+            mute=member.mute,
+            deaf=member.deaf,
+        )
