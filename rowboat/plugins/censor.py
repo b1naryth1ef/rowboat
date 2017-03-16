@@ -8,7 +8,7 @@ from disco.util.functional import cached_property
 from rowboat.redis import rdb
 from rowboat.util import C
 from rowboat.plugins import RowboatPlugin as Plugin
-from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField
+from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
 from rowboat.types.plugin import PluginConfig
 from rowboat.plugins.modlog import Actions
 
@@ -25,6 +25,7 @@ URL_RE = re.compile(r'(https?://[^\s]+)')
 
 class CensorSubConfig(SlottedModel):
     filter_invites = Field(bool, default=True)
+    invites_guild_whitelist = ListField(snowflake, default=[])
     invites_whitelist = ListField(str, default=[])
     invites_blacklist = ListField(str, default=[])
 
@@ -95,6 +96,7 @@ class CensorPlugin(Plugin):
             return
 
         obj = {
+            'id': obj.guild.id,
             'name': obj.guild.name,
             'icon': obj.guild.icon
         }
@@ -135,8 +137,14 @@ class CensorPlugin(Plugin):
         invites = INVITE_LINK_RE.findall(event.content)
 
         for invite in invites:
-            if (config.invites_whitelist or not config.invites_blacklist) and invite not in config.invites_whitelist:
-                invite_info = self.get_invite_info(invite)
+            invite_info = self.get_invite_info(invite)
+            if invite_info and invite_info['guild'].get('id') not in config.invites_guild_whitelist:
+                raise Censorship(CensorReason.INVITE, event, ctx={
+                    'hit': 'whietlist',
+                    'invite': invite[1],
+                    'guild': invite_info,
+                })
+            elif (config.invites_whitelist or not config.invites_blacklist) and invite not in config.invites_whitelist:
                 raise Censorship(CensorReason.INVITE, event, ctx={
                     'hit': 'whitelist',
                     'invite': invite[1],
