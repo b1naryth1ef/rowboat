@@ -5,8 +5,11 @@ import markovify
 
 from holster.enum import Enum
 from holster.emitter import Priority
+
 from disco.types.message import MessageTable
 from disco.types.user import User as DiscoUser
+from disco.types.guild import Guild as DiscoGuild
+from disco.types.channel import Channel as DiscoChannel
 
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.sql import database
@@ -15,7 +18,6 @@ from rowboat.models.channel import Channel
 from rowboat.models.message import Message, Reaction
 
 
-# TODO: rename this lol
 class SQLPlugin(Plugin):
     def load(self, ctx):
         self.models = ctx.get('models', {})
@@ -228,6 +230,40 @@ class SQLPlugin(Plugin):
 
         p.join()
         event.msg.reply(u'Completed backfill on {}'.format(guild.name))
+
+    @Plugin.command('words', '<target:user|channel|guild>', level=-1)
+    def words(self, event, target):
+        if isinstance(target, DiscoUser):
+            q = 'author_id'
+        elif isinstance(target, DiscoChannel):
+            q = 'channel_id'
+        elif isinstance(target, DiscoGuild):
+            q = 'guild_id'
+        else:
+            raise Exception("You should not be here")
+
+        sql = """
+            SELECT word, count(*)
+            FROM (
+                SELECT regexp_split_to_table(content, '\s') as word
+                FROM messages
+                WHERE {}=%s
+                LIMIT 3000000
+            ) t
+            GROUP BY word
+            ORDER BY 2 DESC
+            LIMIT 30
+        """.format(q)
+
+        t = MessageTable()
+        t.set_header('Word', 'Count')
+
+        for word, count in Message.raw(sql, (target.id, )).tuples():
+            if '```' in word:
+                continue
+            t.add(word, count)
+
+        event.msg.reply(t.compile())
 
 
 class Backfill(object):
