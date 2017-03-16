@@ -148,6 +148,14 @@ class CorePlugin(Plugin):
             env=ENV,
         )
 
+    @Plugin.listen('GuildCreate', conditional=lambda e: e.created is True)
+    def on_guild_join(self, event):
+        self.send_control_message('Added to guild {}: {}'.format(event.guild.id, event.guild.name))
+
+    @Plugin.listen('GuildDelete', conditional=lambda e: e.deleted is True)
+    def on_guild_leave(self, event):
+        self.send_control_message('Removed from guild {}'.format(event.guild.id))
+
     @Plugin.listen('GuildCreate', priority=Priority.BEFORE, conditional=lambda e: not e.created)
     def on_guild_create(self, event):
         try:
