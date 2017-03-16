@@ -91,7 +91,7 @@ class RedditPlugin(Plugin):
             else:
                 embed.color = 0xaecfc8
 
-            if not embed['title']:
+            if not data['title']:
                 return
 
             embed.title = data['title']
