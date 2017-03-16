@@ -91,10 +91,12 @@ class RedditPlugin(Plugin):
             else:
                 embed.color = 0xaecfc8
 
-            if not data['title']:
-                return
+            # Limit title to 256 characters nicely
+            if len(data['tille']) > 256:
+                embed.title = data['title'][:253] + '...'
+            else:
+                embed.title = data['title']
 
-            embed.title = data['title']
             embed.url = u'https://reddit.com{}'.format(data['permalink'])
             embed.set_author(
                 name=data['author'],
