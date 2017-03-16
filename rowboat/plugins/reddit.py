@@ -83,12 +83,17 @@ class RedditPlugin(Plugin):
             ))
         else:
             embed = MessageEmbed()
+
             if 'nsfw' in data and data['nsfw']:
                 if not config.nsfw:
                     return
                 embed.color = 0xff6961
             else:
                 embed.color = 0xaecfc8
+
+            if not embed['title']:
+                return
+
             embed.title = data['title']
             embed.url = u'https://reddit.com{}'.format(data['permalink'])
             embed.set_author(
