@@ -186,7 +186,11 @@ class CorePlugin(Plugin):
 
         user_level = 0
         if config:
-            for oid in guild.get_member(user.id).roles:
+            member = guild.get_member(user.id)
+            if not member:
+                return user_level
+
+            for oid in member.roles:
                 if oid in config.levels and config.levels[oid] > user_level:
                     user_level = config.levels[oid]
 
