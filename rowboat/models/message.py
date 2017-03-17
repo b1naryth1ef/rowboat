@@ -8,7 +8,7 @@ from peewee import (
     BooleanField, UUIDField
 )
 from datetime import datetime, timedelta
-from playhouse.postgres_ext import BinaryJSONField
+from playhouse.postgres_ext import BinaryJSONField, ArrayField
 from disco.types.base import UNSET
 
 from rowboat.models.user import User
@@ -34,8 +34,14 @@ class Message(BaseModel):
     attachments = BinaryJSONField(default=[], null=True)
 
     SQL = '''
-        CREATE INDEX IF NOT EXISTS messages_content_fts ON messages USING gin(to_tsvector('english', content));
-        CREATE INDEX IF NOT EXISTS messages_content_trgm ON messages USING gin(content gin_trgm_ops);
+        CREATE INDEX\
+                IF NOT EXISTS messages_content_fts ON messages USING gin(to_tsvector('english', content));
+        CREATE INDEX\
+                IF NOT EXISTS messages_content_trgm ON messages USING gin(content gin_trgm_ops);
+        CREATE INDEX\
+                IF NOT EXISTS messages_mentions ON messages USING gin (mentions);
+        CREATE INDEX\
+                IF NOT EXISTS messages_mentions ON messages USING gin (mentions);
     '''
 
     class Meta:
@@ -214,3 +220,48 @@ class MessageArchive(BaseModel):
             content=msg.content,
             deleted=msg.deleted,
             attachments=msg.attachments)
+
+
+@BaseModel.register
+class StarboardEntry(BaseModel):
+    message = ForeignKeyField(Message, primary_key=True)
+
+    # Information on where this starboard message lies
+    star_channel_id = BigIntegerField(null=True)
+    star_message_id = BigIntegerField(null=True)
+
+    # List of user ids who stared this message
+    stars = ArrayField(BigIntegerField, default=[])
+
+    SQL = '''
+        CREATE INDEX\
+                IF NOT EXISTS starboard_entries_stars ON starboard_entries USING gin (stars);
+    '''
+
+    class Meta:
+        db_table = 'starboard_entries'
+
+        indexes = (
+            (('star_channel_id', 'star_message_id'), True),
+        )
+
+    @classmethod
+    def add_star(cls, message_id, user_id):
+        sql = '''
+            INSERT INTO starboard_entries (message_id, stars)
+            VALUES (%s, ARRAY[%s])
+            ON CONFLICT (message_id)
+            DO UPDATE
+                SET stars = array_append(starboard_entries.stars, %s)
+                WHERE NOT starboard_entries.stars @> ARRAY[%s]
+            '''
+        cls.raw(sql, message_id, user_id, user_id, user_id).execute()
+
+    @classmethod
+    def remove_star(cls, message_id, user_id):
+        sql = '''
+            UPDATE starboard_entries
+                SET stars = array_remove(stars, %s)
+                WHERE message_id=%s AND starboard_entries.stars @> ARRAY[%s]
+        '''
+        cls.raw(sql, user_id, message_id, user_id).execute()

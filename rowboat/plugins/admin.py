@@ -126,13 +126,9 @@ class AdminPlugin(Plugin):
         self.log.info('Creating backup for user %s', event.user)
         GuildMemberBackup.create_from_member(event.guild.members.get(event.user.id))
 
-    @Plugin.listen('GuildMemberAdd')
-    def on_guild_member_add(self, event):
-        if not event.config.persist:
-            return
-
+    def restore_user(self, event, member):
         try:
-            backup = GuildMemberBackup.get(guild_id=event.guild_id, user_id=event.user.id)
+            backup = GuildMemberBackup.get(guild_id=event.guild_id, user_id=member.user.id)
         except GuildMemberBackup.DoesNotExist:
             return
 
@@ -156,9 +152,24 @@ class AdminPlugin(Plugin):
         if not kwargs:
             return
 
-        self.bot.plugins.get('ModLogPlugin').create_debounce(event, event.member.user, 'restore')
-        event.member.modify(**kwargs)
+        self.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'restore')
+        member.modify(**kwargs)
         self.bot.plugins.get('ModLogPlugin').log_action_ext(Actions.MEMBER_RESTORE, event)
+
+    @Plugin.listen('GuildMemberAdd')
+    def on_guild_member_add(self, event):
+        if not event.config.persist:
+            return
+
+        self.restore_user(event, event.member)
+
+    @Plugin.command('restore', '<user:user>', level=CommandLevels.ADMIN)
+    def restore(self, event, user):
+        member = self.guild.get_member(user)
+        if member:
+            self.restore_user(event, member)
+        else:
+            event.msg.reply(':warning: Invalid user!')
 
     @Plugin.command('mute', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
     def mute(self, event, user, reason=None):
@@ -258,7 +269,6 @@ class AdminPlugin(Plugin):
                     u':ok_hand: kicked {u}',
                     u=member.user,
                 ))
-                event.msg.reply(u':ok_hand: kicked {} for `{}`'.format(user, reason or 'no reason given'))
         else:
             event.msg.reply(':warning: Invalid user!')
 
