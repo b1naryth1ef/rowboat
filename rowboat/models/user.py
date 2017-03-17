@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from holster.enum import Enum
 from peewee import BigIntegerField, IntegerField, SmallIntegerField, TextField, BooleanField, DateTimeField
 from rowboat.sql import BaseModel
@@ -83,6 +83,7 @@ class Infraction(BaseModel):
         'TEMPBAN',
         'SOFTBAN',
         'BAN',
+        'TEMPMUTE',
         bitmask=False,
     )
 
@@ -121,9 +122,8 @@ class Infraction(BaseModel):
             reason=reason)
 
     @classmethod
-    def tempban(cls, plugin, event, member, reason, duration):
+    def tempban(cls, plugin, event, member, reason, expires_at):
         User.from_disco_user(member.user)
-        expires_at = datetime.utcnow() + timedelta(seconds=duration)
 
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
             actor=unicode(event.author),
@@ -182,3 +182,32 @@ class Infraction(BaseModel):
             actor_id=event.author.id,
             type_=cls.Types.BAN,
             reason=reason)
+
+    @classmethod
+    def mute(cls, plugin, event, member, reason):
+        plugin.bot.plugins.get('ModLogPlugin').create_debounce(
+            event, member.user, 'muted', reason=reason, expires_at=None, actor=unicode(event.author), role=event.config.mute_role)
+        member.add_role(event.config.mute_role)
+        cls.create(
+            guild_id=event.guild.id,
+            user_id=member.user.id,
+            actor_id=event.author.id,
+            type_=cls.Types.MUTE,
+            reason=reason)
+
+    @classmethod
+    def tempmute(cls, plugin, event, member, reason, expires_at):
+        plugin.bot.plugins.get('ModLogPlugin').create_debounce(
+            event, member.user, 'muted', reason=reason, expires_at=expires_at, actor=unicode(event.author), role=(
+                event.config.temp_mute_role or event.config.mute_role
+            ))
+
+        member.add_role(event.config.temp_mute_role or event.config.mute_role)
+
+        cls.create(
+            guild_id=event.guild.id,
+            user_id=member.user.id,
+            actor_id=event.author.id,
+            type_=cls.Types.TEMPMUTE,
+            reason=reason,
+            expires_at=expires_at)

@@ -110,6 +110,18 @@ MEMBER_RESTORE:
   emoji: helmet_with_cross
   format: "{e.member} was restored"
 
-CENSORED:
+MEMBER_MUTED:
   emoji: no_mouth
+  format: '{e.user} (`{e.user.id}`) was muted by **{actor}**: `{reason}`'
+
+MEMBER_TEMP_MUTED:
+  emoji: no_mouth
+  format: '{e.user} (`{e.user.id}`) was temp-muted until {expires_at} by **{actor}**: `{reason}`'
+
+MEMBER_UNMUTED:
+  emoji: open_mouth
+  format: '{e.user} (`{e.user.id}`) was unmuted by **{actor}**'
+
+CENSORED:
+  emoji: no_entry_sign
   format: "censored message by {e.author} (`{e.author.id}`) {c.details}:\n```{c.content}```"

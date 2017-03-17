@@ -130,7 +130,7 @@ class CorePlugin(Plugin):
     def send_control_message(self, content, *args, **kwargs):
         self.bot.client.api.channels_messages_create(
             290924692057882635,
-            u'**{}**\n{}'.format(ENV, content), *args, **kwargs)
+            u'**{}**\n{}'.format('Production' if ENV == 'prod' else 'Local', content), *args, **kwargs)
 
     @Plugin.listen('Resumed')
     def on_resumed(self, event):
@@ -181,6 +181,21 @@ class CorePlugin(Plugin):
                         self.log.warning('Failed to set nickname for guild %s (%s)', event.guild, e.content)
             self.spawn_later(5, set_nickname)
 
+    def get_level(self, guild, user):
+        config = (guild.id in self.guilds and self.guilds.get(guild.id).get_config())
+
+        user_level = 0
+        if config:
+            for oid in guild.get_member(user.id).roles:
+                if oid in config.levels and config.levels[oid] > user_level:
+                    user_level = config.levels[oid]
+
+            # User ID overrides should override all others
+            if user.id in config.levels:
+                user_level = config.levels[user.id]
+
+        return user_level
+
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
         """
@@ -229,15 +244,7 @@ class CorePlugin(Plugin):
         if not len(commands):
             return
 
-        user_level = 0
-        if config:
-            for oid in event.guild.get_member(event.author).roles:
-                if oid in config.levels and config.levels[oid] > user_level:
-                    user_level = config.levels[oid]
-
-            # User ID overrides should override all others
-            if event.author.id in config.levels:
-                user_level = config.levels[event.author.id]
+        user_level = self.get_level(event.guild, event.author)
 
         # Grab whether this user is a global admin
         # TODO: cache this

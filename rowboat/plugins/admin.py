@@ -32,6 +32,12 @@ LIMIT 10;
 """
 
 
+def maybe_string(obj, exists, notexists, **kwargs):
+    if obj:
+        return exists.format(o=obj, **kwargs)
+    return notexists.format(**kwargs)
+
+
 class PersistConfig(SlottedModel):
     roles = Field(bool, default=False)
     nickname = Field(bool, default=False)
@@ -46,15 +52,24 @@ class AdminConfig(PluginConfig):
     # Role saving information
     persist = Field(PersistConfig, default=None)
 
+    # The mute role
+    mute_role = Field(snowflake, default=None)
+    temp_mute_role = Field(snowflake, default=None)
+
 
 @Plugin.with_config(AdminConfig)
 class AdminPlugin(Plugin):
+    @Plugin.schedule(10, init=False)
+    def check_expired_infractions(self):
+        # TODO
+        pass
+
     @Plugin.command('roles', level=CommandLevels.MOD)
     def roles(self, event):
         roles = []
         for role in event.guild.roles.values():
-            roles.append(u'{} - {}'.format(role.id, role.name))
-        return event.msg.reply(C(u'```{}```'.format('\n'.join(roles))))
+            roles.append(C(u'{} - {}'.format(role.id, role.name)))
+        return event.msg.reply(u'```{}```'.format('\n'.join(roles)))
 
     @Plugin.listen('GuildMemberRemove', priority=Priority.BEFORE)
     def on_guild_member_remove(self, event):
@@ -94,7 +109,79 @@ class AdminPlugin(Plugin):
         event.member.modify(**kwargs)
         self.bot.plugins.get('ModLogPlugin').log_action_ext(Actions.MEMBER_RESTORE, event)
 
-    @Plugin.command('kick', '<user:user> [reason:str...]', level=CommandLevels.MOD)
+    @Plugin.command('mute', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
+    def mute(self, event, user, reason=None):
+        member = event.guild.get_member(user)
+        if member:
+            if not event.config.mute_role:
+                event.msg.reply(':warning: mute is not setup on this server')
+                return
+
+            if len({event.config.temp_mute_role, event.config.mute_role} & set(member.roles)):
+                event.msg.reply(':warning: {} is already muted'.format(member.user))
+                return
+
+            Infraction.mute(self, event, member, reason)
+            if event.config.confirm_actions:
+                event.msg.reply(maybe_string(
+                    reason,
+                    u':ok_hand: {u} is now muted (`{o}`)',
+                    u':ok_hand: {u} is now muted',
+                    u=member.user,
+                ))
+        else:
+            event.msg.reply(':warning: Invalid user!')
+
+    @Plugin.command('tempmute', '<user:user|snowflake> <duration:duration> [reason:str...]', level=CommandLevels.MOD)
+    def tempmute(self, event, user, duration, reason=None):
+        member = event.guild.get_member(user)
+        if member:
+            if not event.config.temp_mute_role and not event.config.mute_role:
+                event.msg.reply(':warning: mute is not setup on this server')
+                return
+
+            if len({event.config.temp_mute_role, event.config.mute_role} & set(member.roles)):
+                event.msg.reply(':warning: {} is already muted'.format(member.user))
+                return
+
+            Infraction.tempmute(self, event, member, reason, duration)
+            if event.config.confirm_actions:
+                event.msg.reply(maybe_string(
+                    reason,
+                    u':ok_hand: {u} is now muted until {t} (`{o}`)',
+                    u':ok_hand: {u} is now muted until {t}',
+                    u=member.user,
+                    t=duration.isoformat(),
+                ))
+        else:
+            event.msg.reply(':warning: Invalid user!')
+
+    @Plugin.command('unmute', '<user:user|snowflake>', level=CommandLevels.MOD)
+    def unmute(self, event, user, reason=None):
+        # TOOD: eventually we should pull the role from the GuildMemberBackup if they arent in server
+        member = event.guild.get_member(user)
+
+        if member:
+            if not event.config.temp_mute_role and not event.config.mute_role:
+                event.msg.reply(':warning: mute is not setup on this server')
+                return
+
+            roles = {event.config.temp_mute_role, event.config.mute_role} & set(member.roles)
+            if not len(roles):
+                event.msg.reply(':warning: {} is not muted'.format(member.user))
+                return
+
+            self.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'unmuted', actor=unicode(event.author), roles=roles)
+
+            for role in roles:
+                member.remove_role(role)
+
+            if event.config.confirm_actions:
+                event.msg.reply(u':ok_hand: {} is now unmuted'.format(member.user))
+        else:
+            event.msg.reply(':warning: Invalid user!')
+
+    @Plugin.command('kick', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
     def kick(self, event, user, reason=None):
         """
         Kick a user from the server (with an optional reason for the modlog).
@@ -102,12 +189,18 @@ class AdminPlugin(Plugin):
         member = event.guild.get_member(user)
         if member:
             Infraction.kick(self, event, member, reason)
-            if event.config.confirm_actions:
+            if event.config.confirm_:
+                event.msg.reply(maybe_string(
+                    reason,
+                    u':ok_hand: kicked {u} (`{r}`)',
+                    u':ok_hand: kicked {u}',
+                    u=member.user,
+                ))
                 event.msg.reply(u':ok_hand: kicked {} for `{}`'.format(user, reason or 'no reason given'))
         else:
             event.msg.reply(':warning: Invalid user!')
 
-    @Plugin.command('ban', '<user:user> [reason:str...]', level=CommandLevels.MOD)
+    @Plugin.command('ban', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
     @Plugin.command('forceban', '<user:snowflake> [reason:str...]', level=CommandLevels.MOD)
     def ban(self, event, user, reason=None):
         """
@@ -124,9 +217,15 @@ class AdminPlugin(Plugin):
                 event.msg.reply(':warning: Invalid user!')
                 return
 
-        event.msg.reply(u':ok_hand: banned {} for `{}`'.format(user, reason or 'no reason given'))
+        if event.config.config.confirm_actions:
+            event.msg.reply(maybe_string(
+                reason,
+                u':ok_hand: banned {u} (`{r}`)',
+                u':ok_hand: banned {u}',
+                u=member.user,
+            ))
 
-    @Plugin.command('softban', '<user:user> [reason:str...]', level=CommandLevels.MOD)
+    @Plugin.command('softban', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
     def softban(self, event, user, reason=None):
         """
         Ban then unban a user from the server (with an optional reason for the modlog).
@@ -136,11 +235,16 @@ class AdminPlugin(Plugin):
         if member:
             Infraction.softban(self, event, member, reason)
             if event.config.confirm_actions:
-                event.msg.reply(u':ok_hand: soft-banned {} for `{}`'.format(user, reason or 'no reason given'))
+                event.msg.reply(maybe_string(
+                    reason,
+                    u':ok_hand: soft-banned {u} (`{r}`)',
+                    u':ok_hand: soft-banned {u}',
+                    u=member.user,
+                ))
         else:
             event.msg.reply(':warning: Invalid user!')
 
-    @Plugin.command('tempban', '<user:user> <duration:duration> [reason:str...]', level=CommandLevels.MOD)
+    @Plugin.command('tempban', '<user:user|snowflake> <duration:duration> [reason:str...]', level=CommandLevels.MOD)
     def tempban(self, event, duration, user, reason=None):
         """
         Ban a user from the server for a given duration (with an optional reason for the modlog).
@@ -150,7 +254,13 @@ class AdminPlugin(Plugin):
         if member:
             Infraction.tempban(self, event, member, reason, duration)
             if event.config.confirm_actions:
-                event.msg.reply(u':ok_hand: temp-banned {} for `{}`'.format(user, reason or 'no reason given'))
+                event.msg.reply(maybe_string(
+                    reason,
+                    u':ok_hand: temp-banned {u} until {t} (`{r}`)',
+                    u':ok_hand: soft-banned {u} until {t}',
+                    u=member.user,
+                    t=duration.isoformat(),
+                ))
         else:
             event.msg.reply(':warning: Invalid user!')
 

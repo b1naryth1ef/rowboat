@@ -339,7 +339,7 @@ class SpamPlugin(Plugin):
 
         try:
             member = event.guild.get_member(event.author)
-            level = int(self.bot.get_level(event.author))
+            level = int(self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author))
 
             for rule in event.config.compute_relevant_rules(member, level):
                 if rule.advanced_heuristics:

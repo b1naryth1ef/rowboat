@@ -80,9 +80,10 @@ class CensorPlugin(Plugin):
             yield event.config.channels[event.channel.id]
 
         if event.config.levels:
-            user_level = int(self.bot.get_level(event.author))
+            user_level = int(self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author))
 
             for level, config in event.config.levels.items():
+                print user_level, level
                 if user_level <= level:
                     yield config
 

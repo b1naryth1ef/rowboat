@@ -237,3 +237,30 @@ CENSORED:
     content: '{c.content}'
     details: '{c.details}'
   text: 'censored'
+
+MEMBER_MUTED:
+  color: red
+  fields:
+    user: '{e.user}'
+    id: '`{e.user.id}`'
+    admin: '{actor}'
+    reason: '{reason}'
+  text: 'muted'
+
+MEMBER_TEMP_MUTED:
+  color: red
+  fields:
+    user: '{e.user}'
+    id: '`{e.user.id}`'
+    admin: '{actor}'
+    reason: '{reason}'
+    expires-at: '{expires_at}'
+  text: 'temp-muted'
+
+MEMBER_UNMUTED:
+  color: green
+  fields:
+    user: '{e.user}'
+    id: '`{e.user.id}`'
+    admin: '{actor}'
+  text: 'unmuted'
