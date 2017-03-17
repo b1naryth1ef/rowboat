@@ -1,3 +1,4 @@
+import time
 import gevent
 
 from gevent.lock import Semaphore
@@ -46,3 +47,36 @@ class Eventual(object):
 
         if not self._next or date < self._next:
             self.wait(date)
+
+
+class Debounce(object):
+    def __init__(self, func, default, hardlimit, **kwargs):
+        self.func = func
+        self.default = default
+        self.hardlimit = hardlimit
+        self.kwargs = kwargs
+
+        self._start = time.time()
+        self._lock = Semaphore()
+        self._t = gevent.spawn(self.wait)
+
+    def wait(self):
+        gevent.sleep(self.default)
+
+        with self._lock:
+            self.func(**self.kwargs)
+            self._t = None
+
+    def touch(self):
+        if self._t:
+            with self._lock:
+                self._t.kill()
+                self._t = None
+        else:
+            self._start = time.time()
+
+        if time.time() - self._start > self.hardlimit:
+            gevent.spawn(self.func, **self.kwargs)
+            return
+
+        self._t = gevent.spawn(self.wait)

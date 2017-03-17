@@ -12,7 +12,7 @@ from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, M
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.util import C
-from rowboat.util.eventual import Eventual
+from rowboat.util.timing import Eventual
 from rowboat.util.images import get_dominant_colors_user
 from rowboat.redis import rdb
 from rowboat.types import Field, ListField, snowflake, SlottedModel
@@ -123,6 +123,7 @@ class AdminPlugin(Plugin):
 
     @Plugin.listen('GuildMemberRemove', priority=Priority.BEFORE)
     def on_guild_member_remove(self, event):
+        self.log.info('Creating backup for user %s', event.user)
         GuildMemberBackup.create_from_member(event.guild.members.get(event.user.id))
 
     @Plugin.listen('GuildMemberAdd')
@@ -143,7 +144,7 @@ class AdminPlugin(Plugin):
             if event.config.persist.role_ids:
                 roles &= set(event.config.persist.role_ids)
 
-            kwargs['roles'] = list(roles)
+            kwargs['roles'] = list(set(backup.roles) & roles)
 
         if event.config.persist.nickname and backup.nick is not None:
             kwargs['nick'] = backup.nick
@@ -250,10 +251,10 @@ class AdminPlugin(Plugin):
         member = event.guild.get_member(user)
         if member:
             Infraction.kick(self, event, member, reason)
-            if event.config.confirm_:
+            if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
                     reason,
-                    u':ok_hand: kicked {u} (`{r}`)',
+                    u':ok_hand: kicked {u} (`{o}`)',
                     u':ok_hand: kicked {u}',
                     u=member.user,
                 ))
@@ -278,10 +279,10 @@ class AdminPlugin(Plugin):
                 event.msg.reply(':warning: Invalid user!')
                 return
 
-        if event.config.config.confirm_actions:
+        if event.config.confirm_actions:
             event.msg.reply(maybe_string(
                 reason,
-                u':ok_hand: banned {u} (`{r}`)',
+                u':ok_hand: banned {u} (`{o}`)',
                 u':ok_hand: banned {u}',
                 u=member.user,
             ))
@@ -298,7 +299,7 @@ class AdminPlugin(Plugin):
             if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
                     reason,
-                    u':ok_hand: soft-banned {u} (`{r}`)',
+                    u':ok_hand: soft-banned {u} (`{o}`)',
                     u':ok_hand: soft-banned {u}',
                     u=member.user,
                 ))
@@ -319,7 +320,7 @@ class AdminPlugin(Plugin):
             if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
                     reason,
-                    u':ok_hand: temp-banned {u} until {t} (`{r}`)',
+                    u':ok_hand: temp-banned {u} until {t} (`{o}`)',
                     u':ok_hand: soft-banned {u} until {t}',
                     u=member.user,
                     t=humanize.naturaltime(duration),
