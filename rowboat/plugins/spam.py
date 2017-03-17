@@ -42,23 +42,27 @@ PunishmentType = Enum(
 )
 
 
-class SubConfig(SlottedModel):
-    max_messages_check = Field(bool, desc='Whether to limit the max number of messages during a time period.', default=False)
-    max_messages_count = Field(int, desc='The max number of messages per interval this user can send')
-    max_messages_interval = Field(int, desc='The interval (in seconds) for the max messages count')
-
-    max_mentions_check = Field(bool, desc='Whether to limit the max number of mentions during a time period.', default=False)
-    max_mentions_count = Field(int, desc='The max number of mentions per interval')
-    max_mentions_interval = Field(int, desc='The interval (in seconds) for the max mentions count')
-
-    max_mentions_per_message = Field(int, desc='The max number of mentions a single message can have')
-
-    advanced_heuristics = Field(bool, desc='Enable advanced spam detection', default=False)
-
+class CheckConfig(SlottedModel):
+    count = Field(int)
+    interval = Field(int)
     punishment = Field(PunishmentType, default=PunishmentType.NONE)
     punishment_duration = Field(int, default=300)
 
-    nsfw_images = Field(bool, default=False)
+
+class SubConfig(SlottedModel):
+    max_messages = Field(CheckConfig, default=None)
+    max_mentions = Field(CheckConfig, default=None)
+    max_links = Field(CheckConfig, default=None)
+    max_emojis = Field(CheckConfig, default=None)
+    max_newlines = Field(CheckConfig, default=None)
+
+    max_mentions_message = Field(CheckConfig, default=None)
+    max_links_message = Field(CheckConfig, default=None)
+    max_emojis_message = Field(CheckConfig, default=None)
+    max_newlines_message = Field(CheckConfig, default=None)
+
+    # TODO: move to censor
+    block_nsfw_images = Field(bool, default=True)
 
     def get_max_messages_bucket(self, guild_id):
         if not self.max_messages_check:
@@ -329,6 +333,8 @@ class SpamPlugin(Plugin):
 
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
     def on_message_create(self, event):
+        # TODO: temp disabled while I rewrite
+        return
         if event.author.id == self.state.me.id:
             return
 
@@ -342,8 +348,8 @@ class SpamPlugin(Plugin):
             level = int(self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author))
 
             for rule in event.config.compute_relevant_rules(member, level):
-                if rule.advanced_heuristics:
-                    self.check_message_advanced(event, member, rule)
+                # if rule.advanced_heuristics:
+                #     self.check_message_advanced(event, member, rule)
 
                 if rule.nsfw_images:
                     self.check_nsfw_images(event, member, rule)

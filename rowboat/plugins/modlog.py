@@ -273,11 +273,13 @@ class ModLogPlugin(Plugin):
         if event.user.id in self.debounce[event.guild.id]:
             del self.debounce[event.guild.id][event.user.id]
 
-        new = ''
-        if event.config.new_member_threshold and (time.time() - to_unix(event.user.id)) < event.config.new_member_threshold:
-            new = ' :new: (created {})'.format(humanize.naturaltime(datetime.utcnow() - to_datetime(event.user.id)))
+        created = humanize.naturaltime(datetime.utcnow() - to_datetime(event.user.id))
+        new = (
+            event.config.new_member_threshold and
+            (time.time() - to_unix(event.user.id)) < event.config.new_member_threshold
+        )
 
-        self.log_action(Actions.GUILD_MEMBER_ADD, event, new=' :new:' if new else '')
+        self.log_action(Actions.GUILD_MEMBER_ADD, event, new=' :new:' if new else '', created=created)
 
     @Plugin.listen('GuildMemberRemove')
     def on_guild_member_remove(self, event):

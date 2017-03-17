@@ -28,7 +28,7 @@ GUILD_BAN_REMOVE:
 
 GUILD_MEMBER_ADD:
   emoji: inbox_tray
-  format: '{e.user} (`{e.user.id}`) joined the server{new}'
+  format: '{e.user} (`{e.user.id}`) joined the server{new} ({created})'
 
 GUILD_MEMBER_REMOVE:
   emoji: outbox_tray
