@@ -447,3 +447,14 @@ class AdminPlugin(Plugin):
             tbl.add(count, name, emoji_id)
 
         event.msg.reply(tbl.compile())
+
+    @Plugin.listen('GuildBanRemove')
+    def on_guild_ban_remove(self, event):
+        Infraction.update(
+            active=False
+        ).where(
+            (Infraction.guild_id == event.guild.id) &
+            (Infraction.user_id == event.user.id) &
+            (Infraction.type_ == Infraction.Types.TEMPBAN) &
+            (Infraction.active == 1)
+        ).execute()
