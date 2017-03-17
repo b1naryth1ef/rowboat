@@ -138,15 +138,15 @@ class CensorPlugin(Plugin):
 
         for invite in invites:
             invite_info = self.get_invite_info(invite)
-            if invite_info and invite_info['guild'].get('id') not in config.invites_guild_whitelist:
+
+            not_whitelisted = (
+                (invite_info and invite_info['guild'].get('id') not in config.invites_guild_whitelist) and
+                ((config.invites_whitelist or not config.invites_blacklist) and invite not in config.invites_whitelist)
+            )
+
+            if not_whitelisted:
                 raise Censorship(CensorReason.INVITE, event, ctx={
                     'hit': 'whietlist',
-                    'invite': invite[1],
-                    'guild': invite_info,
-                })
-            elif (config.invites_whitelist or not config.invites_blacklist) and invite not in config.invites_whitelist:
-                raise Censorship(CensorReason.INVITE, event, ctx={
-                    'hit': 'whitelist',
                     'invite': invite[1],
                     'guild': invite_info,
                 })
