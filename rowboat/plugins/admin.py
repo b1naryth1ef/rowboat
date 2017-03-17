@@ -1,5 +1,10 @@
+import time
+import humanize
+
 from peewee import fn
 from holster.emitter import Priority
+
+from datetime import datetime
 
 from disco.bot import CommandLevels
 from disco.types.channel import Channel
@@ -7,6 +12,7 @@ from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, M
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.util import C
+from rowboat.util.eventual import Eventual
 from rowboat.util.images import get_dominant_colors_user
 from rowboat.redis import rdb
 from rowboat.types import Field, ListField, snowflake, SlottedModel
@@ -59,10 +65,54 @@ class AdminConfig(PluginConfig):
 
 @Plugin.with_config(AdminConfig)
 class AdminPlugin(Plugin):
-    @Plugin.schedule(10, init=False)
-    def check_expired_infractions(self):
-        # TODO
-        pass
+    def load(self, ctx):
+        super(AdminPlugin, self).load(ctx)
+
+        self.inf_task = Eventual(self.clear_infractions)
+        self.spawn(self.queue_infractions)
+
+    def queue_infractions(self):
+        time.sleep(5)
+
+        next_infraction = list(Infraction.select().where(
+            (Infraction.active == 1) &
+            (~(Infraction.expires_at >> None))
+        ).order_by(Infraction.expires_at.asc()).limit(1))
+
+        if not next_infraction:
+            self.log.info('No infractions to wait for')
+            return
+
+        self.log.info('Waiting until %s', next_infraction[0].expires_at)
+        self.inf_task.set_next_schedule(next_infraction[0].expires_at)
+
+    def clear_infractions(self):
+        expired = list(Infraction.select().where(
+            (Infraction.active == 1) &
+            (Infraction.expires_at < datetime.utcnow())
+        ))
+
+        for item in expired:
+            guild = self.state.guilds.get(item.guild_id)
+            if not guild:
+                continue
+
+            # TODO: hacky
+            type_ = {i.index: i for i in Infraction.Types.attrs}[item.type_]
+            if type_ == Infraction.Types.TEMPBAN:
+                # TODO: debounce
+                guild.delete_ban(item.user_id)
+            elif type_ == Infraction.Types.TEMPMUTE:
+                # TODO: remove in backups
+                member = guild.get_member(item.user_id)
+                if member and item.metadata['role'] in member.roles:
+                    member.remove_role(item.metadata['role'])
+
+            # TODO: n+1
+            item.active = False
+            item.save()
+
+        self.queue_infractions()
 
     @Plugin.command('roles', level=CommandLevels.MOD)
     def roles(self, event):
@@ -144,6 +194,8 @@ class AdminPlugin(Plugin):
                 event.msg.reply(':warning: {} is already muted'.format(member.user))
                 return
 
+            duration = datetime.utcnow() + (datetime.utcnow() - duration)
+            self.inf_task.set_next_schedule(duration)
             Infraction.tempmute(self, event, member, reason, duration)
             if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
@@ -151,7 +203,7 @@ class AdminPlugin(Plugin):
                     u':ok_hand: {u} is now muted until {t} (`{o}`)',
                     u':ok_hand: {u} is now muted until {t}',
                     u=member.user,
-                    t=duration.isoformat(),
+                    t=humanize.naturaltime(duration),
                 ))
         else:
             event.msg.reply(':warning: Invalid user!')
@@ -252,6 +304,8 @@ class AdminPlugin(Plugin):
 
         member = event.guild.get_member(user)
         if member:
+            duration = datetime.utcnow() + (datetime.utcnow() - duration)
+            self.inf_task.set_next_schedule(duration)
             Infraction.tempban(self, event, member, reason, duration)
             if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
@@ -259,7 +313,7 @@ class AdminPlugin(Plugin):
                     u':ok_hand: temp-banned {u} until {t} (`{r}`)',
                     u':ok_hand: soft-banned {u} until {t}',
                     u=member.user,
-                    t=duration.isoformat(),
+                    t=humanize.naturaltime(duration),
                 ))
         else:
             event.msg.reply(':warning: Invalid user!')

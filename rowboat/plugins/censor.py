@@ -19,7 +19,7 @@ CensorReason = Enum(
     'WORD',
 )
 
-INVITE_LINK_RE = re.compile(r'(discord.me|discord.gg)(?:/#)?(?:/invite)?/([a-z0-9\-]+)', re.I)
+INVITE_LINK_RE = re.compile(r'(discordapp.com/invite|discord.me|discord.gg)(?:/#)?(?:/invite)?/([a-z0-9\-]+)', re.I)
 URL_RE = re.compile(r'(https?://[^\s]+)')
 
 

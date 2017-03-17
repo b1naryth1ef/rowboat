@@ -1,6 +1,7 @@
 from datetime import datetime
 from holster.enum import Enum
 from peewee import BigIntegerField, IntegerField, SmallIntegerField, TextField, BooleanField, DateTimeField
+from playhouse.postgres_ext import BinaryJSONField
 from rowboat.sql import BaseModel
 
 
@@ -93,6 +94,7 @@ class Infraction(BaseModel):
 
     type_ = IntegerField(db_column='type')
     reason = TextField(null=True)
+    metadata = BinaryJSONField(default={})
 
     expires_at = DateTimeField(null=True)
     created_at = DateTimeField(default=datetime.utcnow)
@@ -193,7 +195,8 @@ class Infraction(BaseModel):
             user_id=member.user.id,
             actor_id=event.author.id,
             type_=cls.Types.MUTE,
-            reason=reason)
+            reason=reason,
+            metadata={'role': event.config.mute_role})
 
     @classmethod
     def tempmute(cls, plugin, event, member, reason, expires_at):
@@ -202,7 +205,8 @@ class Infraction(BaseModel):
                 event.config.temp_mute_role or event.config.mute_role
             ))
 
-        member.add_role(event.config.temp_mute_role or event.config.mute_role)
+        role = (event.config.temp_mute_role or event.config.mute_role)
+        member.add_role(role)
 
         cls.create(
             guild_id=event.guild.id,
@@ -210,4 +214,5 @@ class Infraction(BaseModel):
             actor_id=event.author.id,
             type_=cls.Types.TEMPMUTE,
             reason=reason,
-            expires_at=expires_at)
+            expires_at=expires_at,
+            metadata={'role': role})
