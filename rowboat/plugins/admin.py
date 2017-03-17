@@ -223,6 +223,15 @@ class AdminPlugin(Plugin):
                 event.msg.reply(':warning: {} is not muted'.format(member.user))
                 return
 
+            Infraction.update(
+                active=False
+            ).where(
+                (Infraction.guild_id == event.guild.id) &
+                (Infraction.user_id == member.user.id) &
+                (Infraction.type_ == Infraction.Types.TEMPMUTE) &
+                (Infraction.active == 1)
+            ).execute()
+
             self.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'unmuted', actor=unicode(event.author), roles=roles)
 
             for role in roles:
