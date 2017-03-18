@@ -233,6 +233,8 @@ class StarboardEntry(BaseModel):
     # List of user ids who stared this message
     stars = ArrayField(BigIntegerField, default=[])
 
+    dirty = BooleanField(default=False)
+
     SQL = '''
         CREATE INDEX\
                 IF NOT EXISTS starboard_entries_stars ON starboard_entries USING gin (stars);
@@ -248,11 +250,11 @@ class StarboardEntry(BaseModel):
     @classmethod
     def add_star(cls, message_id, user_id):
         sql = '''
-            INSERT INTO starboard_entries (message_id, stars)
-            VALUES (%s, ARRAY[%s])
+            INSERT INTO starboard_entries (message_id, stars, dirty)
+            VALUES (%s, ARRAY[%s], true)
             ON CONFLICT (message_id)
             DO UPDATE
-                SET stars = array_append(starboard_entries.stars, %s)
+                SET stars = array_append(starboard_entries.stars, %s), dirty = true
                 WHERE NOT starboard_entries.stars @> ARRAY[%s]
             '''
         cls.raw(sql, message_id, user_id, user_id, user_id).execute()
@@ -261,7 +263,7 @@ class StarboardEntry(BaseModel):
     def remove_star(cls, message_id, user_id):
         sql = '''
             UPDATE starboard_entries
-                SET stars = array_remove(stars, %s)
+                SET stars = array_remove(stars, %s), dirty = true
                 WHERE message_id=%s AND starboard_entries.stars @> ARRAY[%s]
         '''
         cls.raw(sql, user_id, message_id, user_id).execute()

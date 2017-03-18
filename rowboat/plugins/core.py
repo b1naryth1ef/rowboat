@@ -10,6 +10,7 @@ from disco.api.http import APIException
 from disco.bot.command import CommandEvent, CommandLevels
 
 from rowboat import VERSION
+from rowboat.util import LocalProxy
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import RowboatPlugin
 from rowboat.sql import init_db
@@ -111,7 +112,10 @@ class CorePlugin(Plugin):
         if not getattr(event.base_config.plugins, plugin_name, None):
             return
 
-        event.config = getattr(event.base_config.plugins, plugin_name)
+        if not hasattr(event, 'config'):
+            event.config = LocalProxy()
+
+        event.config.set(getattr(event.base_config.plugins, plugin_name))
         return event
 
     @Plugin.schedule(290, init=False)

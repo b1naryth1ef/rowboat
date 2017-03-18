@@ -72,7 +72,18 @@ class User(BaseModel):
 
         return obj
 
-    def __str__(self):
+    def get_avatar_url(self, fmt='webp', size=1024):
+        if not self.avatar:
+            return None
+
+        return 'https://cdn.discordapp.com/avatars/{}/{}.{}?size={}'.format(
+            self.user_id,
+            self.avatar,
+            fmt,
+            size
+        )
+
+    def __unicode__(self):
         return u'{}#{}'.format(self.username, str(self.discriminator).zfill(4))
 
 
