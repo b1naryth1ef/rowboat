@@ -111,10 +111,13 @@ class StarboardPlugin(Plugin):
 
     def delete_star(self, star, update=True):
         self.log.info('Removing starboard entry %s', star)
-        self.client.api.channels_messages_delete(
-            star.star_channel_id,
-            star.star_message_id,
-        )
+        try:
+            self.client.api.channels_messages_delete(
+                star.star_channel_id,
+                star.star_message_id,
+            )
+        except:
+            pass
 
         if update:
             StarboardEntry.update(
