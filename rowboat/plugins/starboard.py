@@ -230,7 +230,7 @@ class StarboardPlugin(Plugin):
         embed.description = msg.content
 
         if msg.attachments:
-            attach = msg.attachments.values()[0]
+            attach = list(msg.attachments.values())[0]
             if attach.url.lower().endswith(('png', 'jpeg', 'jpg', 'gif', 'webp')):
                 embed.set_image(url=attach.url)
 
