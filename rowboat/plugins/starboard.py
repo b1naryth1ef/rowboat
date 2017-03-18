@@ -96,6 +96,8 @@ class StarboardPlugin(Plugin):
                     star.message_id)
             except:
                 self.log.exception('Star message went missing %s / %s: ', star.message.channel_id, star.message_id)
+                # TODO: really delete this
+                self.delete_star(star, update=True)
                 continue
 
             # If we previously posted this in the wrong starboard, delete it
