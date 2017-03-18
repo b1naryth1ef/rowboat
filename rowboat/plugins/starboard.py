@@ -1,3 +1,4 @@
+from disco.bot import CommandLevels
 from disco.types.message import MessageEmbed
 
 from rowboat.plugins import RowboatPlugin as Plugin
@@ -59,11 +60,15 @@ class StarboardPlugin(Plugin):
         super(StarboardPlugin, self).load(ctx)
         self.updates = {}
 
+    @Plugin.command('update', group='stars', level=CommandLevels.ADMIN)
+    def force_update_stars(self, event):
+        pass
+
     def queue_update(self, guild_id, config):
         if guild_id not in self.updates or not self.updates[guild_id].active():
             if guild_id in self.updates:
                 del self.updates[guild_id]
-            self.updates[guild_id] = Debounce(self.update_starboard, 3, 9, guild_id=guild_id, config=config.get())
+            self.updates[guild_id] = Debounce(self.update_starboard, 2, 6, guild_id=guild_id, config=config.get())
         else:
             self.updates[guild_id].touch()
 
@@ -79,11 +84,13 @@ class StarboardPlugin(Plugin):
             sb_id, sb_config = config.get_board(star.message.channel_id)
 
             if not sb_id:
+                StarboardEntry.update(dirty=False).where(StarboardEntry.message_id == star.message_id).execute()
                 continue
 
             # If this star has no stars, delete it from the starboard
             if not star.stars:
                 if not star.star_channel_id:
+                    StarboardEntry.update(dirty=False).where(StarboardEntry.message_id == star.message_id).execute()
                     continue
 
                 self.delete_star(star)
@@ -105,6 +112,7 @@ class StarboardPlugin(Plugin):
                 self.delete_star(star, update=True)
 
             if len(star.stars) < sb_config.min_stars:
+                StarboardEntry.update(dirty=False).where(StarboardEntry.message_id == star.message_id).execute()
                 continue
 
             self.post_star(star, source_msg, sb_id, sb_config)
