@@ -95,7 +95,7 @@ class StarboardPlugin(Plugin):
                     star.message.channel_id,
                     star.message_id)
             except:
-                self.log.exception('Star message went missing: ')
+                self.log.exception('Star message went missing %s / %s: ', star.message.channel_id, star.message_id)
                 continue
 
             # If we previously posted this in the wrong starboard, delete it
