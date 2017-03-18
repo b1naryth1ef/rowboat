@@ -73,8 +73,9 @@ class Debounce(object):
     def touch(self):
         if self._t:
             with self._lock:
-                self._t.kill()
-                self._t = None
+                if self._t:
+                    self._t.kill()
+                    self._t = None
         else:
             self._start = time.time()
 

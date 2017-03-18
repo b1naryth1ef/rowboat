@@ -61,12 +61,13 @@ class StarboardPlugin(Plugin):
 
     def queue_update(self, guild_id, config):
         if guild_id not in self.updates or not self.updates[guild_id].active():
+            del self.updates[guild_id]
             self.updates[guild_id] = Debounce(self.update_starboard, 3, 9, guild_id=guild_id, config=config.get())
         else:
             self.updates[guild_id].touch()
 
     def update_starboard(self, guild_id, config):
-        self.log.info('would update starboard %s / %s', guild_id, config)
+        self.log.info('Attempting to update starboard %s / %s', guild_id, config)
 
         # Grab all dirty stars
         stars = StarboardEntry.select().where(
@@ -192,7 +193,7 @@ class StarboardPlugin(Plugin):
 
         if sb_config.clear_on_delete:
             stars = StarboardEntry.delete().where(
-                (StarboardEntry.message_id == event.message_id)
+                (StarboardEntry.message_id == event.id)
             ).returning(StarboardEntry)
 
             for star in stars:
