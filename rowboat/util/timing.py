@@ -60,6 +60,9 @@ class Debounce(object):
         self._lock = Semaphore()
         self._t = gevent.spawn(self.wait)
 
+    def active(self):
+        return self._t is not None
+
     def wait(self):
         gevent.sleep(self.default)
 

@@ -60,10 +60,10 @@ class StarboardPlugin(Plugin):
         self.updates = {}
 
     def queue_update(self, guild_id, config):
-        if guild_id in self.updates:
-            self.updates[guild_id].touch()
+        if guild_id not in self.updates or not self.updates[guild_id].active():
+            self.updates[guild_id] = Debounce(self.update_starboard, 3, 9, guild_id=guild_id, config=config.get())
         else:
-            self.updates[guild_id] = Debounce(self.update_starboard, 5, 10, guild_id=guild_id, config=config.get())
+            self.updates[guild_id].touch()
 
     def update_starboard(self, guild_id, config):
         self.log.info('would update starboard %s / %s', guild_id, config)
@@ -97,11 +97,12 @@ class StarboardPlugin(Plugin):
                 continue
 
             # If we previously posted this in the wrong starboard, delete it
-            if star.star_channel_id and star.star_channel_id != sb_id:
+            if star.star_channel_id and (star.star_channel_id != sb_id or len(star.stars) < sb_config.min_stars):
                 self.delete_star(star, update=True)
 
             if len(star.stars) < sb_config.min_stars:
                 continue
+
             self.post_star(star, source_msg, sb_id, sb_config)
 
     def delete_star(self, star, update=True):
