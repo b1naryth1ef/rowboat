@@ -53,10 +53,13 @@ class RavenPlugin(object):
                     'name': event.guild.name,
                 }
         elif isinstance(event, GatewayEvent):
-            extra['event'] = {
-                'name': event.__class__.__name__,
-                'data': event.to_dict(),
-            }
+            try:
+                extra['event'] = {
+                    'name': event.__class__.__name__,
+                    'data': event.to_dict(),
+                }
+            except:
+                pass
 
         raven_client.captureException(exc_info=greenlet.exc_info, extra=extra)
 
