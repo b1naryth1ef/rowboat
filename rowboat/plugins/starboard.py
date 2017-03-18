@@ -230,8 +230,9 @@ class StarboardPlugin(Plugin):
         embed.description = msg.content
 
         if msg.attachments:
-            if msg.attachments[0].url.lower().endswith(('png', 'jpeg', 'jpg', 'gif', 'webp')):
-                embed.set_image(url=msg.attachments[0].url)
+            attach = msg.attachments.values()[0]
+            if attach.url.lower().endswith(('png', 'jpeg', 'jpg', 'gif', 'webp')):
+                embed.set_image(url=attach.url)
 
         author = msg.guild.get_member(msg.author)
         if author:
