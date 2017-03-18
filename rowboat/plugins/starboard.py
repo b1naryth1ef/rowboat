@@ -61,7 +61,8 @@ class StarboardPlugin(Plugin):
 
     def queue_update(self, guild_id, config):
         if guild_id not in self.updates or not self.updates[guild_id].active():
-            del self.updates[guild_id]
+            if guild_id in self.updates:
+                del self.updates[guild_id]
             self.updates[guild_id] = Debounce(self.update_starboard, 3, 9, guild_id=guild_id, config=config.get())
         else:
             self.updates[guild_id].touch()
