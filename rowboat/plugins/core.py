@@ -252,7 +252,7 @@ class CorePlugin(Plugin):
         if not len(commands):
             return
 
-        user_level = self.get_level(event.guild, event.author)
+        user_level = self.get_level(event.guild, event.author) if event.guild else 0
 
         # Grab whether this user is a global admin
         # TODO: cache this
