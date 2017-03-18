@@ -338,7 +338,7 @@ class CorePlugin(Plugin):
 
         event.msg.reply(u'Usage: {} {}\nDescription: {}'.format(
             command,
-            cmd.raw_args,
+            cmd.raw_args or '',
             cmd.func.__doc__,
         ))
 
