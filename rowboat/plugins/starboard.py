@@ -84,7 +84,7 @@ class StarboardPlugin(Plugin):
             # If this star has no stars, delete it from the starboard
             if not star.stars:
                 if not star.star_channel_id:
-                    return
+                    continue
 
                 self.delete_star(star)
                 continue
