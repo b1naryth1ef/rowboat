@@ -114,13 +114,6 @@ class AdminPlugin(Plugin):
 
         self.queue_infractions()
 
-    @Plugin.command('roles', level=CommandLevels.MOD)
-    def roles(self, event):
-        roles = []
-        for role in event.guild.roles.values():
-            roles.append(C(u'{} - {}'.format(role.id, role.name)))
-        return event.msg.reply(u'```{}```'.format('\n'.join(roles)))
-
     @Plugin.listen('GuildMemberRemove', priority=Priority.BEFORE)
     def on_guild_member_remove(self, event):
         self.log.info('Creating backup for user %s', event.user)
@@ -145,7 +138,7 @@ class AdminPlugin(Plugin):
         if event.config.persist.nickname and backup.nick is not None:
             kwargs['nick'] = backup.nick
 
-        if event.config.persist.voice:
+        if event.config.persist.voice and (kwargs['mute'] or kwargs['deaf']):
             kwargs['mute'] = backup.mute
             kwargs['deaf'] = backup.deaf
 
@@ -163,8 +156,21 @@ class AdminPlugin(Plugin):
 
         self.restore_user(event, event.member)
 
+    @Plugin.command('roles', level=CommandLevels.MOD)
+    def roles(self, event):
+        """
+        Displays all available roles and their corresponding IDs
+        """
+        roles = []
+        for role in event.guild.roles.values():
+            roles.append(C(u'{} - {}'.format(role.id, role.name)))
+        return event.msg.reply(u'```{}```'.format('\n'.join(roles)))
+
     @Plugin.command('restore', '<user:user>', level=CommandLevels.ADMIN)
     def restore(self, event, user):
+        """
+        Restores a users previous roles after rejoining
+        """
         member = self.guild.get_member(user)
         if member:
             self.restore_user(event, member)
@@ -173,6 +179,9 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('mute', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
     def mute(self, event, user, reason=None):
+        """
+        Mutes a user (if setup on the server)
+        """
         member = event.guild.get_member(user)
         if member:
             if not event.config.mute_role:
@@ -196,6 +205,9 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('tempmute', '<user:user|snowflake> <duration:duration> [reason:str...]', level=CommandLevels.MOD)
     def tempmute(self, event, user, duration, reason=None):
+        """
+        Temporarily mutes a user (if setup on the server)
+        """
         member = event.guild.get_member(user)
         if member:
             if not event.config.temp_mute_role and not event.config.mute_role:
@@ -222,6 +234,9 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('unmute', '<user:user|snowflake>', level=CommandLevels.MOD)
     def unmute(self, event, user, reason=None):
+        """
+        Unmutes a user (if they are muted)
+        """
         # TOOD: eventually we should pull the role from the GuildMemberBackup if they arent in server
         member = event.guild.get_member(user)
 
@@ -257,7 +272,7 @@ class AdminPlugin(Plugin):
     @Plugin.command('kick', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
     def kick(self, event, user, reason=None):
         """
-        Kick a user from the server (with an optional reason for the modlog).
+        Kick a user from the server (with an optional reason for the modlog)
         """
         member = event.guild.get_member(user)
         if member:
@@ -276,7 +291,7 @@ class AdminPlugin(Plugin):
     @Plugin.command('forceban', '<user:snowflake> [reason:str...]', level=CommandLevels.MOD)
     def ban(self, event, user, reason=None):
         """
-        Ban a user from the server (with an optional reason for the modlog).
+        Ban a user from the server (with an optional reason for the modlog)
         """
 
         if isinstance(user, (int, long)):
@@ -300,9 +315,8 @@ class AdminPlugin(Plugin):
     @Plugin.command('softban', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
     def softban(self, event, user, reason=None):
         """
-        Ban then unban a user from the server (with an optional reason for the modlog).
+        Ban then unban a user from the server (with an optional reason for the modlog)
         """
-
         member = event.guild.get_member(user)
         if member:
             Infraction.softban(self, event, member, reason)
@@ -319,9 +333,8 @@ class AdminPlugin(Plugin):
     @Plugin.command('tempban', '<user:user|snowflake> <duration:duration> [reason:str...]', level=CommandLevels.MOD)
     def tempban(self, event, duration, user, reason=None):
         """
-        Ban a user from the server for a given duration (with an optional reason for the modlog).
+        Ban a user from the server for a given duration (with an optional reason for the modlog)
         """
-
         member = event.guild.get_member(user)
         if member:
             duration = datetime.utcnow() + (datetime.utcnow() - duration)
@@ -343,6 +356,9 @@ class AdminPlugin(Plugin):
     @Plugin.command('archive user', '<user:user|snowflake> [size:int]', level=CommandLevels.MOD, context={'mode': 'user'})
     @Plugin.command('archive channel', '<channel:channel|snowflake> [size:int]', level=CommandLevels.MOD, context={'mode': 'channel'})
     def archive(self, event, size=50, mode=None, user=None, channel=None):
+        """
+        Creates and links an archive of messages
+        """
         if 0 > size >= 15000:
             return event.msg.reply(':warning: Too many messages, must be between 1-15000')
 
@@ -363,6 +379,9 @@ class AdminPlugin(Plugin):
     @Plugin.command('clean bots', '[size:int]', level=CommandLevels.MOD, context={'mode': 'bots'})
     @Plugin.command('clean user', '<user:user> [size:int]', level=CommandLevels.MOD, context={'mode': 'user'})
     def clean(self, event, user=None, size=25, typ=None, mode='all'):
+        """
+        Removes messages
+        """
         if 0 > size >= 10000:
             return event.msg.reply(':warning: Too many messages, must be between 1-10000')
 
@@ -389,6 +408,10 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('msgstats', '<user:user> [ctx:channel|snowflake|str]', level=CommandLevels.MOD)
     def msgstats(self, event, user, ctx=None):
+        """
+        Displays a users message stats
+        """
+        # TODO:  stars?
         base_query = Message.select().where(
             (Message.author_id == user.id)
         )
@@ -444,6 +467,9 @@ class AdminPlugin(Plugin):
     @Plugin.command('emojistats most', level=CommandLevels.MOD, context={'mode': 'most'})
     @Plugin.command('emojistats least', level=CommandLevels.MOD, context={'mode': 'least'})
     def emojistats(self, event, mode='default'):
+        """
+        Displays the most or least used emojis on the server
+        """
         if mode == 'most':
             sql = EMOJI_STATS_SQL.format('ORDER BY 2 DESC', gid=event.guild.id)
         else:

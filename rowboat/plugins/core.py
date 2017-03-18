@@ -3,14 +3,15 @@ import json
 import pprint
 import humanize
 import functools
+import inspect
 
 from datetime import datetime, timedelta
 from holster.emitter import Priority
 from disco.api.http import APIException
-from disco.bot.command import CommandEvent, CommandLevels
+from disco.bot.command import CommandEvent
 
 from rowboat import VERSION
-from rowboat.util import LocalProxy
+from rowboat.util import C, LocalProxy
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import RowboatPlugin
 from rowboat.sql import init_db
@@ -323,14 +324,46 @@ class CorePlugin(Plugin):
         self.guilds[event.guild.id] = guild
         event.msg.reply(':ok_hand: successfully loaded configuration')
 
-    @Plugin.command('about', level=CommandLevels.ADMIN)
-    def command_help(self, event):
-        event.msg.reply(INFO_MESSAGE)
+    @Plugin.command('help', '<command>')
+    def command_help(self, event, command):
+        """
+        Provides information on a given command.
+        """
+        for cmd in self.bot.commands:
+            if command.lower() in cmd.triggers:
+                break
+        else:
+            event.msg.reply(u"Couldn't find command for `{}`".format(C(command)))
+            return
+
+        event.msg.reply(u'Usage: {} {}\nDescription: {}'.format(
+            command,
+            cmd.raw_args,
+            cmd.func.__doc__,
+        ))
 
     @Plugin.command('uptime', level=-1)
     def command_uptime(self, event):
         event.msg.reply('Rowboat was started {}'.format(
             humanize.naturaltime(datetime.utcnow() - self.startup)
+        ))
+
+    @Plugin.command('source', '<command>', level=-1)
+    def command_source(self, event, command=None):
+        for cmd in self.bot.commands:
+            if command.lower() in cmd.triggers:
+                break
+        else:
+            event.msg.reply(u"Couldn't find command for `{}`".format(C(command)))
+            return
+
+        code = cmd.func.__code__
+        lines, firstlineno = inspect.getsourcelines(code)
+
+        event.msg.reply('<https://github.com/b1naryth1ef/rowboat/blob/master/{}#L{}-{}>'.format(
+            code.co_filename,
+            firstlineno,
+            firstlineno + len(lines)
         ))
 
     @Plugin.command('eval', level=-1)
