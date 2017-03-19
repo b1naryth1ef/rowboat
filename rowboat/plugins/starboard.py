@@ -230,7 +230,10 @@ class StarboardPlugin(Plugin):
     def get_embed(self, star, msg, config):
         # Create the 'header' (non-embed) text
         stars = ':star:'
+
         if len(star.stars) > 1:
+            if len(star.stars) > config.star_color_max:
+                stars = ':star2:'
             stars = stars + ' {}'.format(len(star.stars))
 
         content = '{} <#{}> ({})'.format(
@@ -268,6 +271,7 @@ class StarboardPlugin(Plugin):
         embed.timestamp = msg.timestamp.isoformat()
         embed.color = config.get_color(len(star.stars))
 
+        print embed.to_dict()
         return content, embed
 
 
