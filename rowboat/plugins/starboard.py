@@ -251,6 +251,8 @@ class StarboardPlugin(Plugin):
         if msg.embeds:
             if msg.embeds[0].image:
                 embed.set_image(url=msg.embeds[0].image.url)
+            elif msg.embeds[0].thumbnail:
+                embed.set_image(url=msg.embeds[0].thumbnail.url)
 
         author = msg.guild.get_member(msg.author)
         if author:
