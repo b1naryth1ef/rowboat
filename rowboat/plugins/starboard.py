@@ -198,6 +198,15 @@ class StarboardPlugin(Plugin):
         StarboardEntry.remove_star(event.message_id, event.user_id)
         self.queue_update(event.guild.id, event.config)
 
+    @Plugin.listen('MessageReactionRemoveAll')
+    def on_message_reaction_remove(self, event):
+        StarboardEntry.update(
+            stars=[],
+            dirty=True
+        ).where(
+            (StarboardEntry.message_id == event.message_id)
+        ).execute()
+
     @Plugin.listen('MessageUpdate')
     def on_message_update(self, event):
         sb_id, sb_config = event.config.get_board(event.channel_id)
