@@ -1,10 +1,12 @@
+import peewee
+
 from disco.bot import CommandLevels
 from disco.types.message import MessageEmbed
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types.plugin import PluginConfig
 from rowboat.types import ChannelField, Field, SlottedModel, ListField, DictField
-from rowboat.models.message import StarboardEntry
+from rowboat.models.message import StarboardEntry, Message
 from rowboat.util.timing import Debounce
 
 
@@ -176,7 +178,19 @@ class StarboardPlugin(Plugin):
 
     @Plugin.listen('MessageReactionAdd', conditional=is_star_event)
     def on_message_reaction_add(self, event):
-        StarboardEntry.add_star(event.message_id, event.user_id)
+        try:
+            StarboardEntry.add_star(event.message_id, event.user_id)
+        except peewee.IntegrityError:
+            msg = self.client.api.channels_messages_get(
+                event.channel_id,
+                event.message_id)
+
+            if msg:
+                Message.from_disco_message(msg)
+                StarboardEntry.add_star(event.message_id, event.user_id)
+            else:
+                return
+
         self.queue_update(event.guild.id, event.config)
 
     @Plugin.listen('MessageReactionRemove', conditional=is_star_event)
@@ -233,6 +247,10 @@ class StarboardPlugin(Plugin):
             attach = list(msg.attachments.values())[0]
             if attach.url.lower().endswith(('png', 'jpeg', 'jpg', 'gif', 'webp')):
                 embed.set_image(url=attach.url)
+
+        if msg.embeds:
+            if msg.embeds[0].image:
+                embed.set_image(url=msg.embeds[0].image.url)
 
         author = msg.guild.get_member(msg.author)
         if author:
