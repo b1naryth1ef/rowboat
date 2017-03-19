@@ -65,11 +65,38 @@ class StarboardPlugin(Plugin):
 
     @Plugin.command('update', group='stars', level=CommandLevels.ADMIN)
     def force_update_stars(self, event):
-        pass
+        # First, iterate over stars and repull their reaction count
+        stars = StarboardEntry.select().join(Message).where(
+            (Message.guild_id == event.guild.id) &
+            (~ (StarboardEntry.star_message_id >> None))
+        ).order_by(Message.timestamp.desc()).limit(100)
+
+        for star in stars:
+            self.log.info('Attempting to update stars for %s', star.message_id)
+            msg = self.client.api.channels_messages_get(
+                star.message.channel_id,
+                star.message_id)
+
+            users = [i.id for i in msg.get_reactors(STAR_EMOJI)]
+
+            if set(users) != set(star.stars):
+                self.log.warning('star %s had outdated reactors list %s vs %s',
+                    star.message_id,
+                    users,
+                    star.stars)
+
+                StarboardEntry.update(
+                    stars=[i.id for i in users],
+                    dirty=True,
+                ).where(
+                    (StarboardEntry.message_id == star.message_id)
+                ).execute()
+
+        self.queue_update(event.guild.id, event.config)
 
     @Plugin.command('lock', group='stars', level=CommandLevels.ADMIN)
     def lock_stars(self, event):
-        if event.guild.id not in self.locks:
+        if event.guild.id in self.locks:
             event.msg.reply(':warning: starboard is already locked')
             return
 

@@ -230,7 +230,7 @@ class StarboardEntry(BaseModel):
     star_channel_id = BigIntegerField(null=True)
     star_message_id = BigIntegerField(null=True)
 
-    # List of user ids who stared this message
+    # List of user ids who stared this message, not guarenteed to be accurate
     stars = ArrayField(BigIntegerField, default=[])
 
     dirty = BooleanField(default=False)
