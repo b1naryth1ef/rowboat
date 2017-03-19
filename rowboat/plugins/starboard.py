@@ -61,12 +61,33 @@ class StarboardPlugin(Plugin):
     def load(self, ctx):
         super(StarboardPlugin, self).load(ctx)
         self.updates = {}
+        self.locks = {}
 
     @Plugin.command('update', group='stars', level=CommandLevels.ADMIN)
     def force_update_stars(self, event):
         pass
 
+    @Plugin.command('lock', group='stars', level=CommandLevels.ADMIN)
+    def lock_stars(self, event):
+        if event.guild.id not in self.locks:
+            event.msg.reply(':warning: starboard is already locked')
+            return
+
+        self.locks[event.guild.id] = True
+        event.msg.reply(':white_check_mark: starboard has been locked')
+
+    @Plugin.command('unlock', group='stars', level=CommandLevels.ADMIN)
+    def unlock_stars(self, event):
+        if event.guild.id in self.locks:
+            del self.locks[event.guild.id]
+            event.msg.reply(':white_check_mark: starboard has been unlocked')
+            return
+        event.msg.reply(':warning: starboard is not locked')
+
     def queue_update(self, guild_id, config):
+        if guild_id in self.locks:
+            return
+
         if guild_id not in self.updates or not self.updates[guild_id].active():
             if guild_id in self.updates:
                 del self.updates[guild_id]
@@ -173,9 +194,6 @@ class StarboardPlugin(Plugin):
             (StarboardEntry.message_id == star.message_id)
         ).execute()
 
-    def update_star(self, star, source_msg, starboard_id, config):
-        self.log.info('updating starboard entry for %s', star)
-
     @Plugin.listen('MessageReactionAdd', conditional=is_star_event)
     def on_message_reaction_add(self, event):
         try:
@@ -199,13 +217,14 @@ class StarboardPlugin(Plugin):
         self.queue_update(event.guild.id, event.config)
 
     @Plugin.listen('MessageReactionRemoveAll')
-    def on_message_reaction_remove(self, event):
-        StarboardEntry.update(
+    def on_message_reaction_remove_all(self, event):
+        res = StarboardEntry.update(
             stars=[],
             dirty=True
         ).where(
             (StarboardEntry.message_id == event.message_id)
         ).execute()
+        self.log.info('Removing all reactions: %s', res)
 
     @Plugin.listen('MessageUpdate')
     def on_message_update(self, event):
