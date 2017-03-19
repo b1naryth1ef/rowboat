@@ -248,7 +248,9 @@ class AdminPlugin(Plugin):
                 reason = reason[:256] + '...'
 
             if inf.active:
-                active = 'yes (expires in {})'.format(humanize.naturaltime(inf.expires_at))
+                active = 'yes'
+                if inf.expires_at:
+                    active += ' (expires in {})'.format(humanize.naturaltime(inf.expires_at))
             else:
                 active = 'no'
 

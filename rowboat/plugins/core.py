@@ -134,12 +134,10 @@ class CorePlugin(Plugin):
 
     @Plugin.listen('GuildBanAdd')
     def on_guild_ban_add(self, event):
-        print 'wot'
         GuildBan.ensure(self.client.state.guilds.get(event.guild_id), event.user)
 
     @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):
-        print 'wot2'
         GuildBan.delete().where(
             (GuildBan.user_id == event.user.id) &
             (GuildBan.guild_id == event.guild_id)
