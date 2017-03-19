@@ -86,7 +86,7 @@ class StarboardPlugin(Plugin):
                     star.stars)
 
                 StarboardEntry.update(
-                    stars=[i.id for i in users],
+                    stars=users,
                     dirty=True,
                 ).where(
                     (StarboardEntry.message_id == star.message_id)
