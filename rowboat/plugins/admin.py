@@ -19,7 +19,7 @@ from rowboat.types import Field, ListField, snowflake, SlottedModel
 from rowboat.types.plugin import PluginConfig
 from rowboat.plugins.modlog import Actions
 from rowboat.models.user import User, Infraction
-from rowboat.models.guild import GuildMemberBackup
+from rowboat.models.guild import GuildMemberBackup, GuildBan
 from rowboat.models.message import Message, MessageArchive
 
 
@@ -138,7 +138,7 @@ class AdminPlugin(Plugin):
         if event.config.persist.nickname and backup.nick is not None:
             kwargs['nick'] = backup.nick
 
-        if event.config.persist.voice and (kwargs['mute'] or kwargs['deaf']):
+        if event.config.persist.voice and (backup.mute or backup.deaf):
             kwargs['mute'] = backup.mute
             kwargs['deaf'] = backup.deaf
 
@@ -155,6 +155,131 @@ class AdminPlugin(Plugin):
             return
 
         self.restore_user(event, event.member)
+
+    @Plugin.command('unban', '<user:snowflake> [reason:str...]', level=CommandLevels.MOD)
+    def unban(self, event, user, reason=None):
+        try:
+            GuildBan.get(user_id=user, guild_id=event.guild.id)
+            event.guild.delete_ban(user)
+        except GuildBan.DoesNotExist:
+            event.msg.reply('UID {} is not banned'.format(user))
+            return
+
+        Infraction.create(
+            guild_id=event.guild.id,
+            user_id=user,
+            actor_id=event.author.id,
+            type_=Infraction.Types.UNBAN,
+            reason=reason
+        )
+        event.msg.reply(':ok_hand: unbanned')
+
+    @Plugin.command('infraction info', '<infraction:int>', level=CommandLevels.MOD)
+    def infraction_info(self, event, infraction):
+        try:
+            user = User.alias()
+            actor = User.alias()
+
+            infraction = Infraction.select(Infraction, user, actor).join(
+                user,
+                on=((Infraction.user_id == user.user_id).alias('user'))
+            ).switch(Infraction).join(
+                actor,
+                on=((Infraction.actor_id == actor.user_id).alias('actor'))
+            ).where(Infraction.id == infraction).get()
+        except Infraction.DoesNotExist:
+            event.msg.reply('Cannot find infraction with that ID')
+            return
+
+        type_ = {i.index: i for i in Infraction.Types.attrs}[infraction.type_]
+        embed = MessageEmbed()
+
+        if type_ in (Infraction.Types.MUTE, Infraction.Types.TEMPMUTE):
+            embed.color = 0xfdfd96
+        elif type_ in (Infraction.Types.KICK, Infraction.Types.SOFTBAN):
+            embed.color = 0xffb347
+        else:
+            embed.color = 0xff6961
+
+        embed.title = str(type_).title()
+        embed.set_thumbnail(url=infraction.user.get_avatar_url())
+        embed.add_field(name='User', value=unicode(infraction.user), inline=True)
+        embed.add_field(name='Moderator', value=unicode(infraction.actor), inline=True)
+        embed.add_field(name='Active', value='yes' if infraction.active else 'no', inline=True)
+        if infraction.active and infraction.expires_at:
+            embed.add_field(name='Expires', value=humanize.naturaltime(infraction.expires_at))
+        embed.add_field(name='Reason', value=infraction.reason or '_No Reason Given', inline=False)
+        embed.timestamp = infraction.created_at.isoformat()
+
+        event.msg.reply('', embed=embed)
+
+    @Plugin.command('infraction search', '[query:str...]', level=CommandLevels.MOD)
+    def infraction_search(self, event, query=None):
+        q = (Infraction.guild_id == event.guild.id)
+
+        if query and query.isdigit():
+            q &= (
+                (Infraction.id == int(query)) |
+                (Infraction.user_id == int(query)) |
+                (Infraction.actor_id == int(query)))
+        elif query:
+            q &= (Infraction.reason ** query)
+
+        user = User.alias()
+        actor = User.alias()
+
+        infractions = Infraction.select(Infraction, user, actor).join(
+            user,
+            on=((Infraction.user_id == user.user_id).alias('user'))
+        ).switch(Infraction).join(
+            actor,
+            on=((Infraction.actor_id == actor.user_id).alias('actor'))
+        ).where(q).order_by(Infraction.created_at.desc()).limit(10)
+
+        print infractions.sql()
+
+        tbl = MessageTable()
+
+        tbl.set_header('ID', 'Type', 'User', 'Moderator', 'Active', 'Reason')
+        for inf in infractions:
+            type_ = {i.index: i for i in Infraction.Types.attrs}[inf.type_]
+            reason = inf.reason or ''
+            if len(reason) > 256:
+                reason = reason[:256] + '...'
+
+            if inf.active:
+                active = 'yes (expires in {})'.format(humanize.naturaltime(inf.expires_at))
+            else:
+                active = 'no'
+
+            tbl.add(inf.id, str(type_), unicode(inf.user), unicode(inf.actor), active, reason)
+
+        event.msg.reply(tbl.compile())
+
+    @Plugin.command('reason', '<infraction:int> <reason:str...>', level=CommandLevels.MOD)
+    def reason(self, event, infraction, reason):
+        try:
+            inf = Infraction.get(id=infraction)
+        except Infraction.DoesNotExist:
+            inf = None
+
+        if inf is None or inf.guild_id != event.guild.id:
+            event.msg.reply('Unknown infraction ID')
+            return
+
+        if not inf.actor_id:
+            inf.actor_id = event.author.id
+
+        if inf.actor_id != event.author.id:
+            event.msg.reply(':warning: you cannot alter other moderators infractions')
+            return
+
+        inf.reason = reason
+        inf.save()
+
+        event.msg.reply(':ok_hand: updated the reason information for infraction #{}'.format(
+            inf.id,
+        ))
 
     @Plugin.command('roles', level=CommandLevels.MOD)
     def roles(self, event):

@@ -98,8 +98,17 @@ class Guild(BaseModel):
         except:
             return
 
+        old = {i.user_id: i for i in GuildBan.select().where(
+            (GuildBan.guild_id == guild.id)
+        )}
+
         for ban in bans.values():
-            GuildBan.ensure(guild, ban)
+            del old[ban.user.id]
+            GuildBan.ensure(guild, ban.user, ban.reason)
+
+        GuildBan.delete().where(
+            (GuildBan.id << old.values())
+        ).execute()
 
         # Update last synced time
         Guild.update(
@@ -150,9 +159,9 @@ class GuildBan(BaseModel):
         primary_key = CompositeKey('user_id', 'guild_id')
 
     @classmethod
-    def ensure(cls, guild, ban):
-        User.ensure(ban.user)
-        obj, _ = cls.get_or_create(guild_id=guild.id, user_id=ban.user.id, defaults=dict(reason=ban.reason))
+    def ensure(cls, guild, user, reason=None):
+        User.ensure(user)
+        obj, _ = cls.get_or_create(guild_id=guild.id, user_id=user.id, defaults=dict(reason or {}))
         return obj
 
 

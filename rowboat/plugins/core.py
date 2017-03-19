@@ -16,7 +16,7 @@ from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import RowboatPlugin
 from rowboat.sql import init_db
 from rowboat.redis import rdb
-from rowboat.models.guild import Guild
+from rowboat.models.guild import Guild, GuildBan
 from rowboat.models.notification import Notification
 from rowboat.plugins.modlog import Actions
 
@@ -131,6 +131,19 @@ class CorePlugin(Plugin):
         # Update 10 at a time
         for guild in to_update[:10]:
             guild.sync_bans(self.client.state.guilds.get(guild.guild_id))
+
+    @Plugin.listen('GuildBanAdd')
+    def on_guild_ban_add(self, event):
+        print 'wot'
+        GuildBan.ensure(self.client.state.guilds.get(event.guild_id), event.user)
+
+    @Plugin.listen('GuildBanRemove')
+    def on_guild_ban_remove(self, event):
+        print 'wot2'
+        GuildBan.delete().where(
+            (GuildBan.user_id == event.user.id) &
+            (GuildBan.guild_id == event.guild_id)
+        )
 
     def send_control_message(self, content, *args, **kwargs):
         self.bot.client.api.channels_messages_create(

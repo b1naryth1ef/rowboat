@@ -96,6 +96,7 @@ class Infraction(BaseModel):
         'SOFTBAN',
         'BAN',
         'TEMPMUTE',
+        'UNBAN',
         bitmask=False,
     )
 
