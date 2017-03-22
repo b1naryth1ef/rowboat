@@ -16,6 +16,7 @@ from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import RowboatPlugin
 from rowboat.sql import init_db
 from rowboat.redis import rdb
+from rowboat.models.user import Infraction
 from rowboat.models.guild import Guild, GuildBan
 from rowboat.models.notification import Notification
 from rowboat.plugins.modlog import Actions
@@ -335,6 +336,7 @@ class CorePlugin(Plugin):
         self.guilds[event.guild.id] = guild
         event.msg.reply(':ok_hand: successfully loaded configuration')
 
+    '''
     @Plugin.command('help', '<command>')
     def command_help(self, event, command):
         """
@@ -352,6 +354,20 @@ class CorePlugin(Plugin):
             cmd.raw_args or '',
             cmd.func.__doc__,
         ))
+    '''
+
+    @Plugin.command('nuke', '<user:snowflake> <reason:str...>', level=-1)
+    def nuke(self, event, user, reason):
+        """
+        Force ban a user from all rowboat Guilds
+        """
+        for guild in self.state.guilds.values():
+            Infraction.ban(
+                self,
+                event,
+                user,
+                reason,
+                guild=guild)
 
     @Plugin.command('uptime', level=-1)
     def command_uptime(self, event):
