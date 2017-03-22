@@ -6,6 +6,7 @@ from gevent import wsgi
 from rowboat.web import rowboat
 from yaml import load
 
+import copy
 import logging
 import click
 import BaseHTTPServer
@@ -22,7 +23,9 @@ class BotSupervisor(object):
         self.start()
 
     def start(self):
-        self.proc = subprocess.Popen(['python', '-m', 'disco.cli', '--config', 'config.yaml'], env=self.env)
+        env = copy.deepcopy(os.environ)
+        env.update(self.env)
+        self.proc = subprocess.Popen(['python', '-m', 'disco.cli', '--config', 'config.yaml'], env=env)
 
     def stop(self):
         self.proc.terminate()
