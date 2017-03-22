@@ -10,7 +10,7 @@ from holster.emitter import Priority
 from disco.api.http import APIException
 from disco.bot.command import CommandEvent
 
-from rowboat import VERSION
+from rowboat import REV 
 from rowboat.util import C, LocalProxy
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import RowboatPlugin
@@ -27,7 +27,7 @@ PY_CODE_BLOCK = u'```py\n{}\n```'
 INFO_MESSAGE = '''\
 :information_source: Rowboat V{} - more information and detailed help can be found here:\
 <https://github.com/b1naryth1ef/rowboat/wiki>
-'''.format(VERSION)
+'''.format(REV)
 
 
 class CorePlugin(Plugin):
