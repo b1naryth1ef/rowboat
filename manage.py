@@ -6,6 +6,7 @@ from gevent import wsgi
 from rowboat.web import rowboat
 from yaml import load
 
+import os
 import copy
 import logging
 import click
