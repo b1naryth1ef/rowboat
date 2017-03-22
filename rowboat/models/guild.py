@@ -107,7 +107,8 @@ class Guild(BaseModel):
             GuildBan.ensure(guild, ban.user, ban.reason)
 
         GuildBan.delete().where(
-            (GuildBan.id << old.values())
+            (GuildBan.user_id << old.values()) &
+            (GuildBan.guild_id == guild.id)
         ).execute()
 
         # Update last synced time
