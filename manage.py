@@ -22,7 +22,7 @@ class BotSupervisor(object):
         self.start()
 
     def start(self):
-        self.proc = subprocess.Popen(['python', '-m', 'disco.cli', '--config', 'config.yaml'])
+        self.proc = subprocess.Popen(['python', '-m', 'disco.cli', '--config', 'config.yaml'], env=self.env)
 
     def stop(self):
         self.proc.terminate()
@@ -73,6 +73,7 @@ def bot(env):
     SUPERVISOR = BotSupervisor(env={
         'ENV': env,
         'DSN': config['DSN'],
+        'GOOGLE_APPLICATION_CREDENTIALS': config['GOOGLE_APPLICATION_CREDENTIALS'],
     })
     httpd = BaseHTTPServer.HTTPServer(('0.0.0.0', 8080), RestarterHandler)
 
