@@ -10,7 +10,7 @@ from holster.emitter import Priority
 from disco.api.http import APIException
 from disco.bot.command import CommandEvent
 
-from rowboat import REV 
+from rowboat import REV
 from rowboat.util import C, LocalProxy
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import RowboatPlugin

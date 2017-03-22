@@ -275,11 +275,11 @@ class StarboardPlugin(Plugin):
             return
 
         if sb_config.clear_on_delete:
-            stars = StarboardEntry.delete().where(
+            stars = list(StarboardEntry.delete().where(
                 (StarboardEntry.message_id == event.id)
-            ).returning(StarboardEntry).execute()
+            ).returning(StarboardEntry).execute())
 
-            self.log.info('Clearing stars on deletion: %s', stars)
+            self.log.info('Clearing stars for (%s) on deletion: %s', event.id, stars)
 
             for star in stars:
                 self.delete_star(star, update=False)
