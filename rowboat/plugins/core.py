@@ -361,13 +361,14 @@ class CorePlugin(Plugin):
         """
         Force ban a user from all rowboat Guilds
         """
-        for guild in self.state.guilds.values():
-            Infraction.ban(
-                self,
-                event,
-                user,
-                reason,
-                guild=guild)
+        for guild in self.guilds.values():
+            if guild.plugins.admin:
+                Infraction.ban(
+                    self,
+                    event,
+                    user,
+                    reason,
+                    guild=guild)
 
     @Plugin.command('uptime', level=-1)
     def command_uptime(self, event):
