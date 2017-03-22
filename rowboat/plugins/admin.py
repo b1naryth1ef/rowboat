@@ -236,8 +236,6 @@ class AdminPlugin(Plugin):
             on=((Infraction.actor_id == actor.user_id).alias('actor'))
         ).where(q).order_by(Infraction.created_at.desc()).limit(10)
 
-        print infractions.sql()
-
         tbl = MessageTable()
 
         tbl.set_header('ID', 'Type', 'User', 'Moderator', 'Active', 'Reason')

@@ -4,6 +4,7 @@ from gevent import monkey; monkey.patch_all()
 from werkzeug.serving import run_with_reloader
 from gevent import wsgi
 from rowboat.web import rowboat
+from yaml import load
 
 import logging
 import click
@@ -15,8 +16,9 @@ SUPERVISOR = None
 
 
 class BotSupervisor(object):
-    def __init__(self):
+    def __init__(self, env={}):
         self.proc = None
+        self.env = env
         self.start()
 
     def start(self):
@@ -61,10 +63,17 @@ def serve(reloader):
 
 
 @cli.command()
-def bot():
+@click.option('--env', '-e', default='local')
+def bot(env):
     global SUPERVISOR
 
-    SUPERVISOR = BotSupervisor()
+    with open('config.yaml', 'r') as f:
+        config = load(f)
+
+    SUPERVISOR = BotSupervisor(env={
+        'ENV': env,
+        'DSN': config['DSN'],
+    })
     httpd = BaseHTTPServer.HTTPServer(('0.0.0.0', 8080), RestarterHandler)
 
     try:

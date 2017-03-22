@@ -245,13 +245,13 @@ class StarboardPlugin(Plugin):
 
     @Plugin.listen('MessageReactionRemoveAll')
     def on_message_reaction_remove_all(self, event):
-        res = StarboardEntry.update(
+        StarboardEntry.update(
             stars=[],
             dirty=True
         ).where(
             (StarboardEntry.message_id == event.message_id)
         ).execute()
-        self.log.info('Removing all reactions: %s', res)
+        self.queue_update(event.guild.id, event.config)
 
     @Plugin.listen('MessageUpdate')
     def on_message_update(self, event):
@@ -278,6 +278,8 @@ class StarboardPlugin(Plugin):
             stars = StarboardEntry.delete().where(
                 (StarboardEntry.message_id == event.id)
             ).returning(StarboardEntry).execute()
+
+            self.log.info('Clearing stars on deletion: %s', stars)
 
             for star in stars:
                 self.delete_star(star, update=False)
