@@ -165,9 +165,9 @@ class CorePlugin(Plugin):
             env=ENV,
         )
 
-    @Plugin.listen('GuildCreate', conditional=lambda e: e.created is True)
-    def on_guild_join(self, event):
-        self.send_control_message('Added to guild {}: {}'.format(event.guild.id, event.guild.name))
+    # @Plugin.listen('GuildCreate', conditional=lambda e: e.created is True)
+    # def on_guild_join(self, event):
+    #     self.send_control_message('Added to guild {}: {}'.format(event.guild.id, event.guild.name))
 
     @Plugin.listen('GuildDelete', conditional=lambda e: e.deleted is True)
     def on_guild_leave(self, event):
@@ -184,6 +184,7 @@ class CorePlugin(Plugin):
             return
 
         # Ensure we're updated
+        self.log.info('Syncing guild %s', event.guild.id)
         guild.sync(event.guild)
 
         self.guilds[event.id] = guild
