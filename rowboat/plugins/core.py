@@ -426,7 +426,7 @@ class CorePlugin(Plugin):
                 event.msg.reply(PY_CODE_BLOCK.format(type(e).__name__ + ': ' + str(e)))
                 return
 
-            event.msg.reply(PY_CODE_BLOCK.format(pprint.pformat(local['x'])))
+            result = pprint.pformat(local['x'])
         else:
             try:
                 result = eval(src, ctx)
@@ -434,4 +434,7 @@ class CorePlugin(Plugin):
                 event.msg.reply(PY_CODE_BLOCK.format(type(e).__name__ + ': ' + str(e)))
                 return
 
+        if len(result) > 1990:
+            event.msg.reply('', attachment=('result.txt', result))
+        else:
             event.msg.reply(PY_CODE_BLOCK.format(result))
