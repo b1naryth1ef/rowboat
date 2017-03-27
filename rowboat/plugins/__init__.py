@@ -1,4 +1,5 @@
 from disco.bot import Plugin
+from disco.types.base import Unset
 from disco.api.http import APIException
 from disco.bot.command import CommandEvent
 from disco.gateway.events import GatewayEvent
@@ -89,7 +90,7 @@ class RowboatPlugin(RavenPlugin, Plugin):
     def with_config(cls, config_cls):
         def deco(plugin_cls):
             name = plugin_cls.__name__.replace('Plugin', '').lower()
-            PluginsConfig._fields[name] = Field(config_cls, default=None)
+            PluginsConfig._fields[name] = Field(config_cls, default=Unset)
             PluginsConfig._fields[name].name = name
             # PluginsConfig._fields[name].default = None
             return plugin_cls

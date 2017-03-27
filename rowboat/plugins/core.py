@@ -437,7 +437,7 @@ class CorePlugin(Plugin):
             result = pprint.pformat(local['x'])
         else:
             try:
-                result = eval(src, ctx)
+                result = str(eval(src, ctx))
             except Exception as e:
                 event.msg.reply(PY_CODE_BLOCK.format(type(e).__name__ + ': ' + str(e)))
                 return
