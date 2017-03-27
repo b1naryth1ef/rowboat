@@ -131,7 +131,7 @@ class StarboardPlugin(Plugin):
         # Grab all dirty stars
         stars = StarboardEntry.select().join(Message).where(
             (StarboardEntry.dirty == 1) &
-            (StarboardEntry.message.guild_id == guild_id)
+            (Message.guild_id == guild_id)
         )
 
         for star in stars:
