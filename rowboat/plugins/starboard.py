@@ -71,6 +71,8 @@ class StarboardPlugin(Plugin):
             (~ (StarboardEntry.star_message_id >> None))
         ).order_by(Message.timestamp.desc()).limit(100)
 
+        msg = event.msg.reply('Updating starboard...')
+
         for star in stars:
             self.log.info('Attempting to update stars for %s', star.message_id)
             msg = self.client.api.channels_messages_get(
@@ -92,6 +94,7 @@ class StarboardPlugin(Plugin):
                     (StarboardEntry.message_id == star.message_id)
                 ).execute()
 
+        msg.edit('Starboard updated!')
         self.queue_update(event.guild.id, event.config)
 
     @Plugin.command('lock', group='stars', level=CommandLevels.ADMIN)
