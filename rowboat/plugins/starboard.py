@@ -126,8 +126,9 @@ class StarboardPlugin(Plugin):
         self.log.info('Attempting to update starboard %s / %s', guild_id, config)
 
         # Grab all dirty stars
-        stars = StarboardEntry.select().where(
-            (StarboardEntry.dirty == 1)
+        stars = StarboardEntry.select().join(Message).where(
+            (StarboardEntry.dirty == 1) &
+            (StarboardEntry.message.guild_id == guild_id)
         )
 
         for star in stars:
