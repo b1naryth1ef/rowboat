@@ -99,8 +99,8 @@ class ModLogPlugin(Plugin):
 
     def resolve_channels(self, guild, config):
         self.log.info('Resolving channels')
-        config._channels = {}
 
+        channels = {}
         for key, channel in config.channels.items():
             if isinstance(key, int):
                 chan = guild.channels.select_one(id=key)
@@ -109,10 +109,12 @@ class ModLogPlugin(Plugin):
 
             if not chan:
                 raise MetaException('Failed to ModLog.resolve_channels', {
-                    'config_channels': config.channels.keys(),
-                    'guild_channels': guild.channels.keys(),
+                    'config_channels': list(config.channels.keys()),
+                    'guild_channels': list(guild.channels.keys()),
                 })
-            config._channels[chan.id] = channel
+            channels[chan.id] = channel
+
+        config._channels = channels
 
     def register_action(self, name, rich, simple):
         action = Actions.add(name)
