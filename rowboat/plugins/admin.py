@@ -117,7 +117,7 @@ class AdminPlugin(Plugin):
     @Plugin.listen('GuildMemberRemove', priority=Priority.BEFORE)
     def on_guild_member_remove(self, event):
         self.log.info('Creating backup for user %s', event.user)
-        if event.user.id in self.event.guild.members:
+        if event.user.id in event.guild.members:
             GuildMemberBackup.create_from_member(event.guild.members.get(event.user.id))
 
     def restore_user(self, event, member):
