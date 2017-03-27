@@ -133,6 +133,10 @@ class CorePlugin(Plugin):
         for guild in to_update[:10]:
             guild.sync_bans(self.client.state.guilds.get(guild.guild_id))
 
+    @Plugin.listen('GuildUpdate')
+    def on_guild_udpate(self, event):
+        self.log.info('Got guild update for guild %s (%s)', event.guild.id, event.guild.channels)
+
     @Plugin.listen('GuildMembersChunk')
     def on_guild_members_chunk(self, event):
         self.log.info('Got members chunk for guild %s', event.guild_id)

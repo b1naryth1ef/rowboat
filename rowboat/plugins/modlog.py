@@ -98,7 +98,7 @@ class ModLogPlugin(Plugin):
             del self.debounce[guild_id][user_id][typ]
 
     def resolve_channels(self, guild, config):
-        self.log.info('Resolving channels')
+        self.log.info('Resolving channels for %s', guild.id)
 
         channels = {}
         for key, channel in config.channels.items():
