@@ -68,7 +68,7 @@ class ModLogConfig(PluginConfig):
     channels = DictField(ChannelField, ChannelConfig)
     new_member_threshold = Field(int, default=(15 * 60))
 
-    _channels = None
+    _channels = DictField(ChannelConfig, private=True)
 
     @cached_property
     def subscribed(self):
@@ -115,6 +115,7 @@ class ModLogPlugin(Plugin):
             channels[chan.id] = channel
 
         config._channels = channels
+        config.resolved = True
 
     def register_action(self, name, rich, simple):
         action = Actions.add(name)
@@ -158,7 +159,6 @@ class ModLogPlugin(Plugin):
     def log_action_raw(self, action, event, guild, config, attachment=None, **details):
         if not config.resolved:
             self.resolve_channels(guild, config)
-            config.resolved = True
 
         if not {action} & config.subscribed:
             return
