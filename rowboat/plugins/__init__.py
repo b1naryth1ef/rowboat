@@ -4,6 +4,7 @@ from disco.bot.command import CommandEvent
 from disco.gateway.events import GatewayEvent
 
 from rowboat import raven_client
+from rowboat.util import MetaException
 from rowboat.types import Field
 from rowboat.types.guild import PluginsConfig
 
@@ -28,6 +29,9 @@ class RavenPlugin(object):
     """
     def handle_exception(self, greenlet, event):
         extra = {}
+
+        if isinstance(greenlet.exception, MetaException):
+            extra.update(greenlet.exception.metadata)
 
         if isinstance(greenlet.exception, APIException):
             extra['status_code'] = greenlet.exception.response.status_code

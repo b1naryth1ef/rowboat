@@ -42,3 +42,10 @@ class LocalProxy(object):
 
     def __getattr__(self, attr):
         return getattr(self.local.obj, attr)
+
+
+class MetaException(Exception):
+    def __init__(self, msg, metadata=None):
+        self.msg = msg
+        self.metadata = metadata
+        super(MetaException, self).__init__(msg)

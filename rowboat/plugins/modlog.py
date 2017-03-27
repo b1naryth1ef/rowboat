@@ -22,7 +22,7 @@ from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.message import Message, MessageArchive
-from rowboat.util import ordered_load, C
+from rowboat.util import ordered_load, C, MetaException
 
 
 Actions = Enum()
@@ -68,6 +68,8 @@ class ModLogConfig(PluginConfig):
     channels = DictField(ChannelField, ChannelConfig)
     new_member_threshold = Field(int, default=(15 * 60))
 
+    _channels = None
+
     @cached_property
     def subscribed(self):
         return reduce(operator.or_, (i.subscribed for i in self.channels.values())) if self.channels else set()
@@ -96,7 +98,8 @@ class ModLogPlugin(Plugin):
             del self.debounce[guild_id][user_id][typ]
 
     def resolve_channels(self, guild, config):
-        new_channels = {}
+        self.log.info('Resolving channels')
+        config._channels = {}
 
         for key, channel in config.channels.items():
             if isinstance(key, int):
@@ -104,10 +107,12 @@ class ModLogPlugin(Plugin):
             else:
                 chan = guild.channels.select_one(name=key)
 
-            if chan:
-                new_channels[chan.id] = channel
-
-        config.channels = new_channels
+            if not chan:
+                raise MetaException('Failed to ModLog.resolve_channels', {
+                    'config_channels': config.channels.keys(),
+                    'guild_channels': guild.channels.keys(),
+                })
+            config._channels[chan.id] = channel
 
     def register_action(self, name, rich, simple):
         action = Actions.add(name)
@@ -196,7 +201,7 @@ class ModLogPlugin(Plugin):
 
             return msg, None
 
-        for channel, config in config.channels.items():
+        for channel, config in config._channels.items():
             if not {action} & config.subscribed:
                 continue
 
