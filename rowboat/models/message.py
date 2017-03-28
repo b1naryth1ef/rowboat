@@ -281,13 +281,11 @@ class StarboardEntry(BaseModel):
             UPDATE starboard_entries
                 SET stars = array_remove(stars, %s),
                     blocked_stars = array_append(blocked_stars, %s),
-                    dirty = true
                 WHERE starboard_entries.stars @> ARRAY[%s]
         '''
         cls.raw(sql, user_id, user_id, user_id)
 
         StarboardEntry.update(
-            dirty=True,
             blocked=True,
         ).where(
             (StarboardEntry.message_id << (
@@ -310,7 +308,7 @@ class StarboardEntry(BaseModel):
 
         StarboardEntry.update(
             dirty=True,
-            blocked=True,
+            blocked=False,
         ).where(
             (StarboardEntry.message_id << (
                 StarboardEntry.select().join(Message).where(

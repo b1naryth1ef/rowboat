@@ -1,5 +1,7 @@
 import peewee
 
+from datetime import datetime, timedelta
+
 from disco.bot import CommandLevels
 from disco.types.message import MessageEmbed
 
@@ -177,10 +179,11 @@ class StarboardPlugin(Plugin):
     def update_starboard(self, guild_id, config):
         self.log.info('Attempting to update starboard %s / %s', guild_id, config)
 
-        # Grab all dirty stars
+        # Grab all dirty stars that where posted in the last 32 hours
         stars = StarboardEntry.select().join(Message).where(
             (StarboardEntry.dirty == 1) &
-            (Message.guild_id == guild_id)
+            (Message.guild_id == guild_id) &
+            (Message.timestamp > (datetime.utcnow() - timedelta(hours=32)))
         )
 
         for star in stars:
