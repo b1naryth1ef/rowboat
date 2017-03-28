@@ -175,7 +175,7 @@ class CorePlugin(Plugin):
         )
 
     @Plugin.schedule(1, init=False)
-    def on_fucked_channels(self, event):
+    def on_fucked_channels(self):
         for guild in self.state.guilds.values():
             if not len(guild.channels):
                 self.log.warning('Guild %s (%s) has fucked channels', guild.id, guild.name)
