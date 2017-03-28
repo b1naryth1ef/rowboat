@@ -273,7 +273,7 @@ class StarboardEntry(BaseModel):
                     dirty = true
                 WHERE message_id=%s AND starboard_entries.stars @> ARRAY[%s]
         '''
-        cls.raw(sql, user_id, message_id, user_id).execute()
+        cls.raw(sql, user_id, user_id, message_id, user_id).execute()
 
     @classmethod
     def block_user(cls, user_id):
