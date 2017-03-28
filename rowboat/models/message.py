@@ -290,7 +290,11 @@ class StarboardEntry(BaseModel):
             dirty=True,
             blocked=True,
         ).where(
-            (Message.author_id == user_id)
+            (StarboardEntry.message_id << (
+                StarboardEntry.select().join(Message).where(
+                    (Message.author_id == user_id)
+                )
+            ))
         ).execute()
 
     @classmethod
@@ -308,6 +312,9 @@ class StarboardEntry(BaseModel):
             dirty=True,
             blocked=True,
         ).where(
-            (Message.author_id == user_id) &
-            (StarboardEntry.blocked == 1)
+            (StarboardEntry.message_id << (
+                StarboardEntry.select().join(Message).where(
+                    (Message.author_id == user_id)
+                )
+            )) & (StarboardEntry.blocked == 1)
         ).execute()
