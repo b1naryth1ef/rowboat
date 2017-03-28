@@ -6,6 +6,7 @@ from disco.types.message import MessageEmbed
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types.plugin import PluginConfig
 from rowboat.types import ChannelField, Field, SlottedModel, ListField, DictField
+from rowboat.models.user import StarboardBlock
 from rowboat.models.message import StarboardEntry, Message
 from rowboat.util.timing import Debounce
 
@@ -62,6 +63,54 @@ class StarboardPlugin(Plugin):
         super(StarboardPlugin, self).load(ctx)
         self.updates = {}
         self.locks = {}
+
+    @Plugin.command('block', '<user:user>', group='stars', level=CommandLevels.MOD)
+    def stars_block(self, event, user):
+        _, created = StarboardBlock.get_or_create(
+            guild_id=event.guild.id,
+            user_id=user.id,
+            defaults={
+                'actor_id': event.author.id,
+            })
+
+        if not created:
+            event.msg.reply(u'{} is already blocked from the starboard'.format(
+                user,
+            ))
+            return
+
+        # Update the starboard, remove stars and posts
+        StarboardEntry.block_user(user.id)
+
+        # Finally, queue an update for the guild
+        self.queue_update(event.guild.id, event.config)
+
+        event.msg.reply(u'Blocked {} from the starboard'.format(
+            user,
+        ))
+
+    @Plugin.command('unblock', '<user:user>', group='stars', level=CommandLevels.MOD)
+    def stars_unblock(self, event, user):
+        count = StarboardBlock.delete().where(
+            (StarboardBlock.guild_id == event.guild.id) &
+            (StarboardBlock.user_id == user.id)
+        ).execute()
+
+        if not count:
+            event.msg.reply(u'{} was not blocked from the starboard'.format(
+                user,
+            ))
+            return
+
+        # Renable posts and stars for this user
+        StarboardEntry.unblock_user(user.id)
+
+        # Finally, queue an update for the guild
+        self.queue_update(event.guild.id, event.config)
+
+        event.msg.reply(u'Unblocked {} from the starboard'.format(
+            user,
+        ))
 
     @Plugin.command('update', group='stars', level=CommandLevels.ADMIN)
     def force_update_stars(self, event):
@@ -227,6 +276,15 @@ class StarboardPlugin(Plugin):
 
     @Plugin.listen('MessageReactionAdd', conditional=is_star_event)
     def on_message_reaction_add(self, event):
+        q = StarboardBlock.select().where(
+            (StarboardBlock.user_id == event.user_id) &
+            (StarboardBlock.guild_id == event.guild.id)
+        ).exists()
+
+        # Don't add stars for blocked users
+        if q:
+            return
+
         try:
             StarboardEntry.add_star(event.message_id, event.user_id)
         except peewee.IntegrityError:
@@ -251,6 +309,7 @@ class StarboardPlugin(Plugin):
     def on_message_reaction_remove_all(self, event):
         StarboardEntry.update(
             stars=[],
+            blocked_stars=[],
             dirty=True
         ).where(
             (StarboardEntry.message_id == event.message_id)

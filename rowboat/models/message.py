@@ -233,6 +233,10 @@ class StarboardEntry(BaseModel):
     # List of user ids who stared this message, not guarenteed to be accurate
     stars = ArrayField(BigIntegerField, default=[])
 
+    # List of user ids who starred this message, but are blocked
+    blocked_stars = ArrayField(BigIntegerField, default=[])
+
+    blocked = BooleanField(default=False)
     dirty = BooleanField(default=False)
 
     SQL = '''
@@ -263,7 +267,47 @@ class StarboardEntry(BaseModel):
     def remove_star(cls, message_id, user_id):
         sql = '''
             UPDATE starboard_entries
-                SET stars = array_remove(stars, %s), dirty = true
+                SET
+                    stars = array_remove(stars, %s),
+                    blocked_stars = array_remove(stars, %s),
+                    dirty = true
                 WHERE message_id=%s AND starboard_entries.stars @> ARRAY[%s]
         '''
         cls.raw(sql, user_id, message_id, user_id).execute()
+
+    @classmethod
+    def block_user(cls, user_id):
+        sql = '''
+            UPDATE starboard_entries
+                SET stars = array_remove(stars, %s),
+                    blocked_stars = array_append(blocked_stars, %s),
+                    dirty = true
+                WHERE starboard_entries.stars @> ARRAY[%s]
+        '''
+        cls.raw(sql, user_id, user_id, user_id)
+
+        StarboardEntry.join(Message).update(
+            dirty=True,
+            blocked=True,
+        ).where(
+            (Message.author_id == user_id)
+        ).execute()
+
+    @classmethod
+    def unblock_user(cls, user_id):
+        sql = '''
+            UPDATE starboard_entries
+                SET stars = array_append(stars, %s),
+                    blocked_stars = array_remove(blocked_stars, %s),
+                    dirty = true
+                WHERE starboard_entries.stars @> ARRAY[%s]
+        '''
+        cls.raw(sql, user_id, user_id, user_id)
+
+        StarboardEntry.join(Message).update(
+            dirty=True,
+            blocked=True,
+        ).where(
+            (Message.author_id == user_id) &
+            (StarboardEntry.blocked == 1)
+        ).execute()

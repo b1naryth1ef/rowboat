@@ -228,3 +228,10 @@ class Infraction(BaseModel):
             reason=reason,
             expires_at=expires_at,
             metadata={'role': role})
+
+
+@BaseModel.register
+class StarboardBlock(BaseModel):
+    guild_id = BigIntegerField()
+    user_id = BigIntegerField()
+    actor_id = BigIntegerField()

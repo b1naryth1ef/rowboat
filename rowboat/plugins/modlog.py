@@ -328,7 +328,7 @@ class ModLogPlugin(Plugin):
         debounce = self.get_debounce(event.guild.id, event.user.id, 'restore')
         self.delete_debounce(event.guild.id, event.user.id, 'restore')
 
-        if pre_member.nick != event.nick:
+        if pre_member.nick or event.nick and pre_member.nick != event.nick:
             if not pre_member.nick:
                 if not debounce:
                     self.log_action(
