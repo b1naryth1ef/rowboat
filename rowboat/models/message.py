@@ -249,7 +249,6 @@ class StarboardEntry(BaseModel):
 
         indexes = (
             (('star_channel_id', 'star_message_id'), True),
-            (('message_id', ), True),
         )
 
     @classmethod
