@@ -286,10 +286,10 @@ class StarboardEntry(BaseModel):
         '''
         cls.raw(sql, user_id, user_id, user_id)
 
-        StarboardEntry.join(Message).update(
+        StarboardEntry.update(
             dirty=True,
             blocked=True,
-        ).where(
+        ).join(Message).where(
             (Message.author_id == user_id)
         ).execute()
 
