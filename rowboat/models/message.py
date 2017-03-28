@@ -289,7 +289,7 @@ class StarboardEntry(BaseModel):
         StarboardEntry.update(
             dirty=True,
             blocked=True,
-        ).join(Message).where(
+        ).where(
             (Message.author_id == user_id)
         ).execute()
 
@@ -307,7 +307,7 @@ class StarboardEntry(BaseModel):
         StarboardEntry.update(
             dirty=True,
             blocked=True,
-        ).join(Message).where(
+        ).where(
             (Message.author_id == user_id) &
             (StarboardEntry.blocked == 1)
         ).execute()
