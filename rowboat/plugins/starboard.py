@@ -114,6 +114,22 @@ class StarboardPlugin(Plugin):
             user,
         ))
 
+    @Plugin.command('hide', '<mid:snowflake>', group='stars', level=CommandLevels.MOD)
+    def stars_hide(self, event, mid):
+        count = StarboardEntry.update(
+            blocked=True,
+            dirty=True,
+        ).where(
+            (StarboardEntry.message_id == mid)
+        ).execute()
+
+        if not count:
+            event.msg.reply(u'No starred message with that ID')
+            return
+
+        self.queue_update(event.guild.id, event.config)
+        event.msg.reply(u'Message {} has been hidden from the starboard')
+
     @Plugin.command('update', group='stars', level=CommandLevels.ADMIN)
     def force_update_stars(self, event):
         # First, iterate over stars and repull their reaction count
@@ -214,10 +230,10 @@ class StarboardPlugin(Plugin):
                 continue
 
             # If we previously posted this in the wrong starboard, delete it
-            if star.star_channel_id and (star.star_channel_id != sb_id or len(star.stars) < sb_config.min_stars):
+            if star.star_channel_id and (star.star_channel_id != sb_id or len(star.stars) < sb_config.min_stars) or star.blocked:
                 self.delete_star(star, update=True)
 
-            if len(star.stars) < sb_config.min_stars:
+            if len(star.stars) < sb_config.min_stars or star.blocked:
                 StarboardEntry.update(dirty=False).where(StarboardEntry.message_id == star.message_id).execute()
                 continue
 
@@ -395,8 +411,3 @@ class StarboardPlugin(Plugin):
         embed.color = config.get_color(len(star.stars))
 
         return content, embed
-
-
-# prune
-# Pin top stars
-# modlog
