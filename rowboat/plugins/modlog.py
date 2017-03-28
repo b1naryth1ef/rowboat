@@ -212,9 +212,15 @@ class ModLogPlugin(Plugin):
             else:
                 msg, embed = generate_rich(config)
 
-            channel = guild.channels.get(channel)
-            if channel:
-                channel.send_message(msg, embed=embed, attachment=attachment if config.compact else None)
+            cobj = self.state.channels.get(channel)
+            if cobj:
+                cobj.send_message(msg, embed=embed, attachment=attachment if config.compact else None)
+
+            if channel not in guild.channels:
+                raise MetaException('Failed to find modlog channel', {
+                    'channel': channel,
+                    'guild.channels.keys': list(guild.channels.keys()),
+                })
 
     @Plugin.schedule(120)
     def cleanup_debounce(self):
