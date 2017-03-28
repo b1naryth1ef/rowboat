@@ -167,11 +167,18 @@ class CorePlugin(Plugin):
 
     @Plugin.listen('Ready')
     def on_ready(self, event):
+        self.log.info('Started session %s', event.session_id)
         Notification.dispatch(
             Notification.Types.CONNECT,
             trace=event.trace,
             env=ENV,
         )
+
+    @Plugin.schedule(1, init=False)
+    def on_fucked_channels(self, event):
+        for guild in self.state.guilds.values():
+            if not len(guild.channels):
+                self.log.warning('Guild %s (%s) has fucked channels', guild.id, guild.name)
 
     # @Plugin.listen('GuildCreate', conditional=lambda e: e.created is True)
     # def on_guild_join(self, event):
