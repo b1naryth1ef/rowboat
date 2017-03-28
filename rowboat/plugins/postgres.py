@@ -38,7 +38,7 @@ class PostgresPlugin(Plugin):
             gevent.sleep(1)
 
             if not len(self.cache):
-                return
+                continue
 
             with self.lock:
                 Event.insert_many([
