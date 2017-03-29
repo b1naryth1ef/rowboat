@@ -66,7 +66,7 @@ class StarboardPlugin(Plugin):
         self.updates = {}
         self.locks = {}
 
-    @Plugin.command('update', '<mid:snowflake>', group='stars', level=CommandLevels.ADMIN)
+    @Plugin.command('check', '<mid:snowflake>', group='stars', level=CommandLevels.ADMIN)
     def stars_update(self, event, mid):
         StarboardEntry.update(
             dirty=True
