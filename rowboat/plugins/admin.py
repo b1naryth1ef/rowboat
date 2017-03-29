@@ -419,6 +419,7 @@ class AdminPlugin(Plugin):
         """
         Ban a user from the server (with an optional reason for the modlog)
         """
+        member = None
 
         if isinstance(user, (int, long)):
             Infraction.ban(self, event, user, reason, guild=event.guild)
@@ -435,7 +436,7 @@ class AdminPlugin(Plugin):
                 reason,
                 u':ok_hand: banned {u} (`{o}`)',
                 u':ok_hand: banned {u}',
-                u=member.user,
+                u=member.user if member else user,
             ))
 
     @Plugin.command('softban', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
