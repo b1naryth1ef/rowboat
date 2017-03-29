@@ -254,8 +254,8 @@ class StarboardEntry(BaseModel):
     @classmethod
     def add_star(cls, message_id, user_id):
         sql = '''
-            INSERT INTO starboard_entries (message_id, stars, dirty)
-            VALUES (%s, ARRAY[%s], true)
+            INSERT INTO starboard_entries (message_id, stars, blocked_stars, blocked, dirty)
+            VALUES (%s, ARRAY[%s], ARRAY[]::integer[], false, true)
             ON CONFLICT (message_id)
             DO UPDATE
                 SET stars = array_append(starboard_entries.stars, %s), dirty = true

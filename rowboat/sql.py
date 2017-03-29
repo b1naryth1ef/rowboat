@@ -32,7 +32,7 @@ class BaseModel(Model):
 
 
 def init_db():
-    database.initialize(PostgresqlExtDatabase('rowboat', user='rowboat', port=int(os.getenv('PG_PORT', 5432))))
+    database.initialize(PostgresqlExtDatabase('rowboat', user='rowboat', port=int(os.getenv('PG_PORT', 5432)), autorollback=True))
 
     for model in REGISTERED_MODELS:
         model.create_table(True)
