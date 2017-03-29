@@ -66,6 +66,18 @@ class StarboardPlugin(Plugin):
         self.updates = {}
         self.locks = {}
 
+    @Plugin.command('update', '<mid:snowflake>', group='stars', level=CommandLevels.ADMIN)
+    def stars_update(self, event, mid):
+        StarboardEntry.update(
+            dirty=True
+        ).where(
+            (StarboardEntry.message_id == mid)
+        ).execute()
+
+        self.queue_update(event.guild.id, event.config)
+
+        event.msg.reply(u'Forcing an update on message {}'.format(mid))
+
     @Plugin.command('block', '<user:user>', group='stars', level=CommandLevels.MOD)
     def stars_block(self, event, user):
         _, created = StarboardBlock.get_or_create(
