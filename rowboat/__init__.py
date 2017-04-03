@@ -1,6 +1,8 @@
 import os
+import logging
 import subprocess
 
+from disco.util.logging import LOG_FORMAT
 from raven import Client
 from raven.transport.gevent import GeventedHTTPTransport
 
@@ -17,3 +19,9 @@ raven_client = Client(
     environment=ENV,
     transport=GeventedHTTPTransport,
 )
+
+# Log things to file
+file_handler = logging.FileHandler('rowboat.log')
+log = logging.getLogger()
+file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+log.addHandler(file_handler)

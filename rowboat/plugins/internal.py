@@ -1,24 +1,33 @@
 import gevent
 from gevent.lock import Semaphore
+from datetime import datetime, timedelta
+
 
 from disco.gateway.packets import OPCode, RECV
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.models.event import Event
 
-IGNORED_EVENTS = (
-    'GUILD_MEMBERS_CHUNK',
-    'PRESENCE_UPDATE',
-    'TYPING_START'
-)
 
-
-class PostgresPlugin(Plugin):
+class EventLogPlugin(Plugin):
     def load(self, ctx):
-        super(PostgresPlugin, self).load(ctx)
+        super(EventLogPlugin, self).load(ctx)
 
         self.session_id = None
         self.lock = Semaphore()
         self.cache = []
+
+    @Plugin.schedule(300, init=False)
+    def prune_old_events(self):
+        # Keep 12 hours of PRESENCE/TYPING events
+        Event.delete().where(
+            (Event.event << ('PRESENCE_UPDATE', 'TYPING_START')) &
+            (Event.timestamp > datetime.utcnow() - timedelta(hours=12))
+        ).execute()
+
+        # And 3 days of everything else
+        Event.delete().where(
+            (Event.timestamp > datetime.utcnow() - timedelta(days=3))
+        ).execute()
 
     @Plugin.listen('Ready')
     def on_ready(self, event):
@@ -27,9 +36,6 @@ class PostgresPlugin(Plugin):
 
     @Plugin.listen_packet((RECV, OPCode.DISPATCH))
     def on_gateway_event(self, event):
-        if event['t'] in IGNORED_EVENTS:
-            return
-
         with self.lock:
             self.cache.append(event)
 

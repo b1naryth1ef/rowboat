@@ -2,3 +2,4 @@ rowboat-*.json
 config.yaml
 *.pyc
 .venv/
+rowboat.log

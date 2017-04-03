@@ -91,13 +91,6 @@ class CorePlugin(Plugin):
         on a specific guilds configuration. It is called before any handler of
         either commands or listeners.
         """
-        if isinstance(event, CommandEvent):
-            if event.command.metadata.get('global_', False):
-                return event
-        elif hasattr(func, 'subscriptions'):
-            if func.subscriptions[0].metadata.get('global_', False):
-                return event
-
         if hasattr(event, 'guild') and event.guild:
             guild_id = event.guild.id
         elif hasattr(event, 'guild_id') and event.guild_id:
@@ -106,6 +99,13 @@ class CorePlugin(Plugin):
             return
 
         if guild_id not in self.guilds:
+            if isinstance(event, CommandEvent):
+                if event.command.metadata.get('global_', False):
+                    return event
+            elif hasattr(func, 'subscriptions'):
+                if func.subscriptions[0].metadata.get('global_', False):
+                    return event
+
             return
 
         event.base_config = self.guilds[guild_id].get_config()

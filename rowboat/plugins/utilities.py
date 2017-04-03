@@ -23,7 +23,6 @@ from rowboat.util.images import get_dominant_colors_user
 CDN_URL = 'https://twemoji.maxcdn.com/2/72x72/{}.png'
 EMOJI_RE = re.compile(r'<:(.+):([0-9]+)>')
 USER_MENTION_RE = re.compile('<@!?([0-9]+)>')
-URL_REGEX = re.compile(r'(https?://[^\s]+)')
 
 
 def get_emoji_url(emoji):
@@ -38,9 +37,24 @@ class UtilitiesConfig(PluginConfig):
 
 @Plugin.with_config(UtilitiesConfig)
 class UtilitiesPlugin(Plugin):
-    @Plugin.command('coin', global_=True)
+    @Plugin.command('coin', group='random', global_=True)
     def coin(self, event):
+        """
+        Flip a coin
+        """
         event.msg.reply(random.choice(['heads', 'tails']))
+
+    @Plugin.command('number', '[end:int] [start:int]', group='random', global_=True)
+    def random_number(self, event, end=10, start=0):
+        """
+        Returns a random number
+        """
+
+        # Because someone will be an idiot
+        if end > 9223372036854775807:
+            return event.msg.reply('Ending number too big!')
+
+        event.msg.reply(str(random.randint(start, end)))
 
     @Plugin.command('cat', global_=True)
     def cat(self, event):
@@ -167,7 +181,7 @@ class UtilitiesPlugin(Plugin):
         r.raise_for_status()
         return event.msg.reply('\n'.join(fields), attachment=('emoji.png', r.content))
 
-    @Plugin.command('jumbo', '<emojis:str...>')
+    @Plugin.command('jumbo', '<emojis:str...>', global_=True)
     def jumbo(self, event, emojis):
         urls = []
 
@@ -217,29 +231,6 @@ class UtilitiesPlugin(Plugin):
             msg.timestamp
         ))
 
-    @Plugin.command('jpeg', '<url:str>', global_=True)
-    def jpeg(self, event, url):
-        url = URL_REGEX.findall(url)
-
-        if len(url) != 1:
-            return event.msg.reply('Invalid image URL')
-        url = url[0]
-
-        if url[-1] == '>':
-            url = url[:-1]
-
-        try:
-            r = requests.get(url, timeout=15)
-            r.raise_for_status()
-            img = Image.open(BytesIO(r.content))
-        except:
-            return event.msg.reply('Invalid image')
-
-        output = BytesIO()
-        img.save(output, 'jpeg', quality=1, subsampling=0)
-        output.seek(0)
-        event.msg.reply('', attachment=('image.jpg', output))
-
     @Plugin.command('info', '<query:str...>', context={'mode': 'default'}, global_=True)
     @Plugin.command('search', '<query:str...>', context={'mode': 'search'}, global_=True)
     def info(self, event, query, mode=None):
@@ -284,7 +275,7 @@ class UtilitiesPlugin(Plugin):
 
         embed.thumbnail = MessageEmbedThumbnail(url=avatar)
         embed.fields.append(
-            MessageEmbedField(name='Username', value=user.username, inline=True))
+            MessageEmbedField(name='User', value='<@{}>'.format(user.user_id), inline=True))
 
         if member:
             embed.fields.append(

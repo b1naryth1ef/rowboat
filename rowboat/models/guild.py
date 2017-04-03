@@ -98,22 +98,18 @@ class Guild(BaseModel):
         except:
             return
 
-        old = {i.user_id: i for i in GuildBan.select().where(
-            (GuildBan.guild_id == guild.id)
-        )}
-
         for ban in bans.values():
-            del old[ban.user.id]
             GuildBan.ensure(guild, ban.user, ban.reason)
 
         GuildBan.delete().where(
-            (GuildBan.user_id << old.values()) &
+            (~(GuildBan.user_id << bans.keys())) &
             (GuildBan.guild_id == guild.id)
         ).execute()
 
         # Update last synced time
         Guild.update(
-            last_ban_sync=datetime.utcnow()).where(Guild.guild_id == self.guild_id).execute()
+            last_ban_sync=datetime.utcnow()
+        ).where(Guild.guild_id == self.guild_id).execute()
 
 
 @BaseModel.register
