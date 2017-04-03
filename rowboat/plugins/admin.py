@@ -4,7 +4,7 @@ import humanize
 from peewee import fn
 from holster.emitter import Priority
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from disco.bot import CommandLevels
 from disco.types.channel import Channel
@@ -519,7 +519,8 @@ class AdminPlugin(Plugin):
         try:
             query = Message.select().where(
                 (Message.deleted >> False) &
-                (Message.channel_id == event.channel.id)
+                (Message.channel_id == event.channel.id) &
+                (Message.timestamp > (datetime.utcnow() - timedelta(days=13)))
             ).join(User).order_by(Message.timestamp.desc()).limit(size)
 
             if mode == 'bots':
