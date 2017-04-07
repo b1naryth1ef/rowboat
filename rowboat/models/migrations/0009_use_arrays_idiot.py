@@ -11,25 +11,34 @@ def backfill_column(table, old_columns, new_columns):
 
     q = table.select(
         table._meta.primary_key,
-        *new_columns
+        *old_columns
     ).tuples()
 
     idx = 0
+    modified = 0
 
     start = time.time()
     with db.transaction() as txn:
         for values in q:
             idx += 1
 
-            if idx % 1000 == 0:
-                print '[%ss] Backfilling %s %s/%s' % (time.time() - start, str(table), idx, total)
+            if idx % 10000 == 0:
+                print '[%ss] Backfilling %s %s/%s (wrote %s)' % (time.time() - start, str(table), idx, total, modified)
+
+            if modified % 1000:
                 txn.commit()
 
+            obj = {new_column.name: values[i + 1] for i, new_column in enumerate(new_columns)}
+            if not any(obj.values()):
+                continue
+
+            modified += 1
             table.update(
                 **{new_column.name: values[i + 1] for i, new_column in enumerate(new_columns)}
             ).where(table._meta.primary_key == values[0]).execute()
 
     txn.commit()
+    print 'DONE, %s scanned %s written' % (idx, modified)
 
 
 @Migrate.only_if(Migrate.missing, Message, 'mentions_new')
