@@ -29,9 +29,9 @@ class Message(BaseModel):
     deleted = BooleanField(default=False)
     num_edits = BigIntegerField(default=0)
 
-    mentions_new = ArrayField(BigIntegerField, default=[])
-    emojis_new = ArrayField(BigIntegerField, default=[])
-    attachments_new = ArrayField(TextField, default=[])
+    mentions_new = ArrayField(BigIntegerField, default=[], null=True)
+    emojis_new = ArrayField(BigIntegerField, default=[], null=True)
+    attachments_new = ArrayField(TextField, default=[], null=True)
 
     mentions = BinaryJSONField(default=[], null=True)
     emojis = BinaryJSONField(default=[], null=True)
