@@ -26,7 +26,7 @@ from rowboat.models.message import Message, MessageArchive
 CUSTOM_EMOJI_STATS_SERVER_SQL = """
 SELECT gm.emoji_id, gm.name, count(*) FROM guildemojis gm
 JOIN messages m ON m.emojis @> ARRAY[gm.emoji_id]
-WHERE gm.guild_id={guild} AND m.guild_id={guild}
+WHERE gm.deleted=false AND gm.guild_id={guild} AND m.guild_id={guild}
 GROUP BY 1, 2
 ORDER BY 3 {}
 LIMIT 30
@@ -35,7 +35,7 @@ LIMIT 30
 CUSTOM_EMOJI_STATS_GLOBAL_SQL = """
 SELECT gm.emoji_id, gm.name, count(*) FROM guildemojis gm
 JOIN messages m ON m.emojis @> ARRAY[gm.emoji_id]
-WHERE gm.guild_id={guild}
+WHERE gm.deleted=false AND gm.guild_id={guild}
 GROUP BY 1, 2
 ORDER BY 3 {}
 LIMIT 30
