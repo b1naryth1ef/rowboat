@@ -19,22 +19,26 @@ from rowboat.types import Field, ListField, snowflake, SlottedModel
 from rowboat.types.plugin import PluginConfig
 from rowboat.plugins.modlog import Actions
 from rowboat.models.user import User, Infraction
-from rowboat.models.guild import GuildMemberBackup, GuildBan
+from rowboat.models.guild import GuildMemberBackup, GuildBan, GuildEmoji
 from rowboat.models.message import Message, MessageArchive
 
 
-EMOJI_STATS_SQL = """
-WITH emojis AS (
-    SELECT jsonb_array_elements_text(emojis) as id
-    FROM messages WHERE guild_id={gid} AND jsonb_array_length(emojis) > 0
-)
-SELECT gm.emoji_id, count(*), gm.name
-FROM emojis
-JOIN guildemojis gm ON gm.emoji_id=emojis.id::bigint
-WHERE gm.guild_id={gid}
-GROUP BY gm.emoji_id
-{}
-LIMIT 10;
+CUSTOM_EMOJI_STATS_SERVER_SQL = """
+SELECT gm.emoji_id, gm.name, count(*) FROM guildemojis gm
+JOIN messages m ON m.emojis @> ARRAY[gm.emoji_id]
+WHERE gm.guild_id={guild} AND m.guild_id={guild}
+GROUP BY 1, 2
+ORDER BY 3 {}
+LIMIT 30
+"""
+
+CUSTOM_EMOJI_STATS_GLOBAL_SQL = """
+SELECT gm.emoji_id, gm.name, count(*) FROM guildemojis gm
+JOIN messages m ON m.emojis @> ARRAY[gm.emoji_id]
+WHERE gm.guild_id={guild}
+GROUP BY 1, 2
+ORDER BY 3 {}
+LIMIT 30
 """
 
 
@@ -594,25 +598,26 @@ class AdminPlugin(Plugin):
         embed.color = get_dominant_colors_user(user)
         event.msg.reply('', embed=embed)
 
-    @Plugin.command('emojistats most', level=CommandLevels.MOD, context={'mode': 'most'})
-    @Plugin.command('emojistats least', level=CommandLevels.MOD, context={'mode': 'least'})
-    def emojistats(self, event, mode='default'):
-        """
-        Displays the most or least used emojis on the server
-        """
-        # TODO
-        return
-        if mode == 'most':
-            sql = EMOJI_STATS_SQL.format('ORDER BY 2 DESC', gid=event.guild.id)
-        else:
-            sql = EMOJI_STATS_SQL.format('ORDER BY 2 ASC', gid=event.guild.id)
+    @Plugin.command('emojistats', '<mode:str> <sort:str>', level=CommandLevels.MOD)
+    def emojistats_custom(self, event, mode, sort):
+        if mode not in ('server', 'global'):
+            return event.msg.reply(':warning: invalid emoji mode, valid modes are "server" and "global"')
 
-        q = list(Message.raw(sql).tuples())
+        if sort not in ('least', 'most'):
+            return event.msg.reply(':warning: invalid emoji sort, valid sort are "least" and "most"')
+
+        order = 'DESC' if sort == 'most' else 'ASC'
+
+        if mode == 'server':
+            q = CUSTOM_EMOJI_STATS_SERVER_SQL.format(order, guild=event.guild.id)
+        else:
+            q = CUSTOM_EMOJI_STATS_GLOBAL_SQL.format(order, guild=event.guild.id)
+
+        q = list(GuildEmoji.raw(q).tuples())
 
         tbl = MessageTable()
         tbl.set_header('Count', 'Name', 'ID')
-
-        for emoji_id, count, name in q:
+        for emoji_id, name, count in q:
             tbl.add(count, name, emoji_id)
 
         event.msg.reply(tbl.compile())
