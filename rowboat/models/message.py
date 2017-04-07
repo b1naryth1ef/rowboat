@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from playhouse.postgres_ext import BinaryJSONField, ArrayField
 from disco.types.base import UNSET
 
+from rowboat.util import default_json
 from rowboat.models.user import User
 from rowboat.sql import BaseModel
 
@@ -79,7 +80,7 @@ class Message(BaseModel):
             to_update['attachments_new'] = to_update['attachments'] = [i.url for i in obj.attachments.values()]
 
         if obj.embeds is not UNSET:
-            to_update['embeds'] = [i.to_dict() for i in obj.embeds]
+            to_update['embeds'] = [json.dumps(i.to_dict(), default=default_json) for i in obj.embeds]
 
         cls.update(**to_update).where(cls.id == obj.id).execute()
 
@@ -101,7 +102,7 @@ class Message(BaseModel):
                 new_emojis=list(map(int, EMOJI_RE.findall(obj.content))),
                 attachments=[i.url for i in obj.attachments.values()],
                 new_attachments=[i.url for i in obj.attachments.values()],
-                embeds=[i.to_dict() for i in obj.embeds]))
+                embeds=[json.dumps(i.to_dict(), default=default_json) for i in obj.embeds]))
 
         for user in obj.mentions.values():
             User.from_disco_user(user)
@@ -125,6 +126,7 @@ class Message(BaseModel):
             'emojis_new': list(map(int, EMOJI_RE.findall(obj.content))),
             'attachments': [i.url for i in obj.attachments.values()],
             'attachments_new': [i.url for i in obj.attachments.values()],
+            'embeds': [json.dumps(i.to_dict(), default=default_json) for i in obj.embeds],
         } for obj in objs]).execute()
 
     @classmethod

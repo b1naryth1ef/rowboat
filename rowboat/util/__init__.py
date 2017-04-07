@@ -2,6 +2,7 @@ import re
 import yaml
 from collections import OrderedDict
 
+from datetime import datetime
 from gevent.local import local
 
 ZERO_WIDTH_SPACE = u'\u200B'
@@ -49,3 +50,9 @@ class MetaException(Exception):
         self.msg = msg
         self.metadata = metadata
         super(MetaException, self).__init__(msg)
+
+
+def default_json(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return TypeError('Type %s is not serializable' % type(obj))
