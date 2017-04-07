@@ -29,9 +29,15 @@ class Message(BaseModel):
     deleted = BooleanField(default=False)
     num_edits = BigIntegerField(default=0)
 
+    mentions_new = ArrayField(BigIntegerField, default=[])
+    emojis_new = ArrayField(BigIntegerField, default=[])
+    attachments_new = ArrayField(TextField, default=[])
+
     mentions = BinaryJSONField(default=[], null=True)
     emojis = BinaryJSONField(default=[], null=True)
     attachments = BinaryJSONField(default=[], null=True)
+
+    embeds = BinaryJSONField(default=[], null=True)
 
     SQL = '''
         CREATE INDEX\
@@ -61,14 +67,19 @@ class Message(BaseModel):
         to_update = {
             'edited_timestamp': obj.edited_timestamp,
             'num_edits': cls.num_edits + 1,
+            'mentions': list(obj.mentions.keys()),
+            'mentions_new': list(obj.mentions.keys()),
         }
 
         if obj.content is not UNSET:
             to_update['content'] = obj.with_proper_mentions
-            to_update['emojis'] = list(map(int, EMOJI_RE.findall(obj.content)))
+            to_update['emojis_new'] = to_update['emojis'] = list(map(int, EMOJI_RE.findall(obj.content)))
 
         if obj.attachments is not UNSET:
-            to_update['attachments'] = [i.url for i in obj.attachments.values()]
+            to_update['attachments_new'] = to_update['attachments'] = [i.url for i in obj.attachments.values()]
+
+        if obj.embeds is not UNSET:
+            to_update['embeds'] = [i.to_dict() for i in obj.embeds]
 
         cls.update(**to_update).where(cls.id == obj.id).execute()
 
@@ -85,8 +96,12 @@ class Message(BaseModel):
                 edited_timestamp=obj.edited_timestamp,
                 num_edits=(0 if not obj.edited_timestamp else 1),
                 mentions=list(obj.mentions.keys()),
+                mentions_new=list(obj.mentions.keys()),
                 emojis=list(map(int, EMOJI_RE.findall(obj.content))),
-                attachments=[i.url for i in obj.attachments.values()]))
+                new_emojis=list(map(int, EMOJI_RE.findall(obj.content))),
+                attachments=[i.url for i in obj.attachments.values()],
+                new_attachments=[i.url for i in obj.attachments.values()],
+                embeds=[i.to_dict() for i in obj.embeds]))
 
         for user in obj.mentions.values():
             User.from_disco_user(user)
@@ -105,8 +120,11 @@ class Message(BaseModel):
             'edited_timestamp': obj.edited_timestamp,
             'num_edits': (0 if not obj.edited_timestamp else 1),
             'mentions': list(obj.mentions.keys()),
+            'mentions_new': list(obj.mentions.keys()),
             'emojis': list(map(int, EMOJI_RE.findall(obj.content))),
+            'emojis_new': list(map(int, EMOJI_RE.findall(obj.content))),
             'attachments': [i.url for i in obj.attachments.values()],
+            'attachments_new': [i.url for i in obj.attachments.values()],
         } for obj in objs]).execute()
 
     @classmethod
