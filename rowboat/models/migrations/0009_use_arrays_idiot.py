@@ -2,16 +2,15 @@ from rowboat.models.migrations import Migrate
 from rowboat.models.message import Message
 
 from rowboat.sql import database as db
-from playhouse.postgres_ext import ServerSide
 
 
 def backfill_column(table, old_column, new_column, apply_func=None):
     total = table.select().count()
 
-    q = ServerSide(table.select(
+    q = table.select(
         table._meta.primary_key,
         old_column
-    )).tuples()
+    ).tuples()
 
     idx = 0
 
@@ -25,7 +24,7 @@ def backfill_column(table, old_column, new_column, apply_func=None):
                 txn.commit()
 
             table.update(
-                **{new_column: new_value}
+                **{new_column.name: new_value}
             ).where(table._meta.primary_key == oid).execute()
 
     txn.commit()
@@ -42,8 +41,8 @@ def add_guild_columns(m):
     )
 
 
-@Migrate.always
-def backfill_data():
+@Migrate.always()
+def backfill_data(m):
     backfill_column(Message, Message.mentions, Message.mentions_new)
     backfill_column(Message, Message.emojis, Message.emojis_new)
     backfill_column(Message, Message.attachments, Message.attachments_new)
