@@ -539,6 +539,8 @@ class AdminPlugin(Plugin):
         """
         Displays a users message stats
         """
+        # TODO
+        return
         # TODO:  stars?
         base_query = Message.select().where(
             (Message.author_id == user.id)
@@ -598,6 +600,8 @@ class AdminPlugin(Plugin):
         """
         Displays the most or least used emojis on the server
         """
+        # TODO
+        return
         if mode == 'most':
             sql = EMOJI_STATS_SQL.format('ORDER BY 2 DESC', gid=event.guild.id)
         else:

@@ -46,7 +46,6 @@ class CommandsConfig(SlottedModel):
 
 class GuildConfig(SlottedModel):
     nickname = Field(text)
-
     commands = Field(CommandsConfig, default=None, create=False)
     levels = DictField(int, int)
     plugins = Field(PluginsConfig.parse)

@@ -30,14 +30,9 @@ class Message(BaseModel):
     deleted = BooleanField(default=False)
     num_edits = BigIntegerField(default=0)
 
-    mentions_new = ArrayField(BigIntegerField, default=[], null=True)
-    emojis_new = ArrayField(BigIntegerField, default=[], null=True)
-    attachments_new = ArrayField(TextField, default=[], null=True)
-
-    mentions = BinaryJSONField(default=[], null=True)
-    emojis = BinaryJSONField(default=[], null=True)
-    attachments = BinaryJSONField(default=[], null=True)
-
+    mentions = ArrayField(BigIntegerField, default=[], null=True)
+    emojis = ArrayField(BigIntegerField, default=[], null=True)
+    attachments = ArrayField(TextField, default=[], null=True)
     embeds = BinaryJSONField(default=[], null=True)
 
     SQL = '''
@@ -69,15 +64,14 @@ class Message(BaseModel):
             'edited_timestamp': obj.edited_timestamp,
             'num_edits': cls.num_edits + 1,
             'mentions': list(obj.mentions.keys()),
-            'mentions_new': list(obj.mentions.keys()),
         }
 
         if obj.content is not UNSET:
             to_update['content'] = obj.with_proper_mentions
-            to_update['emojis_new'] = to_update['emojis'] = list(map(int, EMOJI_RE.findall(obj.content)))
+            to_update['emojis'] = list(map(int, EMOJI_RE.findall(obj.content)))
 
         if obj.attachments is not UNSET:
-            to_update['attachments_new'] = to_update['attachments'] = [i.url for i in obj.attachments.values()]
+            to_update['attachments'] = [i.url for i in obj.attachments.values()]
 
         if obj.embeds is not UNSET:
             to_update['embeds'] = [json.dumps(i.to_dict(), default=default_json) for i in obj.embeds]
@@ -97,11 +91,8 @@ class Message(BaseModel):
                 edited_timestamp=obj.edited_timestamp,
                 num_edits=(0 if not obj.edited_timestamp else 1),
                 mentions=list(obj.mentions.keys()),
-                mentions_new=list(obj.mentions.keys()),
                 emojis=list(map(int, EMOJI_RE.findall(obj.content))),
-                new_emojis=list(map(int, EMOJI_RE.findall(obj.content))),
                 attachments=[i.url for i in obj.attachments.values()],
-                new_attachments=[i.url for i in obj.attachments.values()],
                 embeds=[json.dumps(i.to_dict(), default=default_json) for i in obj.embeds]))
 
         for user in obj.mentions.values():
@@ -121,11 +112,8 @@ class Message(BaseModel):
             'edited_timestamp': obj.edited_timestamp,
             'num_edits': (0 if not obj.edited_timestamp else 1),
             'mentions': list(obj.mentions.keys()),
-            'mentions_new': list(obj.mentions.keys()),
             'emojis': list(map(int, EMOJI_RE.findall(obj.content))),
-            'emojis_new': list(map(int, EMOJI_RE.findall(obj.content))),
             'attachments': [i.url for i in obj.attachments.values()],
-            'attachments_new': [i.url for i in obj.attachments.values()],
             'embeds': [json.dumps(i.to_dict(), default=default_json) for i in obj.embeds],
         } for obj in objs]).execute()
 
