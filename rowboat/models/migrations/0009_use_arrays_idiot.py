@@ -2,7 +2,7 @@ from rowboat.models.migrations import Migrate
 from rowboat.models.message import Message
 
 from rowboat.sql import database as db
-from postgres_ext import ServerSide
+from playhouse.postgres_ext import ServerSide
 
 
 def backfill_column(table, old_column, new_column, apply_func=None):
