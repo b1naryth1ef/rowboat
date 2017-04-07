@@ -1,31 +1,33 @@
+import time
+
 from rowboat.models.migrations import Migrate
 from rowboat.models.message import Message
 
 from rowboat.sql import database as db
 
 
-def backfill_column(table, old_column, new_column, apply_func=None):
+def backfill_column(table, old_columns, new_columns):
     total = table.select().count()
 
     q = table.select(
         table._meta.primary_key,
-        old_column
+        *new_columns
     ).tuples()
 
     idx = 0
 
+    start = time.time()
     with db.transaction() as txn:
-        for oid, old_value in q:
+        for values in q:
             idx += 1
-            new_value = apply_func(old_value) if apply_func else old_value
 
             if idx % 1000 == 0:
-                print 'Backfilling %s %s/%s' % (str(table), idx, total)
+                print '[%ss] Backfilling %s %s/%s' % (time.time() - start, str(table), idx, total)
                 txn.commit()
 
             table.update(
-                **{new_column.name: new_value}
-            ).where(table._meta.primary_key == oid).execute()
+                **{new_column.name: values[i + 1] for i, new_column in enumerate(new_columns)}
+            ).where(table._meta.primary_key == values[0]).execute()
 
     txn.commit()
 
@@ -43,6 +45,7 @@ def add_guild_columns(m):
 
 @Migrate.always()
 def backfill_data(m):
-    backfill_column(Message, Message.mentions, Message.mentions_new)
-    backfill_column(Message, Message.emojis, Message.emojis_new)
-    backfill_column(Message, Message.attachments, Message.attachments_new)
+    backfill_column(
+        Message,
+        [Message.mentions, Message.emojis, Message.attachments],
+        [Message.mentions_new, Message.emojis_new, Message.attachments_new])
