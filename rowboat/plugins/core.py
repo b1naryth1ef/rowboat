@@ -299,7 +299,7 @@ class CorePlugin(Plugin):
             elif config and config.commands and command.plugin != self:
                 overrides = reduce(lambda a, b: a.update(b), list(config.commands.get_command_override(command)))
 
-                if overrides['disabled']:
+                if overrides.get('disabled'):
                     continue
 
                 level = overrides.get('level', level)
