@@ -554,10 +554,10 @@ class AdminPlugin(Plugin):
 
             print rated
 
-            if rated[0][0] > 70:
+            if rated[0][0] > 40:
                 if len(rated) == 1:
                     role_obj = rated[0][1]
-                elif rated[1][0] < 70:
+                elif rated[1][0] < 40:
                     role_obj = rated[0][1]
 
         if not role_obj:
