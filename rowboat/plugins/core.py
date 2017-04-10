@@ -297,7 +297,9 @@ class CorePlugin(Plugin):
             if guild and not config and command.triggers[0] != 'setup':
                 continue
             elif config and config.commands and command.plugin != self:
-                overrides = reduce(lambda a, b: a.update(b), list(config.commands.get_command_override(command)))
+                overrides = {}
+                for obj in config.commands.get_command_override(command):
+                    overrides.update(obj)
 
                 if overrides.get('disabled'):
                     continue
