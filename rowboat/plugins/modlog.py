@@ -342,7 +342,8 @@ class ModLogPlugin(Plugin):
         debounce = self.get_debounce(event.guild.id, event.user.id, 'restore')
         self.delete_debounce(event.guild.id, event.user.id, 'restore')
 
-        if pre_member.nick or event.nick and pre_member.nick != event.nick:
+        print '`{}` != `{}`'.format(pre_member.nick, event.nick)
+        if (pre_member.nick or event.nick) and pre_member.nick != event.nick:
             if not pre_member.nick:
                 if not debounce:
                     self.log_action(
@@ -363,6 +364,7 @@ class ModLogPlugin(Plugin):
 
         pre_roles = set(pre_member.roles)
         post_roles = set(event.roles)
+        print '{} / {}'.format(pre_roles, post_roles)
         if pre_roles != post_roles:
             added = post_roles - pre_roles
             removed = pre_roles - post_roles
@@ -386,7 +388,15 @@ class ModLogPlugin(Plugin):
                                 actor=mute_debounce['actor'],
                                 reason=mute_debounce['reason'])
                     else:
-                        self.log_action(Actions.GUILD_MEMBER_ROLES_ADD, event, role=role)
+                        role_add_debounce = self.pop_debounce(event.guild.id, event.user.id, 'add_role')
+                        if role_add_debounce:
+                            self.log_action(Actions.GUILD_MEMBER_ROLES_ADD_REASON,
+                                event,
+                                role=role,
+                                actor=role_add_debounce['actor'],
+                                reason=role_add_debounce['reason'])
+                        else:
+                            self.log_action(Actions.GUILD_MEMBER_ROLES_ADD, event, role=role)
 
             unmute_debounce = self.pop_debounce(event.guild.id, event.user.id, 'unmuted')
 
@@ -394,7 +404,15 @@ class ModLogPlugin(Plugin):
                 if unmute_debounce and role.id in unmute_debounce['roles']:
                     self.log_action(Actions.MEMBER_UNMUTED, event, actor=unmute_debounce['actor'])
                 else:
-                    self.log_action(Actions.GUILD_MEMBER_ROLES_RMV, event, role=role)
+                    role_rmv_debounce = self.pop_debounce(event.guild.id, event.user.id, 'remove_role')
+                    if role_rmv_debounce:
+                        self.log_action(Actions.GUILD_MEMBER_ROLES_RMV_REASON,
+                            event,
+                            role=role,
+                            actor=role_rmv_debounce['actor'],
+                            reason=role_rmv_debounce['reason'])
+                    else:
+                        self.log_action(Actions.GUILD_MEMBER_ROLES_RMV, event, role=role)
 
     @Plugin.listen('PresenceUpdate', priority=Priority.BEFORE, metadata={'global_': True})
     def on_presence_update(self, event):

@@ -539,10 +539,10 @@ class AdminPlugin(Plugin):
         finally:
             lock.release()
 
-    @Plugin.command('role add', '<user:user> <role:str>', level=CommandLevels.MOD, context={'mode': 'add'})
-    @Plugin.command('role rmv', '<user:user> <role:str>', level=CommandLevels.MOD, context={'mode': 'remove'})
-    @Plugin.command('role remove', '<user:user> <role:str>', level=CommandLevels.MOD, context={'mode': 'remove'})
-    def role_add(self, event, user, role, mode=None):
+    @Plugin.command('role add', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'add'})
+    @Plugin.command('role rmv', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'remove'})
+    @Plugin.command('role remove', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'remove'})
+    def role_add(self, event, user, role, reason=None, mode=None):
         role_obj = None
 
         if role.isdigit() and int(role) in event.guild.roles.keys():
@@ -570,10 +570,14 @@ class AdminPlugin(Plugin):
         elif mode == 'remove' and role_obj.id not in member.roles:
             return event.msg.reply(u':warning: {} doesn\'t have the {} role'.format(member, role_obj.name))
 
+        self.bot.plugins.get('ModLogPlugin').create_debounce(
+            event, member.user, mode + '_role', actor=event.author, reason=reason or 'no reason')
+
         if mode == 'add':
             member.add_role(role_obj.id)
         else:
             member.remove_role(role_obj.id)
+
         event.msg.reply(u':ok_hand: {} role {} to {}'.format('added' if mode == 'add' else 'removed',
             role_obj.name,
             member))

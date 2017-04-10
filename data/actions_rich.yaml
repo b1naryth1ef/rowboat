@@ -86,6 +86,17 @@ GUILD_MEMBER_ROLES_ADD:
     role-id: '`{role.id}`'
   text: 'user was added to a role'
 
+GUILD_MEMBER_ROLES_ADD_REASON:
+  color: green
+  fields:
+    user: '{e.user}'
+    user-id: '`{e.user.id}`'
+    role: '{role.name}'
+    role-id: '`{role.id}`'
+    admin: '{actor}'
+    reason: '{reason}'
+  text: 'user was added to a role'
+
 GUILD_MEMBER_ROLES_RMV:
   color: red
   fields:
@@ -93,6 +104,17 @@ GUILD_MEMBER_ROLES_RMV:
     user-id: '`{e.user.id}`'
     role: '{role.name}'
     role-id: '`{role.id}`'
+  text: 'user was removed from a role'
+
+GUILD_MEMBER_ROLES_RMV_REASON:
+  color: red
+  fields:
+    user: '{e.user}'
+    user-id: '`{e.user.id}`'
+    role: '{role.name}'
+    role-id: '`{role.id}`'
+    admin: '{actor}'
+    reason: '{reason}'
   text: 'user was removed from a role'
 
 GUILD_MEMBER_AVATAR_CHANGE:
