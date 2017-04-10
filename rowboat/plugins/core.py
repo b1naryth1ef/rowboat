@@ -7,10 +7,10 @@ import inspect
 
 from datetime import datetime, timedelta
 from holster.emitter import Priority
+from disco.types.message import MessageEmbed
 from disco.api.http import APIException
 from disco.bot.command import CommandEvent
 
-from rowboat import REV
 from rowboat.util import C, LocalProxy
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import RowboatPlugin
@@ -25,10 +25,9 @@ ENV = os.getenv('ENV', 'local')
 
 PY_CODE_BLOCK = u'```py\n{}\n```'
 
-INFO_MESSAGE = '''\
-:information_source: Rowboat V{} - more information and detailed help can be found here:\
-<https://github.com/b1naryth1ef/rowboat/wiki>
-'''.format(REV)
+BOT_INFO = '''
+Rowboat is a moderation and utilitarian Bot built for large Discord servers.
+'''
 
 
 class CorePlugin(Plugin):
@@ -386,6 +385,15 @@ class CorePlugin(Plugin):
                     guild=self.state.guilds[gid])
             except:
                 self.log.exception('Failed to force ban %s in %s', user, gid)
+
+    @Plugin.command('about')
+    def command_about(self, event):
+        embed = MessageEmbed()
+        embed.set_author(name='Rowboat', icon_url=self.client.state.me.avatar_url, url='https://docs.rowboat.party/')
+        embed.description = BOT_INFO
+        embed.add_field(name='Servers', value=str(Guild.select().count()), inline=True)
+        embed.add_field(name='Uptime', value=humanize.naturaltime(datetime.utcnow() - self.startup), inline=True)
+        event.msg.reply('', embed=embed)
 
     @Plugin.command('uptime', level=-1)
     def command_uptime(self, event):
