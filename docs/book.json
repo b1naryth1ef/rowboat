@@ -1,0 +1,10 @@
+{
+  "title": "Rowboat",
+  "plugins": ["prism", "-highlight", "hints"],
+	"pluginsConfig": {
+			"anchorjs": {
+					"placement": "left",
+					"visible": "always"
+			}
+	}
+}
