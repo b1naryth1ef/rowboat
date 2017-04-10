@@ -557,7 +557,7 @@ class AdminPlugin(Plugin):
             if rated[0][0] > 40:
                 if len(rated) == 1:
                     role_obj = rated[0][1]
-                elif rated[0][0] - rated[1][0] > 25:
+                elif rated[0][0] - rated[1][0] > 20:
                     role_obj = rated[0][1]
 
         if not role_obj:
