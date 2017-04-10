@@ -1,6 +1,8 @@
+import fnmatch
+
 from holster.enum import Enum
 
-from rowboat.types import Model, SlottedModel, Field, DictField, text
+from rowboat.types import Model, SlottedModel, Field, DictField, text, raw
 
 CooldownMode = Enum(
     'GUILD',
@@ -25,23 +27,18 @@ class PluginsConfig(Model):
         return inst
 
 
-class CommandCooldownConfig(SlottedModel):
-    mode = Field(CooldownMode, default=CooldownMode.USER)
-    limit = Field(int)
-    per = Field(int)
-
-
 class CommandOverrideConfig(SlottedModel):
     disabled = Field(bool, default=False)
     level = Field(int)
-    cooldown = Field(CommandCooldownConfig)
 
 
 class CommandsConfig(SlottedModel):
     prefix = Field(str, default='')
     mention = Field(bool, default=False)
-    overrides = DictField(str, CommandOverrideConfig)
-    cooldown = Field(CommandCooldownConfig)
+    overrides = Field(raw)
+
+    def get_command_override(self, command):
+        return rule_matcher(command, self.overrides or [])
 
 
 class GuildConfig(SlottedModel):
@@ -50,6 +47,51 @@ class GuildConfig(SlottedModel):
     levels = DictField(int, int)
     plugins = Field(PluginsConfig.parse)
 
-    # TODO
-    def validate(self):
-        pass
+
+class RuleException(Exception):
+    pass
+
+
+_RULES = {
+    'gt': ((int, float), lambda a, b: a > b),
+    'lt': ((int, float), lambda a, b: a < b),
+    'match': ((str, unicode), lambda a, b: fnmatch.fnmatch(a, b)),
+}
+
+
+def get_object_path(obj, path):
+    if '.' not in path:
+        return getattr(obj, path)
+    key, rest = path.split('.', 1)
+    return get_object_path(getattr(obj, key), rest)
+
+
+def rule_matcher(obj, rules):
+    for rule in rules:
+        for field_name, field_rule in rule.items():
+            if field_name == 'out':
+                continue
+
+            field_value = get_object_path(obj, field_name)
+
+            if isinstance(field_rule, dict):
+                matched = True
+
+                for rule_filter, b in field_rule.items():
+                    if rule_filter not in _RULES:
+                        raise RuleException('unknown rule filter {}'.format(rule_filter))
+
+                    typs, func = _RULES[rule_filter]
+                    if not isinstance(field_value, typs):
+                        raise RuleException('invalid type for rule filter, have {} but want {}'.format(type(field_value), typs))
+
+                    if not func(field_value, b):
+                        matched = False
+                        break
+
+                if not matched:
+                    break
+            elif field_value != field_rule:
+                break
+        else:
+            yield rule['out']

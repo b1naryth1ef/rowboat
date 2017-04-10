@@ -297,15 +297,12 @@ class CorePlugin(Plugin):
             if guild and not config and command.triggers[0] != 'setup':
                 continue
             elif config and config.commands and command.plugin != self:
-                if command.triggers[0] in config.commands.overrides or '*' in config.commands.overrides:
-                    override = config.commands.overrides.get(
-                        command.triggers[0],
-                        config.commands.overrides.get('*'))
-                    if override.disabled:
-                        continue
+                overrides = reduce(lambda a, b: a.update(b), list(config.commands.get_command_override(command)))
 
-                    if override.level is not None:
-                        level = override.level
+                if overrides['disabled']:
+                    continue
+
+                level = overrides.get('level', level)
 
             if not global_admin and user_level < level:
                 continue

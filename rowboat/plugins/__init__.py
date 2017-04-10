@@ -95,3 +95,7 @@ class RowboatPlugin(RavenPlugin, Plugin):
             # PluginsConfig._fields[name].default = None
             return plugin_cls
         return deco
+
+    @property
+    def name(self):
+        return self.__class__.__name__.replace('Plugin', '').lower()
