@@ -14,6 +14,7 @@ from holster.emitter import Priority
 from datetime import datetime
 from collections import defaultdict
 
+from disco.bot import CommandLevels
 from disco.types import UNSET
 from disco.types.message import MessageEmbed, MessageEmbedField
 from disco.util.functional import cached_property
@@ -151,6 +152,7 @@ class ModLogPlugin(Plugin):
             self.action_simple = ctx['action_simple']
 
         self.debounce = ctx.get('debounce', defaultdict(lambda: defaultdict(dict)))
+        self.hushed = {}
 
         super(ModLogPlugin, self).load(ctx)
 
@@ -235,6 +237,22 @@ class ModLogPlugin(Plugin):
                     'channel': channel,
                     'guild.channels.keys': list(guild.channels.keys()),
                 })
+
+    @Plugin.command('hush', group='modlog', level=CommandLevels.ADMIN)
+    def command_hush(self, event):
+        if event.guild.id in self.hushed:
+            return event.msg.reply(':warning: modlog is already hushed')
+
+        self.hushed[event.guild.id] = True
+        event.msg.reply(':white_check_mark: modlog has been hushed, do your dirty work in peace')
+
+    @Plugin.command('unhush', group='modlog', level=CommandLevels.ADMIN)
+    def command_unhush(self, event):
+        if event.guild.id not in self.hushed:
+            return event.msg.reply(':warning: modlog is not hushed')
+
+        del self.hushed[event.guild.id]
+        event.msg.reply(':white_check_mark: modlog has been unhushed, shhhhh... nobody saw anything')
 
     @Plugin.schedule(120)
     def cleanup_debounce(self):
@@ -506,6 +524,9 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
+        if event.guild.id in self.hushed:
+            return
+
         try:
             msg = Message.get(Message.id == event.id)
         except Message.DoesNotExist:
@@ -537,6 +558,9 @@ class ModLogPlugin(Plugin):
     def on_message_delete_bulk(self, event):
         channel = self.state.channels.get(event.channel_id)
         if not channel:
+            return
+
+        if event.guild.id in self.hushed:
             return
 
         archive = MessageArchive.create_from_message_ids(event.ids)
