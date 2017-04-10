@@ -79,8 +79,9 @@ class ModLogConfig(PluginConfig):
 class Formatter(string.Formatter):
     def convert_field(self, value, conversion):
         if conversion == 'z':
-            return escape_codeblocks(str(value))
-        return super(Formatter, self).convert_field(value, conversion)
+            return escape_codeblocks(unicode(value))
+        return unicode(value)
+        # return super(Formatter, self).convert_field(value, conversion)
 
 
 @Plugin.with_config(ModLogConfig)
@@ -513,7 +514,8 @@ class ModLogPlugin(Plugin):
                 author=msg.author,
                 author_id=msg.author.id,
                 channel=channel,
-                msg=filter_urls(msg.content))
+                msg=filter_urls(msg.content),
+                attachments='' if not msg.attachments else u'({} attachments)'.format(len(msg.attachments)))
 
     @Plugin.listen('MessageDeleteBulk')
     def on_message_delete_bulk(self, event):

@@ -80,7 +80,7 @@ MESSAGE_EDIT:
 
 MESSAGE_DELETE:
   emoji: wastebasket
-  format: "{author} (`{author.id}`) message deleted in **{channel}**:\n{msg!z}"
+  format: "{author} (`{author.id}`) message deleted in **{channel}**:\n{msg!z} {attachments}"
 
 MESSAGE_DELETE_BULK:
   emoji: wastebasket
