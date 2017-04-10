@@ -102,7 +102,7 @@ class Guild(BaseModel):
             GuildBan.ensure(guild, ban.user, ban.reason)
 
         GuildBan.delete().where(
-            (~(GuildBan.user_id << bans.keys())) &
+            (~(GuildBan.user_id << list(bans.keys()))) &
             (GuildBan.guild_id == guild.id)
         ).execute()
 
