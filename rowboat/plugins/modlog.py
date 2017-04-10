@@ -2,6 +2,7 @@ import re
 import six
 import time
 import pytz
+import string
 import requests
 import operator
 import humanize
@@ -22,7 +23,7 @@ from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.message import Message, MessageArchive
-from rowboat.util import ordered_load, C, MetaException
+from rowboat.util import ordered_load, escape_codeblocks, C, MetaException
 
 
 Actions = Enum()
@@ -75,8 +76,17 @@ class ModLogConfig(PluginConfig):
         return reduce(operator.or_, (i.subscribed for i in self.channels.values())) if self.channels else set()
 
 
+class Formatter(string.Formatter):
+    def convert_field(self, value, conversion):
+        if conversion == 'z':
+            return escape_codeblocks(str(value))
+        return super(Formatter, self).convert_field(value, conversion)
+
+
 @Plugin.with_config(ModLogConfig)
 class ModLogPlugin(Plugin):
+    fmt = Formatter()
+
     def create_debounce(self, event, user, typ, **kwargs):
         kwargs.update({
             'type': typ,
@@ -190,9 +200,12 @@ class ModLogPlugin(Plugin):
         def generate_simple(config):
             info = self.action_simple.get(action)
 
+            contents = self.fmt.format(six.text_type(info['format']), e=event, **details)
+
             msg = u':{}: {}'.format(
                 info['emoji'],
-                C(six.text_type(info['format']).format(e=event, **details)))
+                C(contents),
+            )
 
             if config.timestamps:
                 ts = pytz.utc.localize(datetime.utcnow()).astimezone(config.tz)

@@ -12,15 +12,15 @@ GUILD_BAN_ADD:
 
 GUILD_SOFTBAN_ADD:
   emoji: rotating_light
-  format: '{e.user} (`{e.user.id}`) was soft-banned by **{actor}**: `{reason}`'
+  format: '{e.user} (`{e.user.id}`) was soft-banned by **{actor}**: `{reason!z}`'
 
 GUILD_TEMPBAN_ADD:
   emoji: rotating_light
-  format: '{e.user} (`{e.user.id}`) was temp-banned until {expires} by **{actor}**: `{reason}`'
+  format: '{e.user} (`{e.user.id}`) was temp-banned until {expires} by **{actor}**: `{reason!z}`'
 
 GUILD_BAN_ADD_REASON:
   emoji: rotating_light
-  format: '{e.user} (`{e.user.id}`) was banned by **{actor}**: `{reason}`'
+  format: '{e.user} (`{e.user.id}`) was banned by **{actor}**: `{reason!z}`'
 
 GUILD_BAN_REMOVE:
   emoji: rotating_light
@@ -36,7 +36,7 @@ GUILD_MEMBER_REMOVE:
 
 GUILD_MEMBER_KICK:
   emoji: boot
-  format: '{e.user} (`{e.user.id}`) was kicked by **{actor}**: `{reason}`'
+  format: '{e.user} (`{e.user.id}`) was kicked by **{actor}**: `{reason!z}`'
 
 GUILD_MEMBER_ROLES_ADD:
   emoji: key
@@ -60,27 +60,27 @@ GUILD_ROLE_DELETE:
 
 ADD_NICK:
   emoji: name_badge
-  format: '{e.user} (`{e.user.id}`) added nickname `{nickname}`'
+  format: '{e.user} (`{e.user.id}`) added nickname `{nickname!z}`'
 
 RMV_NICK:
   emoji: name_badge
-  format: '{e.user} (`{e.user.id}`) removed nickname `{nickname}`'
+  format: '{e.user} (`{e.user.id}`) removed nickname `{nickname!z}`'
 
 CHANGE_NICK:
   emoji: name_badge
-  format: '{e.user} (`{e.user.id}`) changed nick from `{before}` to `{after}`'
+  format: '{e.user} (`{e.user.id}`) changed nick from `{before!z}` to `{after!z}`'
 
 CHANGE_USERNAME:
   emoji: name_badge
-  format: '{after} (`{e.user.id}`) changed username from `{before}` to `{after}`'
+  format: '{after} (`{e.user.id}`) changed username from `{before!z}` to `{after!z}`'
 
 MESSAGE_EDIT:
   emoji: pencil
-  format: "{e.author} (`{e.author.id}`) message edited in **{e.channel}**:\n**B:** {before}\n**A:** {after}"
+  format: "{e.author} (`{e.author.id}`) message edited in **{e.channel}**:\n**B:** {before!z}\n**A:** {after!z}"
 
 MESSAGE_DELETE:
   emoji: wastebasket
-  format: "{author} (`{author.id}`) message deleted in **{channel}**:\n{msg}"
+  format: "{author} (`{author.id}`) message deleted in **{channel}**:\n{msg!z}"
 
 MESSAGE_DELETE_BULK:
   emoji: wastebasket
@@ -112,11 +112,11 @@ MEMBER_RESTORE:
 
 MEMBER_MUTED:
   emoji: no_mouth
-  format: '{e.user} (`{e.user.id}`) was muted by **{actor}**: `{reason}`'
+  format: '{e.user} (`{e.user.id}`) was muted by **{actor}**: `{reason!z}`'
 
 MEMBER_TEMP_MUTED:
   emoji: no_mouth
-  format: '{e.user} (`{e.user.id}`) was temp-muted until {expires_at} by **{actor}**: `{reason}`'
+  format: '{e.user} (`{e.user.id}`) was temp-muted until {expires_at} by **{actor}**: `{reason!z}`'
 
 MEMBER_UNMUTED:
   emoji: open_mouth
@@ -124,4 +124,4 @@ MEMBER_UNMUTED:
 
 CENSORED:
   emoji: no_entry_sign
-  format: "censored message by {e.author} (`{e.author.id}`) {c.details}:\n```{c.content}```"
+  format: "censored message by {e.author} (`{e.author.id}`) {c.details}:\n```{c.content!z}```"

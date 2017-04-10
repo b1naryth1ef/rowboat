@@ -5,7 +5,11 @@ from collections import OrderedDict
 from datetime import datetime
 from gevent.local import local
 
+# Invisible space that can be used to escape mentions
 ZERO_WIDTH_SPACE = u'\u200B'
+
+# Replacement grave accent that can be used to escape codeblocks
+MODIFIER_GRAVE_ACCENT = u'\u02CB'
 
 
 def ordered_load(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):
@@ -24,11 +28,18 @@ def ordered_load(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):
 INVITE_DOMAIN_RE = re.compile(r'(discord.gg|discordapp.com/invite)')
 
 
-def C(txt):
+def C(txt, codeblocks=False):
     # Do some basic safety checks:
-    txt = txt.replace('@', '@' + ZERO_WIDTH_SPACE).replace('`', '`' + ZERO_WIDTH_SPACE)
+    txt = txt.replace('@', '@' + ZERO_WIDTH_SPACE)
+
+    if codeblocks:
+        txt = escape_codeblocks(txt)
 
     return INVITE_DOMAIN_RE.sub('\g<0>' + ZERO_WIDTH_SPACE, txt)
+
+
+def escape_codeblocks(txt):
+    return txt.replace('`', MODIFIER_GRAVE_ACCENT)
 
 
 class LocalProxy(object):
