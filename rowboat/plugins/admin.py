@@ -3,6 +3,7 @@ import humanize
 
 from peewee import fn
 from holster.emitter import Priority
+from fuzzywuzzy import fuzz
 
 from datetime import datetime, timedelta
 
@@ -537,6 +538,45 @@ class AdminPlugin(Plugin):
             event.msg.reply(':wastebasket: Ok, deleted {} messages'.format(len(msgs))).after(5).delete()
         finally:
             lock.release()
+
+    @Plugin.command('role add', '<user:user> <role:str>', level=CommandLevels.MOD, context={'mode': 'add'})
+    @Plugin.command('role rmv', '<user:user> <role:str>', level=CommandLevels.MOD, context={'mode': 'remove'})
+    @Plugin.command('role remove', '<user:user> <role:str>', level=CommandLevels.MOD, context={'mode': 'remove'})
+    def role_add(self, event, user, role, mode=None):
+        role_obj = None
+
+        if role.isdigit() and int(role) in event.guild.roles.keys():
+            role_obj = event.guild.roles[int(role)]
+        else:
+            rated = sorted([
+                (fuzz.ratio(role, r.name), r) for r in event.guild.roles.values()
+            ], key=lambda i: i[0], reverse=True)
+
+            if rated[0][0] > 70:
+                if len(rated) == 1:
+                    role_obj = rated[0][1]
+                elif rated[1][0] < 70:
+                    role_obj = rated[0][1]
+
+        if not role_obj:
+            return event.msg.reply(':warning: too many matches for that role, try something more exact or the role ID')
+
+        member = event.guild.get_member(user)
+        if not member:
+            return event.msg.reply(':warning: invalid member')
+
+        if mode == 'add' and role_obj.id in member.roles:
+            return event.msg.reply(u':warning: {} already has the {} role'.format(member, role_obj.name))
+        elif mode == 'remove' and role_obj.id not in member.roles:
+            return event.msg.reply(u':warning: {} doesn\'t have the {} role'.format(member, role_obj.name))
+
+        if mode == 'add':
+            member.add_role(role_obj.id)
+        else:
+            member.remove_role(role_obj.id)
+        event.msg.reply(u':ok_hand: {} role {} to {}'.format('added' if mode == 'add' else 'removed',
+            role_obj.name,
+            member))
 
     @Plugin.command('msgstats', '<user:user> [ctx:channel|snowflake|str]', level=CommandLevels.MOD)
     def msgstats(self, event, user, ctx=None):
