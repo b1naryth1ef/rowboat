@@ -342,7 +342,6 @@ class ModLogPlugin(Plugin):
         debounce = self.get_debounce(event.guild.id, event.user.id, 'restore')
         self.delete_debounce(event.guild.id, event.user.id, 'restore')
 
-        print '`{}` != `{}`'.format(pre_member.nick, event.nick)
         if (pre_member.nick or event.nick) and pre_member.nick != event.nick:
             if not pre_member.nick:
                 if not debounce:
@@ -364,7 +363,6 @@ class ModLogPlugin(Plugin):
 
         pre_roles = set(pre_member.roles)
         post_roles = set(event.roles)
-        print '{} / {}'.format(pre_roles, post_roles)
         if pre_roles != post_roles:
             added = post_roles - pre_roles
             removed = pre_roles - post_roles
