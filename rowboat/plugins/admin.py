@@ -552,6 +552,8 @@ class AdminPlugin(Plugin):
                 (fuzz.ratio(role, r.name), r) for r in event.guild.roles.values()
             ], key=lambda i: i[0], reverse=True)
 
+            print rated
+
             if rated[0][0] > 70:
                 if len(rated) == 1:
                     role_obj = rated[0][1]
