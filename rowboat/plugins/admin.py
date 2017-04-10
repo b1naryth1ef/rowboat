@@ -552,8 +552,6 @@ class AdminPlugin(Plugin):
                 (fuzz.ratio(role, r.name), r) for r in event.guild.roles.values()
             ], key=lambda i: i[0], reverse=True)
 
-            print rated
-
             if rated[0][0] > 40:
                 if len(rated) == 1:
                     role_obj = rated[0][1]
@@ -562,6 +560,11 @@ class AdminPlugin(Plugin):
 
         if not role_obj:
             return event.msg.reply(':warning: too many matches for that role, try something more exact or the role ID')
+
+        author_member = event.guild.get_member(event.author)
+        highest_role = sorted([event.guild.roles.get(r) for r in author_member.roles], key=lambda i: i.position, reverse=True)
+        if not author_member.owner and (not highest_role or highest_role[0].position < role_obj.position):
+            return event.msg.reply(':warning: you can only {} roles that are ranked lower than your highest role'.format(mode))
 
         member = event.guild.get_member(user)
         if not member:
