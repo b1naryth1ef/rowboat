@@ -539,9 +539,9 @@ class AdminPlugin(Plugin):
         finally:
             lock.release()
 
-    @Plugin.command('role add', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'add'})
-    @Plugin.command('role rmv', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'remove'})
-    @Plugin.command('role remove', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'remove'})
+    @Plugin.command('add', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'add'}, group='role')
+    @Plugin.command('rmv', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'remove'}, group='role')
+    @Plugin.command('remove', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'remove'}, group='role')
     def role_add(self, event, user, role, reason=None, mode=None):
         role_obj = None
 
