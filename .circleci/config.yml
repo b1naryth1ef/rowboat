@@ -18,7 +18,10 @@ jobs:
             - "~/.cache/pip"
             - "/usr/local/lib/python3.6/site-packages"
       - run:
+          name: "Setup JUnit Path"
+          command: mkdir -p /tmp/results/junit/
+      - run:
           name: "Run Tests"
-          command: py.test --junitxml /tmp/junit.xml
+          command: py.test --junitxml /tmp/results/junit/rowboat.xml
       - store_test_results:
-          path: /tmp/junit.xml
+          path: /tmp/results
