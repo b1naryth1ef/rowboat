@@ -1,0 +1,22 @@
+version: 2
+
+jobs:
+  build:
+    working_directory: ~/circulate
+    docker:
+      - image: python:2.7.13
+    steps:
+      - checkout
+      - restore_cache:
+          key: rowboat-{{ .Branch }}-{{ checksum "requirements.txt" }}
+      - run:
+          name: "Install Dependencies"
+          command: pip install -r requirements.txt
+      - save_cache:
+          key: rowboat-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          paths:
+            - "~/.cache/pip"
+            - "/usr/local/lib/python3.6/site-packages"
+      - run:
+          name: "Run Tests"
+          command: python -m unittest discover

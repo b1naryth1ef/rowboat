@@ -297,7 +297,7 @@ class AdminPlugin(Plugin):
             roles.append(C(u'{} - {}'.format(role.id, role.name)))
         return event.msg.reply(u'```{}```'.format('\n'.join(roles)))
 
-    @Plugin.command('restore', '<user:user>', level=CommandLevels.ADMIN)
+    @Plugin.command('restore', '<user:user>', level=CommandLevels.MOD)
     def restore(self, event, user):
         """
         Restores a users previous roles after rejoining
