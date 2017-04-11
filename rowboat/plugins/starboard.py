@@ -71,9 +71,8 @@ class StarboardPlugin(Plugin):
     def stars_stats(self, event, user=None):
         if user:
             try:
-                given_stars_posts, given_stars_total = list(StarboardEntry.select(
+                given_stars = list(StarboardEntry.select(
                     fn.COUNT('*'),
-                    fn.SUM(fn.array_length(StarboardEntry.stars, 1)),
                 ).where(
                     (~ (StarboardEntry.star_message_id >> None)) &
                     (StarboardEntry.stars.contains(user.id))
@@ -103,8 +102,7 @@ class StarboardPlugin(Plugin):
             embed.color = 0xffd700
             embed.title = user.username
             embed.set_thumbnail(url=user.avatar_url)
-            embed.add_field(name='Total Stars Given', value=given_stars_total, inline=True)
-            embed.add_field(name='Total Starred Posts', value=given_stars_posts, inline=True)
+            embed.add_field(name='Total Stars Given', value=given_stars, inline=True)
             embed.add_field(name='Total Posts w/ Stars', value=recieved_stars_posts, inline=True)
             embed.add_field(name='Total Stars Recieved', value=recieved_stars_total, inline=True)
             embed.add_field(name='Star Rank', value='#{}'.format(recieved_stars_rank), inline=True)
@@ -118,14 +116,14 @@ class StarboardPlugin(Plugin):
             (~ (StarboardEntry.star_message_id >> None))
         ).tuples())[0]
 
-        top_users = list(StarboardEntry.select(fn.COUNT('*'), User.user_id).join(
+        top_users = list(StarboardEntry.select(fn.SUM(fn.array_length(StarboardEntry.stars, 1)), User.user_id).join(
             Message,
         ).join(
             User,
             on=(Message.author_id == User.user_id)
         ).where(
             (~ (StarboardEntry.star_message_id >> None))
-        ).group_by(User).order_by(fn.COUNT('*').desc()).limit(5).tuples())
+        ).group_by(User).order_by(fn.SUM(fn.array_length(StarboardEntry.stars, 1)).desc()).limit(5).tuples())
 
         embed = MessageEmbed()
         embed.color = 0xffd700
