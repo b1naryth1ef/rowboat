@@ -87,16 +87,6 @@ class StarboardPlugin(Plugin):
                     (Message.author_id == user.id) &
                     (Message.guild_id == event.guild.id)
                 ).tuples())[0]
-
-                recieved_stars_rank = list(StarboardEntry.select(
-                    fn.RANK().over(
-                        partition_by=[Message.author_id],
-                        order_by=[fn.SUM(fn.array_length(StarboardEntry.stars, 1))]).alias('rank')
-                ).join(Message).where(
-                    (~ (StarboardEntry.star_message_id >> None)) &
-                    (fn.array_length(StarboardEntry.stars, 1) > 0) &
-                    (Message.guild_id == event.guild.id)
-                ).group_by(Message.author_id).limit(1).tuples())[0][0]
             except:
                 return event.msg.reply(':warning: failed to crunch the numbers on that user')
 
@@ -107,13 +97,13 @@ class StarboardPlugin(Plugin):
             embed.add_field(name='Total Stars Given', value=str(given_stars), inline=True)
             embed.add_field(name='Total Posts w/ Stars', value=str(recieved_stars_posts), inline=True)
             embed.add_field(name='Total Stars Recieved', value=str(recieved_stars_total), inline=True)
-            embed.add_field(name='Star Rank', value='#{}'.format(recieved_stars_rank), inline=True)
+            # embed.add_field(name='Star Rank', value='#{}'.format(recieved_stars_rank), inline=True)
             return event.msg.reply('', embed=embed)
 
         total_starred_posts, total_stars = list(StarboardEntry.select(
             fn.COUNT('*'),
             fn.SUM(fn.array_length(StarboardEntry.stars, 1)),
-        ).where(
+        ).join(Message).where(
             (~ (StarboardEntry.star_message_id >> None)) &
             (Message.guild_id == event.guild.id)
         ).tuples())[0]
