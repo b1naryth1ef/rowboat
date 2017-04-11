@@ -94,7 +94,7 @@ class StarboardPlugin(Plugin):
                         order_by=[fn.SUM(fn.array_length(StarboardEntry.stars, 1))]).alias('rank')
                 ).join(Message).where(
                     (~ (StarboardEntry.star_message_id >> None)) &
-                    (StarboardEntry.stars.contains(user.id)) &
+                    (fn.array_length(StarboardEntry.stars, 1) > 0) &
                     (Message.guild_id == event.guild.id)
                 ).group_by(Message.author_id).limit(1).tuples())[0][0]
             except:
@@ -114,7 +114,8 @@ class StarboardPlugin(Plugin):
             fn.COUNT('*'),
             fn.SUM(fn.array_length(StarboardEntry.stars, 1)),
         ).where(
-            (~ (StarboardEntry.star_message_id >> None))
+            (~ (StarboardEntry.star_message_id >> None)) &
+            (Message.guild_id == event.guild.id)
         ).tuples())[0]
 
         top_users = list(StarboardEntry.select(fn.SUM(fn.array_length(StarboardEntry.stars, 1)), User.user_id).join(
@@ -124,7 +125,8 @@ class StarboardPlugin(Plugin):
             on=(Message.author_id == User.user_id),
         ).where(
             (~ (StarboardEntry.star_message_id >> None)) &
-            (fn.array_length(StarboardEntry.stars, 1) > 0)
+            (fn.array_length(StarboardEntry.stars, 1) > 0) &
+            (Message.guild_id == event.guild.id)
         ).group_by(User).order_by(fn.SUM(fn.array_length(StarboardEntry.stars, 1)).desc()).limit(5).tuples())
 
         embed = MessageEmbed()
