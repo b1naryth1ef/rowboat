@@ -1,5 +1,9 @@
 version: 2
 
+test:
+  override:
+    - python -m unittest discover
+
 jobs:
   build:
     working_directory: ~/circulate
@@ -17,6 +21,3 @@ jobs:
           paths:
             - "~/.cache/pip"
             - "/usr/local/lib/python3.6/site-packages"
-      - run:
-          name: "Run Tests"
-          command: python -m unittest discover
