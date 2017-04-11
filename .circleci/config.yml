@@ -17,3 +17,8 @@ jobs:
           paths:
             - "~/.cache/pip"
             - "/usr/local/lib/python3.6/site-packages"
+      - run:
+          name: "Run Tests"
+          command: py.test --junitxml /tmp/junit.xml
+      - store_test_results:
+          path: /tmp/junit.xml
