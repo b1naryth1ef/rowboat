@@ -1,6 +1,6 @@
 import peewee
 
-from peewee import fn
+from peewee import fn, JOIN
 from datetime import datetime, timedelta
 
 from disco.bot import CommandLevels
@@ -73,9 +73,10 @@ class StarboardPlugin(Plugin):
             try:
                 given_stars = list(StarboardEntry.select(
                     fn.COUNT('*'),
-                ).where(
+                ).join(Message).where(
                     (~ (StarboardEntry.star_message_id >> None)) &
-                    (StarboardEntry.stars.contains(user.id))
+                    (StarboardEntry.stars.contains(user.id)) &
+                    (Message.guild_id == event.guild.id)
                 ).tuples())[0]
 
                 recieved_stars_posts, recieved_stars_total = list(StarboardEntry.select(
@@ -83,7 +84,8 @@ class StarboardPlugin(Plugin):
                     fn.SUM(fn.array_length(StarboardEntry.stars, 1)),
                 ).join(Message).where(
                     (~ (StarboardEntry.star_message_id >> None)) &
-                    (Message.author_id == user.id)
+                    (Message.author_id == user.id) &
+                    (Message.guild_id == event.guild.id)
                 ).tuples())[0]
 
                 recieved_stars_rank = list(StarboardEntry.select(
@@ -92,7 +94,8 @@ class StarboardPlugin(Plugin):
                         order_by=[fn.SUM(fn.array_length(StarboardEntry.stars, 1))]).alias('rank')
                 ).join(Message).where(
                     (~ (StarboardEntry.star_message_id >> None)) &
-                    (StarboardEntry.stars.contains(user.id))
+                    (StarboardEntry.stars.contains(user.id)) &
+                    (Message.guild_id == event.guild.id)
                 ).group_by(Message.author_id).limit(1).tuples())[0][0]
             except:
                 event.msg.reply(':warning: failed to crunch the numbers on that user')
@@ -120,7 +123,8 @@ class StarboardPlugin(Plugin):
             Message,
         ).join(
             User,
-            on=(Message.author_id == User.user_id)
+            JOIN.LEFT_OUTER,
+            on=(Message.author_id == User.user_id),
         ).where(
             (~ (StarboardEntry.star_message_id >> None))
         ).group_by(User).order_by(fn.SUM(fn.array_length(StarboardEntry.stars, 1)).desc()).limit(5).tuples())
