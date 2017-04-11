@@ -1,6 +1,6 @@
 import peewee
 
-from peewee import fn, JOIN
+from peewee import fn
 from datetime import datetime, timedelta
 
 from disco.bot import CommandLevels
@@ -123,10 +123,10 @@ class StarboardPlugin(Plugin):
             Message,
         ).join(
             User,
-            JOIN.LEFT_OUTER,
             on=(Message.author_id == User.user_id),
         ).where(
-            (~ (StarboardEntry.star_message_id >> None))
+            (~ (StarboardEntry.star_message_id >> None)) &
+            (fn.array_length(StarboardEntry.stars, 1) > 0)
         ).group_by(User).order_by(fn.SUM(fn.array_length(StarboardEntry.stars, 1)).desc()).limit(5).tuples())
 
         embed = MessageEmbed()
