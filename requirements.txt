@@ -74,3 +74,4 @@ wheel==0.24.0
 xxhash==1.0.1
 fuzzywuzzy==0.15.0
 pytest==3.0.7
+python-Levenshtein==0.12.0

@@ -1,5 +1,6 @@
 import peewee
 
+from peewee import fn
 from datetime import datetime, timedelta
 
 from disco.bot import CommandLevels
@@ -8,7 +9,7 @@ from disco.types.message import MessageEmbed
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types.plugin import PluginConfig
 from rowboat.types import ChannelField, Field, SlottedModel, ListField, DictField
-from rowboat.models.user import StarboardBlock
+from rowboat.models.user import StarboardBlock, User
 from rowboat.models.message import StarboardEntry, Message
 from rowboat.util.timing import Debounce
 
@@ -65,6 +66,76 @@ class StarboardPlugin(Plugin):
         super(StarboardPlugin, self).load(ctx)
         self.updates = {}
         self.locks = {}
+
+    @Plugin.command('stats', '[user:user]', group='stars', level=CommandLevels.MOD)
+    def stars_stats(self, event, user=None):
+        if user:
+            try:
+                given_stars_posts, given_stars_total = list(StarboardEntry.select(
+                    fn.COUNT('*'),
+                    fn.SUM(fn.array_length(StarboardEntry.stars, 1)),
+                ).where(
+                    (~ (StarboardEntry.star_message_id >> None)) &
+                    (StarboardEntry.stars.contains(user.id))
+                ).tuples())[0]
+
+                recieved_stars_posts, recieved_stars_total = list(StarboardEntry.select(
+                    fn.COUNT('*'),
+                    fn.SUM(fn.array_length(StarboardEntry.stars, 1)),
+                ).join(Message).where(
+                    (~ (StarboardEntry.star_message_id >> None)) &
+                    (Message.author_id == user.id)
+                ).tuples())[0]
+
+                recieved_stars_rank = list(StarboardEntry.select(
+                    fn.RANK().over(
+                        partition_by=[Message.author_id],
+                        order_by=[fn.SUM(fn.array_length(StarboardEntry.stars, 1))]).alias('rank')
+                ).join(Message).where(
+                    (~ (StarboardEntry.star_message_id >> None)) &
+                    (StarboardEntry.stars.contains(user.id))
+                ).group_by(Message.author_id).limit(1).tuples())[0][0]
+            except:
+                event.msg.reply(':warning: failed to crunch the numbers on that user')
+                raise
+
+            embed = MessageEmbed()
+            embed.color = 0xffd700
+            embed.title = user.username
+            embed.set_thumbnail(url=user.avatar_url)
+            embed.add_field(name='Total Stars Given', value=given_stars_total, inline=True)
+            embed.add_field(name='Total Starred Posts', value=given_stars_posts, inline=True)
+            embed.add_field(name='Total Posts w/ Stars', value=recieved_stars_posts, inline=True)
+            embed.add_field(name='Total Stars Recieved', value=recieved_stars_total, inline=True)
+            embed.add_field(name='Star Rank', value='#{}'.format(recieved_stars_rank), inline=True)
+            event.msg.reply('', embed=embed)
+            return
+
+        total_starred_posts, total_stars = list(StarboardEntry.select(
+            fn.COUNT('*'),
+            fn.SUM(fn.array_length(StarboardEntry.stars, 1)),
+        ).where(
+            (~ (StarboardEntry.star_message_id >> None))
+        ).tuples())[0]
+
+        top_users = list(StarboardEntry.select(fn.COUNT('*'), User.user_id).join(
+            Message,
+        ).join(
+            User,
+            on=(Message.author_id == User.user_id)
+        ).where(
+            (~ (StarboardEntry.star_message_id >> None))
+        ).group_by(User).order_by(fn.COUNT('*').desc()).limit(5).tuples())
+
+        embed = MessageEmbed()
+        embed.color = 0xffd700
+        embed.title = 'Star Stats'
+        embed.add_field(name='Total Stars Given', value=total_stars, inline=True)
+        embed.add_field(name='Total Starred Posts', value=total_starred_posts, inline=True)
+        embed.add_field(name='Top Star Recievers', value='\n'.join(
+            '{}. <@{}> ({})'.format(idx + 1, row[1], row[0]) for idx, row in enumerate(top_users)
+        ))
+        event.msg.reply('', embed=embed)
 
     @Plugin.command('check', '<mid:snowflake>', group='stars', level=CommandLevels.ADMIN)
     def stars_update(self, event, mid):
