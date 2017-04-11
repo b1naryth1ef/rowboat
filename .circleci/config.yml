@@ -1,9 +1,5 @@
 version: 2
 
-test:
-  override:
-    - python -m unittest discover
-
 jobs:
   build:
     working_directory: ~/circulate
