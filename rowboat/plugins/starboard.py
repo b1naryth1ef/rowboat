@@ -105,10 +105,11 @@ class StarboardPlugin(Plugin):
             embed.color = 0xffd700
             embed.title = user.username
             embed.set_thumbnail(url=user.avatar_url)
-            embed.add_field(name='Total Stars Given', value=given_stars, inline=True)
-            embed.add_field(name='Total Posts w/ Stars', value=recieved_stars_posts, inline=True)
-            embed.add_field(name='Total Stars Recieved', value=recieved_stars_total, inline=True)
+            embed.add_field(name='Total Stars Given', value=str(given_stars), inline=True)
+            embed.add_field(name='Total Posts w/ Stars', value=str(recieved_stars_posts), inline=True)
+            embed.add_field(name='Total Stars Recieved', value=str(recieved_stars_total), inline=True)
             embed.add_field(name='Star Rank', value='#{}'.format(recieved_stars_rank), inline=True)
+            print embed.to_dict()
             event.msg.reply('', embed=embed)
             return
 
