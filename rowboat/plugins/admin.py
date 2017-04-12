@@ -8,6 +8,7 @@ from fuzzywuzzy import fuzz
 from datetime import datetime, timedelta
 
 from disco.bot import CommandLevels
+from disco.types.user import User as DiscoUser
 from disco.types.channel import Channel
 from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
 
@@ -180,7 +181,7 @@ class AdminPlugin(Plugin):
         )
         event.msg.reply(':ok_hand: unbanned')
 
-    @Plugin.command('infraction info', '<infraction:int>', level=CommandLevels.MOD)
+    @Plugin.command('info', '<infraction:int>', group='infractions', level=CommandLevels.MOD)
     def infraction_info(self, event, infraction):
         try:
             user = User.alias()
@@ -219,9 +220,12 @@ class AdminPlugin(Plugin):
 
         event.msg.reply('', embed=embed)
 
-    @Plugin.command('infraction search', '[query:str...]', level=CommandLevels.MOD)
+    @Plugin.command('search', '[query:user|str...]', group='infractions', level=CommandLevels.MOD)
     def infraction_search(self, event, query=None):
         q = (Infraction.guild_id == event.guild.id)
+
+        if query and isinstance(query, DiscoUser):
+            query = query.id
 
         if query and query.isdigit():
             q &= (

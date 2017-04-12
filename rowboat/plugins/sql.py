@@ -1,6 +1,5 @@
 import time
 import gevent
-import requests
 import psycopg2
 import markovify
 
@@ -119,13 +118,9 @@ class SQLPlugin(Plugin):
 
                 result = tbl.compile()
                 if len(result) > 1900:
-                    r = requests.post('http://dpaste.com/api/v2/', data={
-                        'content': result,
-                        'expiry_days': 90,
-                        'poster': 'Rowboat SQL',
-                    })
-                    r.raise_for_status()
-                    return event.msg.reply('{} (_took {}ms_)'.format(r.content.strip() + '.txt', int(dur * 1000)))
+                    return event.msg.reply(
+                        '_took {}ms_'.format(int(dur * 1000)),
+                        attachments=('result.txt', result))
 
                 event.msg.reply('```' + result + '```\n_took {}ms_\n'.format(int(dur * 1000)))
         except psycopg2.Error as e:
