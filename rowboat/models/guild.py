@@ -67,8 +67,8 @@ class Guild(BaseModel):
         self.emit_update()
 
     def emit_update(self):
-        rdb.publish('guild-updates', json.dumps({
-            'type': 'UPDATE',
+        rdb.publish('actions', json.dumps({
+            'type': 'GUILD_UPDATE',
             'id': self.guild_id,
         }))
 

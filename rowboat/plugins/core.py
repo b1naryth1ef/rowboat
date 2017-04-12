@@ -1,6 +1,7 @@
 import os
 import json
 import pprint
+import signal
 import humanize
 import functools
 import inspect
@@ -46,7 +47,7 @@ class CorePlugin(Plugin):
             plugin.register_trigger('command', 'pre', functools.partial(self.on_pre, plugin))
             plugin.register_trigger('listener', 'pre', functools.partial(self.on_pre, plugin))
 
-        self.spawn(self.wait_for_updates)
+        self.spawn(self.wait_for_actions)
         self.spawn(self.wait_for_dispatches)
 
     def wait_for_dispatches(self):
@@ -65,19 +66,22 @@ class CorePlugin(Plugin):
                     obj['title'],
                     obj['content']))
 
-    def wait_for_updates(self):
+    def wait_for_actions(self):
         ps = rdb.pubsub()
-        ps.subscribe('guild-updates')
+        ps.subscribe('actions')
 
         for item in ps.listen():
             if item['type'] != 'message':
                 continue
 
             data = json.loads(item['data'])
-            if data['type'] == 'UPDATE' and data['id'] in self.guilds:
+            if data['type'] == 'GUILD_UPDATE' and data['id'] in self.guilds:
                 self.send_control_message(u'Reloaded config for Guild {}'.format(self.guilds[data['id']].name))
                 self.log.info('Reloading config for guild %s', self.guilds[data['id']].name)
                 self.guilds[data['id']].get_config(refresh=True)
+            elif data['type'] == 'RESTART':
+                self.log.info('Restart requested, signaling parent')
+                os.kill(os.getppid(), signal.SIGUSR1)
 
     def unload(self, ctx):
         ctx['guilds'] = self.guilds

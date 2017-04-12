@@ -1,7 +1,8 @@
+import json
 import subprocess
 
 from flask import Blueprint, request, current_app
-# from rowboat.redis import rdb
+from rowboat.redis import rdb
 # from rowboat.util.decos import authed
 
 from disco.types.message import MessageEmbed
@@ -46,4 +47,7 @@ def webhook_circle_ci():
         return
 
     subprocess.Popen(['git', 'pull', 'origin', 'master'])
+    rdb.publish('actions', json.dumps({
+        'type': 'RESTART',
+    }))
     return '', 200
