@@ -29,9 +29,3 @@ jobs:
           command: py.test --junitxml /tmp/results/junit/rowboat.xml
       - store_test_results:
           path: /tmp/results
-      - deploy:
-          name: "Deploy"
-          command: |
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then
-              curl -XPOST $DEPLOY_URL
-            fi
