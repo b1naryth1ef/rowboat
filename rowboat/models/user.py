@@ -125,7 +125,7 @@ class Infraction(BaseModel):
     def kick(cls, plugin, event, member, reason):
         User.from_disco_user(member.user)
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'kick',
-            actor=unicode(event.author),
+            actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason')
         member.kick()
         cls.create(
@@ -140,7 +140,7 @@ class Infraction(BaseModel):
         User.from_disco_user(member.user)
 
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
-            actor=unicode(event.author),
+            actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             temp=True,
             expires=expires_at,
             reason=reason or 'no reason')
@@ -159,7 +159,7 @@ class Infraction(BaseModel):
     def softban(cls, plugin, event, member, reason):
         User.from_disco_user(member.user)
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
-            actor=unicode(event.author),
+            actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             temp=True,
             expires=None,
             reason=reason or 'no reason')
@@ -183,7 +183,7 @@ class Infraction(BaseModel):
 
         if user_id != member:
             plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
-                actor=unicode(event.author),
+                actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
                 temp=False,
                 expires=None,
                 reason=reason or 'no reason')
@@ -200,7 +200,14 @@ class Infraction(BaseModel):
     @classmethod
     def mute(cls, plugin, event, member, reason):
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(
-            event, member.user, 'muted', reason=reason, expires_at=None, actor=unicode(event.author), role=event.config.mute_role)
+            event,
+            member.user,
+            'muted',
+            reason=reason,
+            expires_at=None,
+            actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
+            role=event.config.mute_role)
+
         member.add_role(event.config.mute_role)
         cls.create(
             guild_id=event.guild.id,
@@ -213,7 +220,13 @@ class Infraction(BaseModel):
     @classmethod
     def tempmute(cls, plugin, event, member, reason, expires_at):
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(
-            event, member.user, 'muted', reason=reason, expires_at=expires_at, actor=unicode(event.author), role=(
+            event,
+            member.user,
+            'muted',
+            reason=reason,
+            expires_at=expires_at,
+            actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
+            role=(
                 event.config.temp_mute_role or event.config.mute_role
             ))
 

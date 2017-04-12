@@ -24,6 +24,7 @@ from rowboat.models.user import User, Infraction
 from rowboat.models.guild import GuildMemberBackup, GuildBan, GuildEmoji
 from rowboat.models.message import Message, MessageArchive
 
+B1NZY_USER_ID = 80351110224678912
 
 CUSTOM_EMOJI_STATS_SERVER_SQL = """
 SELECT gm.emoji_id, gm.name, count(*) FROM guildemojis gm
@@ -67,6 +68,8 @@ class AdminConfig(PluginConfig):
     # The mute role
     mute_role = Field(snowflake, default=None)
     temp_mute_role = Field(snowflake, default=None)
+
+    DONT_MENTION_B1NZY = Field(bool, default=False)
 
 
 @Plugin.with_config(AdminConfig)
@@ -119,6 +122,21 @@ class AdminPlugin(Plugin):
             item.save()
 
         self.queue_infractions()
+
+    @Plugin.listen('MessageCreate')
+    def on_message_create(self, event):
+        if not event.config.DONT_MENTION_B1NZY:
+            return
+
+        if B1NZY_USER_ID not in event.mentions:
+            return
+
+        member = event.guild.get_member(event.author)
+        if not member or member.roles:
+            return
+
+        duration = datetime.utcnow() + timedelta(days=7)
+        Infraction.tempban(self, event, member, 'AUTOBAN - mentioned b1nzy', duration)
 
     @Plugin.listen('GuildMemberRemove', priority=Priority.BEFORE)
     def on_guild_member_remove(self, event):
