@@ -24,7 +24,7 @@ def webhook_circle_ci():
     embed.title = 'Build #{} - {} ({})'.format(
         data['build_num'],
         data['subject'],
-        data['commiter_name'],
+        data['author_name'],
     )
 
     embed.url = data['build_url']
@@ -38,6 +38,7 @@ def webhook_circle_ci():
         ))
 
     embed.description = '\n'.join(steps)
+    embed.description += '\n [View Diff]({})'.format(data['compare'])
 
     wh = Webhook.from_url(current_app.config.get('WEBHOOK_URL'))
     wh.execute(embeds=[embed])
