@@ -1,5 +1,9 @@
 version: 2
 
+notify:
+  webhooks:
+    - url: https://rowboat.party/webhooks/circle_ci
+
 jobs:
   build:
     working_directory: ~/circulate
