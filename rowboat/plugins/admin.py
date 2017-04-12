@@ -137,6 +137,7 @@ class AdminPlugin(Plugin):
 
         duration = datetime.utcnow() + timedelta(days=7)
         Infraction.tempban(self, event, member, 'AUTOBAN - mentioned b1nzy', duration)
+        event.msg.reply(u'{} pinged b1nzy for some reason, they are rip now...'.format(member))
 
     @Plugin.listen('GuildMemberRemove', priority=Priority.BEFORE)
     def on_guild_member_remove(self, event):

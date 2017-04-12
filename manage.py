@@ -8,20 +8,26 @@ from yaml import load
 
 import os
 import copy
-import logging
 import click
-import BaseHTTPServer
+import signal
+import logging
+import gevent
 import subprocess
-
-
-SUPERVISOR = None
 
 
 class BotSupervisor(object):
     def __init__(self, env={}):
         self.proc = None
         self.env = env
+        self.bind_signals()
         self.start()
+
+    def bind_signals(self):
+        signal.signal(signal.SIGUSR1, self.handle_sigusr1)
+
+    def handle_sigusr1(self, signum, frame):
+        print 'SIGUSR1 - RESTARTING'
+        gevent.spawn(self.restart)
 
     def start(self):
         env = copy.deepcopy(os.environ)
@@ -39,14 +45,10 @@ class BotSupervisor(object):
 
         self.start()
 
-
-class RestarterHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    def do_POST(s):
-        s.send_response(200)
-        s.end_headers()
-
-        subprocess.check_call(['git', 'pull', 'origin', 'master'])
-        SUPERVISOR.restart()
+    def run_forever(self):
+        while True:
+            self.proc.wait()
+            gevent.sleep(5)
 
 
 @click.group()
@@ -69,24 +71,16 @@ def serve(reloader):
 @cli.command()
 @click.option('--env', '-e', default='local')
 def bot(env):
-    global SUPERVISOR
-
     with open('config.yaml', 'r') as f:
         config = load(f)
 
-    SUPERVISOR = BotSupervisor(env={
+    supervisor = BotSupervisor(env={
         'ENV': env,
         'DSN': config['DSN'],
         'GOOGLE_APPLICATION_CREDENTIALS': config['GOOGLE_APPLICATION_CREDENTIALS'],
     })
-    httpd = BaseHTTPServer.HTTPServer(('0.0.0.0', 8080), RestarterHandler)
+    supervisor.run_forever()
 
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        pass
-
-    httpd.server_close()
 
 if __name__ == '__main__':
     cli()
