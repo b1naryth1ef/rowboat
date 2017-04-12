@@ -40,8 +40,7 @@ def webhook_circle_ci():
     embed.description = '\n'.join(steps)
     embed.description += '\n [View Diff]({})'.format(data['compare'])
 
-    wh = Webhook.from_url(current_app.config.get('WEBHOOK_URL'))
-    wh.execute(embeds=[embed])
+    Webhook.execute_url(current_app.config.get('WEBHOOK_URL'), embeds=[embed])
 
     if data['outcome'] != 'success':
         return
