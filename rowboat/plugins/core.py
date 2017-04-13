@@ -2,9 +2,10 @@ import os
 import json
 import pprint
 import signal
+import inspect
 import humanize
 import functools
-import inspect
+import contextlib
 
 from datetime import datetime, timedelta
 from holster.emitter import Priority
@@ -48,23 +49,6 @@ class CorePlugin(Plugin):
             plugin.register_trigger('listener', 'pre', functools.partial(self.on_pre, plugin))
 
         self.spawn(self.wait_for_actions)
-        self.spawn(self.wait_for_dispatches)
-
-    def wait_for_dispatches(self):
-        ps = rdb.pubsub()
-        ps.subscribe('notifications')
-
-        for item in ps.listen():
-            if item['type'] != 'message':
-                continue
-
-            obj = json.loads(item['data'])
-
-            self.bot.client.api.channels_messages_create(
-                290924692057882635,
-                u'**{}**\n{}'.format(
-                    obj['title'],
-                    obj['content']))
 
     def wait_for_actions(self):
         ps = rdb.pubsub()
@@ -155,10 +139,20 @@ class CorePlugin(Plugin):
             (GuildBan.guild_id == event.guild_id)
         )
 
-    def send_control_message(self, content, *args, **kwargs):
+    @contextlib.contextmanager
+    def send_control_message(self):
+        embed = MessageEmbed()
+        embed.set_footer(text='Rowboat {}'.format(
+            'Production' if ENV == 'prod' else 'Testing'
+        ))
+        embed.timestamp = datetime.utcnow().isoformat()
+        embed.color = 0x779ecb
+        yield embed
         self.bot.client.api.channels_messages_create(
-            290924692057882635,
-            u'**{}**\n{}'.format('Production' if ENV == 'prod' else 'Local', content), *args, **kwargs)
+            290924692057882635 if ENV == 'prod' else 301869081714491393,
+            '',
+            embed=embed
+        )
 
     @Plugin.listen('Resumed')
     def on_resumed(self, event):
@@ -168,8 +162,16 @@ class CorePlugin(Plugin):
             env=ENV,
         )
 
-    @Plugin.listen('Ready')
+        with self.send_control_message() as embed:
+            embed.title = 'Resumed'
+            embed.color = 0xffb347
+            embed.add_field(name='Gateway Server', value=event.trace[0], inline=False)
+            embed.add_field(name='Session Server', value=event.trace[1], inline=False)
+            embed.add_field(name='Replayed Events', value=str(self.client.gw.resumed_events))
+
+    @Plugin.listen('Ready', priority=Priority.BEFORE)
     def on_ready(self, event):
+        reconnects = self.client.gw.reconnects
         self.log.info('Started session %s', event.session_id)
         Notification.dispatch(
             Notification.Types.CONNECT,
@@ -177,19 +179,29 @@ class CorePlugin(Plugin):
             env=ENV,
         )
 
-    @Plugin.schedule(1, init=False)
-    def on_fucked_channels(self):
-        for guild in self.state.guilds.values():
-            if not len(guild.channels):
-                self.log.warning('Guild %s (%s) has fucked channels', guild.id, guild.name)
+        with self.send_control_message() as embed:
+            if reconnects:
+                embed.title = 'Reconnected'
+                embed.color = 0xffb347
+            else:
+                embed.title = 'Connected'
+                embed.color = 0x77dd77
 
-    # @Plugin.listen('GuildCreate', conditional=lambda e: e.created is True)
-    # def on_guild_join(self, event):
-    #     self.send_control_message('Added to guild {}: {}'.format(event.guild.id, event.guild.name))
+            embed.add_field(name='Gateway Server', value=event.trace[0], inline=False)
+            embed.add_field(name='Session Server', value=event.trace[1], inline=False)
+
+    @Plugin.listen('GuildCreate', conditional=lambda e: e.created is True)
+    def on_guild_join(self, event):
+        with self.send_control_message() as embed:
+            embed.title = 'Added to Guild'
+            embed.add_field(name='Guild Name', value=event.guild.name, inline=True)
+            embed.add_field(name='Guild ID', value=str(event.guild.id), inline=True)
 
     @Plugin.listen('GuildDelete', conditional=lambda e: e.deleted is True)
     def on_guild_leave(self, event):
-        self.send_control_message('Removed from guild {}'.format(event.guild.id))
+        with self.send_control_message() as embed:
+            embed.title = 'Removed to Guild'
+            embed.add_field(name='Guild ID', value=str(event.guild.id), inline=True)
 
     @Plugin.listen('GuildCreate', priority=Priority.BEFORE, conditional=lambda e: not e.created)
     def on_guild_create(self, event):
@@ -354,7 +366,6 @@ class CorePlugin(Plugin):
         self.guilds[event.guild.id] = guild
         event.msg.reply(':ok_hand: successfully loaded configuration')
 
-    '''
     @Plugin.command('help', '<command>')
     def command_help(self, event, command):
         """
@@ -372,7 +383,6 @@ class CorePlugin(Plugin):
             cmd.raw_args or '',
             cmd.func.__doc__,
         ))
-    '''
 
     @Plugin.command('nuke', '<user:snowflake> <reason:str...>', level=-1)
     def nuke(self, event, user, reason):
@@ -464,3 +474,8 @@ class CorePlugin(Plugin):
             event.msg.reply('', attachment=('result.txt', result))
         else:
             event.msg.reply(PY_CODE_BLOCK.format(result))
+
+    @Plugin.command('reconnect', group='control', level=-1)
+    def control_reconnect(self, event):
+        event.msg.reply('Ok, closing connection')
+        self.client.gw.ws.close()

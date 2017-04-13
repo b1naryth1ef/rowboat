@@ -47,7 +47,7 @@ class EventLogPlugin(Plugin):
                 continue
 
             with self.lock:
-                Event.insert_many([
+                Event.insert_many(filter(bool, [
                     Event.prepare(self.session_id, event) for event in self.cache
-                ]).execute()
+                ])).execute()
                 self.cache = []

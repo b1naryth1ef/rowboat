@@ -75,10 +75,10 @@ class SQLPlugin(Plugin):
 
     @Plugin.listen('GuildCreate')
     def on_guild_create(self, event):
-        for channel in event.channels.values():
+        for channel in list(event.channels.values()):
             Channel.from_disco_channel(channel)
 
-        for emoji in event.emojis.values():
+        for emoji in list(event.emojis.values()):
             GuildEmoji.from_disco_guild_emoji(emoji, guild_id=event.guild.id)
 
     @Plugin.listen('GuildDelete')
