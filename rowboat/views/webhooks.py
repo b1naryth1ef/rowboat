@@ -46,7 +46,7 @@ def webhook_circle_ci():
     if data['outcome'] != 'success':
         return
 
-    subprocess.Popen(['git', 'pull', 'origin', 'master'])
+    subprocess.Popen(['git', 'pull', 'origin', 'master']).wait()
     rdb.publish('actions', json.dumps({
         'type': 'RESTART',
     }))
