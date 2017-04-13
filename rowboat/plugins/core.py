@@ -395,7 +395,7 @@ class CorePlugin(Plugin):
             guild = self.state.guilds[gid]
             perms = guild.get_permissions(self.state.me)
 
-            if not perms.ban_members:
+            if not perms.ban_members and not perms.administrator:
                 contents.append(u':x: {} (`{}`) - No Permissions'.format(
                     guild.name,
                     gid
