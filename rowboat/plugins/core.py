@@ -60,7 +60,11 @@ class CorePlugin(Plugin):
 
             data = json.loads(item['data'])
             if data['type'] == 'GUILD_UPDATE' and data['id'] in self.guilds:
-                self.send_control_message(u'Reloaded config for Guild {}'.format(self.guilds[data['id']].name))
+                with self.send_control_message() as embed:
+                    embed.title = u'Reloaded config for {}'.format(
+                        self.guilds[data['id']].name
+                    )
+
                 self.log.info('Reloading config for guild %s', self.guilds[data['id']].name)
                 self.guilds[data['id']].get_config(refresh=True)
             elif data['type'] == 'RESTART':
