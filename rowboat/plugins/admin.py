@@ -243,8 +243,10 @@ class AdminPlugin(Plugin):
     def infraction_search(self, event, query=None):
         q = (Infraction.guild_id == event.guild.id)
 
-        if query and isinstance(query, DiscoUser):
-            query = query.id
+        print query
+
+        if query and isinstance(query, list) and isinstance(query[0], DiscoUser):
+            query = query[0].id
 
         if query and query.isdigit():
             q &= (
