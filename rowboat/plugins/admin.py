@@ -248,7 +248,7 @@ class AdminPlugin(Plugin):
         if query and isinstance(query, list) and isinstance(query[0], DiscoUser):
             query = query[0].id
 
-        if query and query.isdigit():
+        if query and (isinstance(query, int) or query.isdigit()):
             q &= (
                 (Infraction.id == int(query)) |
                 (Infraction.user_id == int(query)) |
