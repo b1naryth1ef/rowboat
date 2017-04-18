@@ -16,6 +16,7 @@ from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.util import C
 from rowboat.util.timing import Eventual
 from rowboat.util.images import get_dominant_colors_user
+from rowboat.util.input import parse_duration
 from rowboat.redis import rdb
 from rowboat.types import Field, ListField, snowflake, SlottedModel
 from rowboat.types.plugin import PluginConfig
@@ -359,7 +360,7 @@ class AdminPlugin(Plugin):
         else:
             event.msg.reply(':warning: Invalid user!')
 
-    @Plugin.command('tempmute', '<user:user|snowflake> <duration:duration> [reason:str...]', level=CommandLevels.MOD)
+    @Plugin.command('tempmute', '<user:user|snowflake> <duration:str> [reason:str...]', level=CommandLevels.MOD)
     def tempmute(self, event, user, duration, reason=None):
         """
         Temporarily mutes a user (if setup on the server)
@@ -374,16 +375,21 @@ class AdminPlugin(Plugin):
                 event.msg.reply(':warning: {} is already muted'.format(member.user))
                 return
 
-            duration = datetime.utcnow() + (datetime.utcnow() - duration)
-            self.inf_task.set_next_schedule(duration)
-            Infraction.tempmute(self, event, member, reason, duration)
+            expire_dt = parse_duration(duration)
+
+            # Reset the infraction task so we make sure it runs after this new infraction
+            self.inf_task.set_next_schedule(expire_dt)
+
+            # Create the infraction
+            Infraction.tempmute(self, event, member, reason, expire_dt)
+
             if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
                     reason,
                     u':ok_hand: {u} is now muted until {t} (`{o}`)',
                     u':ok_hand: {u} is now muted until {t}',
                     u=member.user,
-                    t=humanize.naturaltime(duration),
+                    t=humanize.naturaldelta(expire_dt - datetime.utcnow()),
                 ))
         else:
             event.msg.reply(':warning: Invalid user!')
@@ -487,23 +493,23 @@ class AdminPlugin(Plugin):
         else:
             event.msg.reply(':warning: Invalid user!')
 
-    @Plugin.command('tempban', '<user:user|snowflake> <duration:duration> [reason:str...]', level=CommandLevels.MOD)
+    @Plugin.command('tempban', '<user:user|snowflake> <duration:str> [reason:str...]', level=CommandLevels.MOD)
     def tempban(self, event, duration, user, reason=None):
         """
         Ban a user from the server for a given duration (with an optional reason for the modlog)
         """
         member = event.guild.get_member(user)
         if member:
-            duration = datetime.utcnow() + (datetime.utcnow() - duration)
-            self.inf_task.set_next_schedule(duration)
-            Infraction.tempban(self, event, member, reason, duration)
+            expires_dt = parse_duration(duration)
+            self.inf_task.set_next_schedule(expires_dt)
+            Infraction.tempban(self, event, member, reason, expires_dt)
             if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
                     reason,
                     u':ok_hand: temp-banned {u} until {t} (`{o}`)',
                     u':ok_hand: soft-banned {u} until {t}',
                     u=member.user,
-                    t=humanize.naturaltime(duration),
+                    t=humanize.naturaldelta(expires_dt - datetime.utcnow()),
                 ))
         else:
             event.msg.reply(':warning: Invalid user!')

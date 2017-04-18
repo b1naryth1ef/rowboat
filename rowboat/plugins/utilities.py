@@ -8,18 +8,21 @@ from six import BytesIO
 from PIL import Image
 from pyquery import PyQuery
 from gevent.pool import Pool
-from datetime import datetime
+from datetime import datetime, timedelta
 from disco.types.message import MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
 from disco.util.snowflake import to_datetime
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.util import C
+from rowboat.util.timing import Eventual
+from rowboat.util.input import parse_duration
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.user import User, Infraction
-from rowboat.models.message import Message
+from rowboat.models.message import Message, Reminder
 from rowboat.util.images import get_dominant_colors_user
 
 
+YEAR_IN_SEC = 60 * 60 * 24 * 365
 CDN_URL = 'https://twemoji.maxcdn.com/2/72x72/{}.png'
 EMOJI_RE = re.compile(r'<:(.+):([0-9]+)>')
 USER_MENTION_RE = re.compile('<@!?([0-9]+)>')
@@ -37,6 +40,21 @@ class UtilitiesConfig(PluginConfig):
 
 @Plugin.with_config(UtilitiesConfig)
 class UtilitiesPlugin(Plugin):
+    def load(self, ctx):
+        super(UtilitiesPlugin, self).load(ctx)
+        self.reminder_task = Eventual(self.trigger_reminders)
+        self.spawn_later(10, self.queue_reminders)
+
+    def queue_reminders(self):
+        try:
+            next_reminder = Reminder.select().order_by(
+                Reminder.remind_at.asc()
+            ).limit(1).get()
+        except Reminder.DoesNotExist:
+            return
+
+        self.reminder_task.set_next_schedule(next_reminder.remind_at)
+
     @Plugin.command('coin', group='random', global_=True)
     def coin(self, event):
         """
@@ -227,7 +245,7 @@ class UtilitiesPlugin(Plugin):
 
         event.msg.reply(u'I last saw {} {} ({})'.format(
             user,
-            humanize.naturaltime(datetime.utcnow() - msg.timestamp),
+            humanize.naturaldelta(datetime.utcnow() - msg.timestamp),
             msg.timestamp
         ))
 
@@ -303,3 +321,48 @@ class UtilitiesPlugin(Plugin):
 
         embed.color = get_dominant_colors_user(user, avatar)
         event.msg.reply('', embed=embed)
+
+    def trigger_reminders(self):
+        reminders = Reminder.with_message_join().where(
+            (Reminder.remind_at < (datetime.utcnow() + timedelta(seconds=1)))
+        )
+
+        for reminder in reminders:
+            message = reminder.message_id
+            channel = self.state.channels.get(message.channel_id)
+            if not channel:
+                self.log.warning('Not triggering reminder, channel %s was not found!',
+                    message.channel_id)
+                continue
+
+            channel.send_message(u'<@{}> you asked me {} ago to remind you about: {}'.format(
+                message.author_id,
+                humanize.naturaldelta(reminder.created_at - datetime.utcnow()),
+                reminder.content
+            ))
+
+            reminder.delete_instance()
+
+    @Plugin.command('clear', group='r')
+    def cmd_remind_clear(self, event):
+        count = Reminder.delete_for_user(event.author.id)
+        return event.msg.reply(':ok_hand: I cleared {} reminders for you'.format(count))
+
+    @Plugin.command('add', '<duration:str> <content:str...>', group='r')
+    def cmd_remind(self, event, duration, content):
+        if Reminder.count_for_user(event.author.id) > 30:
+            return event.msg.reply(':warning: you an only have 15 reminders going at once!')
+
+        remind_at = parse_duration(duration)
+        if remind_at > (datetime.utcnow() + timedelta(seconds=5 * YEAR_IN_SEC)):
+            return event.msg.reply(':warning: thats too far in the future, I\'ll forget!')
+
+        r = Reminder.create(
+            message_id=event.msg.id,
+            remind_at=remind_at,
+            content=content
+        )
+        self.reminder_task.set_next_schedule(r.remind_at)
+        event.msg.reply(':ok_hand: I\'ll remind you in {}'.format(
+            humanize.naturaldelta(r.remind_at - datetime.utcnow())
+        ))

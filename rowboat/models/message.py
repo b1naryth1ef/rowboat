@@ -324,3 +324,37 @@ class StarboardEntry(BaseModel):
                 )
             )) & (StarboardEntry.blocked == 1)
         ).execute()
+
+
+@BaseModel.register
+class Reminder(BaseModel):
+    message_id = BigIntegerField(primary_key=True)
+
+    created_at = DateTimeField(default=datetime.utcnow)
+    remind_at = DateTimeField()
+    content = TextField()
+
+    class Meta:
+        db_table = 'reminders'
+
+    @classmethod
+    def with_message_join(cls, fields=None):
+        return cls.select(
+            *(fields or (Reminder, Message))
+        ).join(Message, on=(
+            Reminder.message_id == Message.id
+        ))
+
+    @classmethod
+    def count_for_user(cls, user_id):
+        return cls.with_message_join().where(
+            (Message.author_id == user_id)
+        ).count()
+
+    @classmethod
+    def delete_for_user(cls, user_id):
+        return cls.delete().where(
+            (cls.message_id << cls.with_message_join((Message.id, )).where(
+                Message.author_id == user_id
+            ))
+        ).execute()
