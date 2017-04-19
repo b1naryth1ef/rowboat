@@ -32,7 +32,7 @@ class Eventual(object):
                 self._t = None
 
             self._next = nxt
-            gevent.spawn(f)
+            self._t = gevent.spawn(f)
 
     def trigger(self):
         with self.lock:
@@ -44,6 +44,7 @@ class Eventual(object):
 
     def set_next_schedule(self, date):
         if date < datetime.utcnow():
+            self._next = None
             return gevent.spawn(self.trigger)
 
         if not self._next or date < self._next:
