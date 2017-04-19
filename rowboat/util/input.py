@@ -3,11 +3,11 @@ from disco.bot.command import CommandError
 
 
 UNITS = {
-    's': lambda v: timedelta(seconds=v),
-    'm': lambda v: timedelta(seconds=v * 60),
-    'h': lambda v: timedelta(seconds=v * 60 * 60),
-    'd': lambda v: timedelta(seconds=v * 60 * 60 * 24),
-    'w': lambda v: timedelta(seconds=v * 60 * 60 * 24 * 7),
+    's': lambda v: v,
+    'm': lambda v: v * 60,
+    'h': lambda v: v * 60 * 60,
+    'd': lambda v: v * 60 * 60 * 24,
+    'w': lambda v: v * 60 * 60 * 24 * 7,
 }
 
 
@@ -15,22 +15,18 @@ def parse_duration(raw):
     if not raw:
         raise CommandError('Invalid duration')
 
-    if not raw[-1] in UNITS:
-        raise CommandError(u'Invalid duration unit `{}`'.format(raw[-1]))
-        return None
-    unit = UNITS[raw[-1]]
+    value = 0
+    digits = ''
 
-    negate = False
-    if raw[0] == '-':
-        negate = True
-        raw = raw[1:]
+    for char in raw:
+        if char.isdigit():
+            digits += char
+            continue
 
-    if not raw[:-1].isdigit():
-        raise CommandError(u'Duration must be an integer')
-        return None
+        if char not in UNITS:
+            raise CommandError('Invalid duration')
 
-    value = int(raw[:-1])
-    if negate:
-        value *= -1
+        value += UNITS[char](int(digits))
+        digits = ''
 
-    return datetime.utcnow() + unit(value)
+    return datetime.utcnow() + timedelta(seconds=value)

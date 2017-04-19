@@ -343,6 +343,8 @@ class UtilitiesPlugin(Plugin):
 
             reminder.delete_instance()
 
+        self.queue_reminders()
+
     @Plugin.command('clear', group='r')
     def cmd_remind_clear(self, event):
         count = Reminder.delete_for_user(event.author.id)
@@ -363,6 +365,7 @@ class UtilitiesPlugin(Plugin):
             content=content
         )
         self.reminder_task.set_next_schedule(r.remind_at)
-        event.msg.reply(':ok_hand: I\'ll remind you in {}'.format(
-            humanize.naturaldelta(r.remind_at - datetime.utcnow())
+        event.msg.reply(':ok_hand: I\'ll remind you in {} ({})'.format(
+            humanize.naturaldelta(r.remind_at - datetime.utcnow()),
+            duration
         ))
