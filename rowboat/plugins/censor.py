@@ -10,6 +10,7 @@ from rowboat.util import C
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
 from rowboat.types.plugin import PluginConfig
+from rowboat.models.message import Message
 from rowboat.plugins.modlog import Actions
 
 
@@ -75,12 +76,12 @@ class Censorship(Exception):
 
 @Plugin.with_config(CensorConfig)
 class CensorPlugin(Plugin):
-    def compute_relevant_configs(self, event):
+    def compute_relevant_configs(self, event, author):
         if event.channel_id in event.config.channels:
             yield event.config.channels[event.channel.id]
 
         if event.config.levels:
-            user_level = int(self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author))
+            user_level = int(self.bot.plugins.get('CorePlugin').get_level(event.guild, author))
 
             for level, config in event.config.levels.items():
                 if user_level <= level:
@@ -105,12 +106,25 @@ class CensorPlugin(Plugin):
         rdb.setex('inv:{}'.format(code), json.dumps(obj), 43200)
         return obj
 
-    @Plugin.listen('MessageCreate', 'MessageUpdate')
-    def on_message_create(self, event):
-        if event.author.id == self.state.me.id:
+    @Plugin.listen('MessageUpdate')
+    def on_message_update(self, event):
+        try:
+            msg = Message.get(id=event.id)
+        except Message.DoesNotExist:
+            self.log.warning('Not censoring MessageUpdate for id %s, no stored message', event.id)
+
+        return on_message_create(
+            event,
+            author=event.guild.get_member(msg.author_id))
+
+    @Plugin.listen('MessageCreate')
+    def on_message_create(self, event, author=None):
+        author = author or event.author
+
+        if author.id == self.state.me.id:
             return
 
-        configs = list(self.compute_relevant_configs(event))
+        configs = list(self.compute_relevant_configs(event, author))
         if not configs:
             return
 
@@ -130,7 +144,7 @@ class CensorPlugin(Plugin):
                 event,
                 c=c)
 
-            self.bot.plugins.get('ModLogPlugin').create_debounce(event, event.author, 'censor')
+            self.bot.plugins.get('ModLogPlugin').create_debounce(event, author, 'censor')
             event.delete()
 
     def filter_invites(self, event, config):
