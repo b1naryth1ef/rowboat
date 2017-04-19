@@ -113,7 +113,7 @@ class CensorPlugin(Plugin):
         except Message.DoesNotExist:
             self.log.warning('Not censoring MessageUpdate for id %s, no stored message', event.id)
 
-        return on_message_create(
+        return self.on_message_create(
             event,
             author=event.guild.get_member(msg.author_id))
 
