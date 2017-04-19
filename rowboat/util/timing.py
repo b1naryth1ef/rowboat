@@ -19,7 +19,7 @@ class Eventual(object):
         def f():
             gevent.sleep((self._next - datetime.utcnow()).seconds)
             self._next = None
-            self.func()
+            gevent.spawn(self.func)
 
         if self._t:
             self._t.kill()
@@ -31,7 +31,7 @@ class Eventual(object):
         if self._t:
             self._t.kill()
         self._next = None
-        self.func()
+        gevent.spawn(self.func)
 
     def set_next_schedule(self, date):
         if date < datetime.utcnow():
