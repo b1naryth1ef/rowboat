@@ -105,7 +105,7 @@ class CensorPlugin(Plugin):
         rdb.setex('inv:{}'.format(code), json.dumps(obj), 43200)
         return obj
 
-    @Plugin.listen('MessageCreate')
+    @Plugin.listen('MessageCreate', 'MessageUpdate')
     def on_message_create(self, event):
         if event.author.id == self.state.me.id:
             return
