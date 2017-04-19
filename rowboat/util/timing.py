@@ -23,6 +23,7 @@ class Eventual(object):
 
             with self.lock:
                 self._t = None
+                self._next = None
                 self.func()
 
         with self.lock:
