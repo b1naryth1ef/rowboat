@@ -351,6 +351,7 @@ class UtilitiesPlugin(Plugin):
         return event.msg.reply(':ok_hand: I cleared {} reminders for you'.format(count))
 
     @Plugin.command('add', '<duration:str> <content:str...>', group='r')
+    @Plugin.command('remind', '<duration:str> <content:str...>')
     def cmd_remind(self, event, duration, content):
         if Reminder.count_for_user(event.author.id) > 30:
             return event.msg.reply(':warning: you an only have 15 reminders going at once!')

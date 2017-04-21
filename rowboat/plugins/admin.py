@@ -234,7 +234,7 @@ class AdminPlugin(Plugin):
         embed.add_field(name='Moderator', value=unicode(infraction.actor), inline=True)
         embed.add_field(name='Active', value='yes' if infraction.active else 'no', inline=True)
         if infraction.active and infraction.expires_at:
-            embed.add_field(name='Expires', value=humanize.naturaltime(infraction.expires_at))
+            embed.add_field(name='Expires', value=humanize.naturaldelta(infraction.expires_at - datetime.utcnow()))
         embed.add_field(name='Reason', value=infraction.reason or '_No Reason Given', inline=False)
         embed.timestamp = infraction.created_at.isoformat()
 
@@ -246,7 +246,7 @@ class AdminPlugin(Plugin):
 
         if query and isinstance(query, list) and isinstance(query[0], DiscoUser):
             query = query[0].id
-        else:
+        elif query:
             query = ' '.join(query)
 
         if query and (isinstance(query, int) or query.isdigit()):
@@ -280,13 +280,46 @@ class AdminPlugin(Plugin):
             if inf.active:
                 active = 'yes'
                 if inf.expires_at:
-                    active += ' (expires in {})'.format(humanize.naturaltime(inf.expires_at))
+                    active += ' (expires in {})'.format(humanize.naturaldelta(inf.expires_at - datetime.utcnow()))
             else:
                 active = 'no'
 
             tbl.add(inf.id, str(type_), unicode(inf.user), unicode(inf.actor), active, reason)
 
         event.msg.reply(tbl.compile())
+
+    @Plugin.command('recent', aliases=['latest'], group='infractions', level=CommandLevels.MOD)
+    def infractions_recent(self, event):
+        pass
+
+    @Plugin.command('duration', '<infraction:int> <duration:str>', group='infractions', level=CommandLevels.MOD)
+    def infraction_duration(self, event, infraction, duration):
+        try:
+            inf = Infraction.get(id=infraction)
+        except Infraction.DoesNotExist:
+            return event.msg.reply(':warning: invalid infraction (try `!infractions recent`)')
+
+        if inf.actor_id != event.author.id:
+            return event.msg.reply(':warning: you can only set the duration of infractions you created')
+
+        if not inf.active:
+            return event.msg.reply(':warning: that infraction is not active')
+
+        expire_dt = parse_duration(duration, inf.created_at)
+
+        converted = False
+        if inf.type_ in [Infraction.Types.MUTE.index, Infraction.Types.BAN.index]:
+            inf.type_ = Infraction.Types.TEMPMUTE if inf.type == Infraction.Types.MUTE else Infraction.Types.TEMPBAN
+            converted = True
+        elif inf.type_ not in [Infraction.Types.TEMPMUTE.index, Infraction.Types.TEMPBAN.index]:
+            return event.msg.reply(':warning: cannot set the duration for that type of infraction')
+
+        inf.expires_at = expire_dt
+        inf.save()
+        if converted:
+            event.msg.reply(':ok_hand: ok, I\'ve made that infraction temporary')
+        else:
+            event.msg.reply(':ok_hand: ok, I\'ve updated that infractions duration')
 
     @Plugin.command('reason', '<infraction:int> <reason:str...>', level=CommandLevels.MOD)
     def reason(self, event, infraction, reason):

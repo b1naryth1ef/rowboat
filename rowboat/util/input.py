@@ -11,7 +11,7 @@ UNITS = {
 }
 
 
-def parse_duration(raw):
+def parse_duration(raw, source=None):
     if not raw:
         raise CommandError('Invalid duration')
 
@@ -29,4 +29,4 @@ def parse_duration(raw):
         value += UNITS[char](int(digits))
         digits = ''
 
-    return datetime.utcnow() + timedelta(seconds=value)
+    return (source or datetime.utcnow()) + timedelta(seconds=value)
