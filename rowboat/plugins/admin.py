@@ -309,7 +309,7 @@ class AdminPlugin(Plugin):
 
         converted = False
         if inf.type_ in [Infraction.Types.MUTE.index, Infraction.Types.BAN.index]:
-            inf.type_ = Infraction.Types.TEMPMUTE if inf.type_ == Infraction.Types.MUTE else Infraction.Types.TEMPBAN
+            inf.type_ = Infraction.Types.TEMPMUTE if inf.type_ == Infraction.Types.MUTE.index else Infraction.Types.TEMPBAN
             converted = True
         elif inf.type_ not in [Infraction.Types.TEMPMUTE.index, Infraction.Types.TEMPBAN.index]:
             return event.msg.reply(':warning: cannot set the duration for that type of infraction')
