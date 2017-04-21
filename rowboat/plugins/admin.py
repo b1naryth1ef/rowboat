@@ -305,7 +305,7 @@ class AdminPlugin(Plugin):
         if not inf.active:
             return event.msg.reply(':warning: that infraction is not active')
 
-        expire_dt = parse_duration(duration, inf.created_at)
+        expires_dt = parse_duration(duration, inf.created_at)
 
         converted = False
         if inf.type_ in [Infraction.Types.MUTE.index, Infraction.Types.BAN.index]:
@@ -314,8 +314,10 @@ class AdminPlugin(Plugin):
         elif inf.type_ not in [Infraction.Types.TEMPMUTE.index, Infraction.Types.TEMPBAN.index]:
             return event.msg.reply(':warning: cannot set the duration for that type of infraction')
 
-        inf.expires_at = expire_dt
+        self.inf_task.set_next_schedule(expires_dt)
+        inf.expires_at = expires_dt
         inf.save()
+
         if converted:
             event.msg.reply(':ok_hand: ok, I\'ve made that infraction temporary')
         else:
