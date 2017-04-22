@@ -1,18 +1,11 @@
 import re
 import time
-import xxhash
-import requests
 
 from gevent.lock import Semaphore
 from datetime import datetime, timedelta
 from collections import defaultdict
 from holster.enum import Enum
 from holster.emitter import Priority
-
-from google.cloud import vision
-from google.cloud.vision.likelihood import Likelihood
-
-from disco.types.guild import VerificationLevel
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.redis import rdb
@@ -60,9 +53,6 @@ class SubConfig(SlottedModel):
     max_links_message = Field(CheckConfig, default=None)
     max_emojis_message = Field(CheckConfig, default=None)
     max_newlines_message = Field(CheckConfig, default=None)
-
-    # TODO: move to censor
-    block_nsfw_images = Field(bool, default=True)
 
     def get_max_messages_bucket(self, guild_id):
         if not self.max_messages_check:
@@ -212,125 +202,6 @@ class SpamPlugin(Plugin):
                     'MAX_MENTIONS',
                     'Too Many Mentions ({} / {}s)'.format(bucket.count(event.author.id), bucket.size(event.author.id)))
 
-    def check_message_advanced(self, event, member, rule):
-        member = event.guild.get_member(event.author)
-        user_age = (datetime.utcnow() - member.joined_at).total_seconds()
-
-        # Calculate a risk rating based on the contents of the messages
-        msg_risk = 0
-
-        # Mention count
-        msg_risk += (len(event.mentions) * 250)
-
-        # Each bad word is 25 points
-        msg_risk += (len(BAD_WORDS_RE.findall(event.content)) * 250)
-
-        # Invite Links
-        msg_risk += (len(INVITE_LINK_RE.findall(event.content)) * 1000)
-
-        # Regular Links
-        msg_risk += (
-            len(URL_RE.findall(INVITE_LINK_RE.sub('', event.content))) * 500
-        )
-
-        rdb.rpush('spam:scores:{}'.format(event.author.id), msg_risk)
-        rdb.expire('spam:scores:{}'.format(event.author.id), 60 * 10)
-        scores = rdb.lrange('spam:scores:{}'.format(event.author.id), 0, -1)
-
-        score_sum = sum(map(int, scores))
-        expected_score = 0
-
-        if event.guild.verification_level is VerificationLevel.HIGH:
-            user_age -= 60 * 10
-
-        user_age = 60 * 6
-
-        # Gauge the risk by age
-        if user_age < (60 * 1):
-            if score_sum >= 1000:
-                expected_score = 1000
-        elif user_age < (60 * 5):
-            if score_sum >= 5000:
-                expected_score = 5000
-        else:
-            if score_sum >= 10000:
-                expected_score = 10000
-
-        if expected_score:
-            self.bot.plugins.get('CorePlugin').send_control_message(
-                u'User {} triggered avanced spam detection in channel {}\n  score: {}\n  expected: {}\n  scores: {}'.format(
-                    member,
-                    event.channel.mention,
-                    score_sum,
-                    expected_score,
-                    len(scores)
-                ))
-
-    @property
-    def vision_client(self):
-        if not hasattr(self, '_vision_client'):
-            self._vision_client = vision.Client()
-            # self._vision_client = vision.Client.from_service_account_json(os.getenv('VISION_KEY')
-
-        return self._vision_client
-
-    def check_nsfw_images(self, event, member, rule):
-        influx = self.get_safe_plugin('InfluxPlugin')
-
-        def is_bad_image(url):
-            try:
-                data = requests.get(url)
-                hsh = xxhash.xxh32()
-                hsh.update(data.content)
-                key = 'nsfw:{}'.format(hsh.digest())
-
-                if rdb.exists(key):
-                    influx.write_point('spam.nsfw.check_image', {
-                        'cached': True,
-                    })
-                    if int(rdb.get(key)):
-                        return True
-                    return False
-            except:
-                self.log.exception('Failed to check image at url %s', url)
-                return False
-
-            image = self.vision_client.image(content=data.content)
-            safe = image.detect_safe_search()
-            self.log.info('Image safe search for %s: %s / %s / %s', url, safe.adult, safe.medical, safe.violence)
-
-            value = (
-                safe.adult in [Likelihood.LIKELY, Likelihood.VERY_LIKELY] or
-                safe.medical in [Likelihood.LIKELY, Likelihood.VERY_LIKELY] or
-                safe.violence in [Likelihood.LIKELY, Likelihood.VERY_LIKELY]
-            )
-
-            influx.write_point('spam.nsfw.check_image', {
-                'cached': False,
-                'value': value,
-            })
-
-            rdb.set(key, int(value))
-            return value
-
-        urls = [
-            i.url for i in event.attachments.values() if i.url
-        ] + [
-            i.image.url for i in event.embeds if i.image and i.image.url
-        ] + URL_RE.findall(INVITE_LINK_RE.sub('', event.content))
-
-        if not urls:
-            return
-
-        for url in urls:
-            if is_bad_image(url):
-                raise Violation(
-                    rule,
-                    event,
-                    member,
-                    'NSFW_IMAGE',
-                    'NSFW Image Posted')
-
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
     def on_message_create(self, event):
         # TODO: temp disabled while I rewrite
@@ -348,12 +219,6 @@ class SpamPlugin(Plugin):
             level = int(self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author))
 
             for rule in event.config.compute_relevant_rules(member, level):
-                # if rule.advanced_heuristics:
-                #     self.check_message_advanced(event, member, rule)
-
-                if rule.nsfw_images:
-                    self.check_nsfw_images(event, member, rule)
-
                 self.check_message_simple(event, member, rule)
         except Violation as v:
             self.violate(v)

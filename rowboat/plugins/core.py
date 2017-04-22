@@ -20,6 +20,7 @@ from rowboat.sql import init_db
 from rowboat.redis import rdb
 from rowboat.models.user import Infraction
 from rowboat.models.guild import Guild, GuildBan
+from rowboat.models.message import Message
 from rowboat.models.notification import Notification
 from rowboat.plugins.modlog import Actions
 
@@ -329,6 +330,10 @@ class CorePlugin(Plugin):
                 continue
 
             command.plugin.execute(CommandEvent(command, event.message, match))
+
+            Message.update(command=command.plugin.name + ':' + command.name).where(
+                (Message.id == event.message.id)
+            ).execute()
 
             # Dispatch the command used modlog event
             if config:

@@ -29,6 +29,7 @@ class Message(BaseModel):
     edited_timestamp = DateTimeField(null=True, default=None)
     deleted = BooleanField(default=False)
     num_edits = BigIntegerField(default=0)
+    command = TextField(null=True)
 
     mentions = ArrayField(BigIntegerField, default=[], null=True)
     emojis = ArrayField(BigIntegerField, default=[], null=True)
