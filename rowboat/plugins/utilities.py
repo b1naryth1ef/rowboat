@@ -70,7 +70,10 @@ class UtilitiesPlugin(Plugin):
 
         # Because someone will be an idiot
         if end > 9223372036854775807:
-            return event.msg.reply('Ending number too big!')
+            return event.msg.reply(':warning: ending number too big!')
+
+        if end <= start:
+            return event.msg.reply(':warning: ending number must be larger than starting number!')
 
         event.msg.reply(str(random.randint(start, end)))
 
