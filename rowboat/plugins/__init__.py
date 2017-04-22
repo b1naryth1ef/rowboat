@@ -99,3 +99,20 @@ class RowboatPlugin(RavenPlugin, Plugin):
     @property
     def name(self):
         return self.__class__.__name__.replace('Plugin', '').lower()
+
+
+class CommandResponse(Exception):
+    EMOJI = None
+
+    def __init__(self, response):
+        if self.EMOJI:
+            response = u':{}: {}'.format(self.EMOJI, response)
+        self.response = response
+
+
+class CommandFail(CommandResponse):
+    EMOJI = 'no_entry_sign'
+
+
+class CommandSuccess(CommandResponse):
+    EMOJI = 'ballot_box_with_check'

@@ -215,7 +215,6 @@ class StarboardPlugin(Plugin):
         msg = event.msg.reply('Updating starboard...')
 
         for star in stars:
-            self.log.info('Attempting to update stars for %s', star.message_id)
             info_msg = self.client.api.channels_messages_get(
                 star.message.channel_id,
                 star.message_id)
@@ -267,8 +266,6 @@ class StarboardPlugin(Plugin):
             self.updates[guild_id].touch()
 
     def update_starboard(self, guild_id, config):
-        self.log.info('Attempting to update starboard %s / %s', guild_id, config)
-
         # Grab all dirty stars that where posted in the last 32 hours
         stars = StarboardEntry.select().join(Message).where(
             (StarboardEntry.dirty == 1) &
@@ -314,7 +311,6 @@ class StarboardPlugin(Plugin):
             self.post_star(star, source_msg, sb_id, sb_config)
 
     def delete_star(self, star, update=True):
-        self.log.info('Removing starboard entry %s', star)
         try:
             self.client.api.channels_messages_delete(
                 star.star_channel_id,
@@ -337,8 +333,6 @@ class StarboardPlugin(Plugin):
             star.star_message_id = None
 
     def post_star(self, star, source_msg, starboard_id, config):
-        self.log.info('Posting starboard entry for %s', star)
-
         # Generate the embed and post it
         content, embed = self.get_embed(star, source_msg, config)
 
@@ -434,8 +428,6 @@ class StarboardPlugin(Plugin):
             stars = list(StarboardEntry.delete().where(
                 (StarboardEntry.message_id == event.id)
             ).returning(StarboardEntry).execute())
-
-            self.log.info('Clearing stars for (%s) on deletion: %s', event.id, stars)
 
             for star in stars:
                 self.delete_star(star, update=False)

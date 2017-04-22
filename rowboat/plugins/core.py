@@ -15,7 +15,7 @@ from disco.bot.command import CommandEvent
 
 from rowboat.util import C, LocalProxy
 from rowboat.plugins import BasePlugin as Plugin
-from rowboat.plugins import RowboatPlugin
+from rowboat.plugins import RowboatPlugin, CommandResponse
 from rowboat.sql import init_db
 from rowboat.redis import rdb
 from rowboat.models.user import Infraction
@@ -329,7 +329,10 @@ class CorePlugin(Plugin):
             if not global_admin and event.user_level < level:
                 continue
 
-            command.plugin.execute(CommandEvent(command, event.message, match))
+            try:
+                command.plugin.execute(CommandEvent(command, event.message, match))
+            except CommandResponse as e:
+                return event.reply(e.response)
 
             Message.update(command=command.plugin.name + ':' + command.name).where(
                 (Message.id == event.message.id)
