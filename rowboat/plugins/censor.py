@@ -147,7 +147,7 @@ class CensorPlugin(Plugin):
                 event,
                 c=c)
 
-            self.bot.plugins.get('ModLogPlugin').create_debounce(event, author, 'censor')
+            self.bot.plugins.get('ModLogPlugin').create_debounce(event, author.id, 'censor')
             event.delete()
 
     def filter_invites(self, event, config):

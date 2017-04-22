@@ -89,13 +89,13 @@ class Formatter(string.Formatter):
 class ModLogPlugin(Plugin):
     fmt = Formatter()
 
-    def create_debounce(self, event, user, typ, **kwargs):
+    def create_debounce(self, event, user_id, typ, **kwargs):
         kwargs.update({
             'type': typ,
             'time': time.time(),
         })
 
-        self.debounce[event.guild.id][user.id][typ] = kwargs
+        self.debounce[event.guild.id][user_id][typ] = kwargs
 
     def pop_debounce(self, guild_id, user_id, typ):
         obj = self.get_debounce(guild_id, user_id, typ)
@@ -301,7 +301,7 @@ class ModLogPlugin(Plugin):
         else:
             self.log_action(Actions.GUILD_BAN_ADD, event)
 
-        self.create_debounce(event, event.user, 'ban')
+        self.create_debounce(event, event.user.id, 'ban')
 
     @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):

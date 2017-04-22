@@ -124,7 +124,7 @@ class Infraction(BaseModel):
     @classmethod
     def kick(cls, plugin, event, member, reason):
         User.from_disco_user(member.user)
-        plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'kick',
+        plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user.id, 'kick',
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason')
         member.kick()
@@ -139,7 +139,7 @@ class Infraction(BaseModel):
     def tempban(cls, plugin, event, member, reason, expires_at):
         User.from_disco_user(member.user)
 
-        plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
+        plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user.id, 'ban_reason',
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             temp=True,
             expires=expires_at,
@@ -158,7 +158,7 @@ class Infraction(BaseModel):
     @classmethod
     def softban(cls, plugin, event, member, reason):
         User.from_disco_user(member.user)
-        plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
+        plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user.id, 'ban_reason',
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             temp=True,
             expires=None,
@@ -181,12 +181,11 @@ class Infraction(BaseModel):
             User.from_disco_user(member.user)
             user_id = member.user.id
 
-        if user_id != member:
-            plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'ban_reason',
-                actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
-                temp=False,
-                expires=None,
-                reason=reason or 'no reason')
+        plugin.bot.plugins.get('ModLogPlugin').create_debounce(event, user_id, 'ban_reason',
+            actor=unicode(event.author) if event.author.id != user_id else 'Automatic',
+            temp=False,
+            expires=None,
+            reason=reason or 'no reason')
 
         guild.create_ban(user_id)
 
@@ -201,7 +200,7 @@ class Infraction(BaseModel):
     def mute(cls, plugin, event, member, reason):
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(
             event,
-            member.user,
+            member.user.id,
             'muted',
             reason=reason,
             expires_at=None,
@@ -221,7 +220,7 @@ class Infraction(BaseModel):
     def tempmute(cls, plugin, event, member, reason, expires_at):
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(
             event,
-            member.user,
+            member.user.id,
             'muted',
             reason=reason,
             expires_at=expires_at,

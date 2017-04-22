@@ -138,7 +138,6 @@ class StarboardPlugin(Plugin):
         ).execute()
 
         self.queue_update(event.guild.id, event.config)
-
         event.msg.reply(u'Forcing an update on message {}'.format(mid))
 
     @Plugin.command('block', '<user:user>', group='stars', level=CommandLevels.MOD)

@@ -172,7 +172,7 @@ class AdminPlugin(Plugin):
         if not kwargs:
             return
 
-        self.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'restore')
+        self.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user.id, 'restore')
         member.modify(**kwargs)
         self.bot.plugins.get('ModLogPlugin').log_action_ext(Actions.MEMBER_RESTORE, event)
 
@@ -456,7 +456,7 @@ class AdminPlugin(Plugin):
                 (Infraction.active == 1)
             ).execute()
 
-            self.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user, 'unmuted', actor=unicode(event.author), roles=roles)
+            self.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user.id, 'unmuted', actor=unicode(event.author), roles=roles)
 
             for role in roles:
                 member.remove_role(role)
@@ -648,7 +648,7 @@ class AdminPlugin(Plugin):
             return event.msg.reply(u':warning: {} doesn\'t have the {} role'.format(member, role_obj.name))
 
         self.bot.plugins.get('ModLogPlugin').create_debounce(
-            event, member.user, mode + '_role', actor=event.author, reason=reason or 'no reason')
+            event, member.user.id, mode + '_role', actor=event.author, reason=reason or 'no reason')
 
         if mode == 'add':
             member.add_role(role_obj.id)
