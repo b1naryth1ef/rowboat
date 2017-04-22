@@ -120,7 +120,7 @@ class SQLPlugin(Plugin):
                 if len(result) > 1900:
                     return event.msg.reply(
                         '_took {}ms_'.format(int(dur * 1000)),
-                        attachments=('result.txt', result))
+                        attachment=('result.txt', result))
 
                 event.msg.reply('```' + result + '```\n_took {}ms_\n'.format(int(dur * 1000)))
         except psycopg2.Error as e:
