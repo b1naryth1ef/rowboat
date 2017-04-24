@@ -325,7 +325,7 @@ class UtilitiesPlugin(Plugin):
                     content.append(u'Stream: [{}]({})'.format(user.presence.game.name, user.presence.game.url))
 
         created_dt = to_datetime(user.id)
-        content.append('Created: {} ({})'.format(
+        content.append('Created: {} ago ({})'.format(
             humanize.naturaldelta(datetime.utcnow() - created_dt),
             created_dt.isoformat()
         ))
@@ -337,7 +337,7 @@ class UtilitiesPlugin(Plugin):
             if member.nick:
                 content.append(u'Nickname: {}'.format(member.nick))
 
-            content.append('Joined: {} ({})'.format(
+            content.append('Joined: {} ago ({})'.format(
                 humanize.naturaldelta(datetime.utcnow() - member.joined_at),
                 member.joined_at.isoformat(),
             ))
@@ -352,7 +352,7 @@ class UtilitiesPlugin(Plugin):
                 (Message.author_id == user.id)
             ).order_by(Message.timestamp.desc()).get()
             content.append(u'\n **\u276F Activity**')
-            content.append('Last Message: {} ({})'.format(
+            content.append('Last Message: {} ago ({})'.format(
                 humanize.naturaldelta(datetime.utcnow() - msg.timestamp),
                 msg.timestamp.isoformat(),
             ))
@@ -366,7 +366,6 @@ class UtilitiesPlugin(Plugin):
             user.avatar,
         )
 
-        print avatar
         embed.set_author(name=u'{}#{} ({})'.format(
             user.username,
             user.discriminator,
