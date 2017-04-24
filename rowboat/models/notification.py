@@ -35,12 +35,12 @@ class Notification(BaseModel):
         )
 
     @classmethod
-    def get_unreads(cls):
+    def get_unreads(cls, limit=25):
         return cls.select().where(
             cls.read == 0,
         ).order_by(
             cls.created_at.asc()
-        ).limit(25)
+        ).limit(limit)
 
     @classmethod
     def dispatch(cls, typ, **kwargs):

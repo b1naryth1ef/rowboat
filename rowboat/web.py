@@ -48,5 +48,5 @@ def save_auth(response):
 def inject_data():
     return dict(
         user=g.user,
-        notifications=[i.to_user() for i in Notification.get_unreads()]
+        notifications=[i.to_user() for i in Notification.get_unreads(5)]
     )

@@ -14,6 +14,14 @@ from rowboat.models.channel import Channel
 dashboard = Blueprint('dash', __name__)
 
 
+def pretty_number(i):
+    if i > 1000000:
+        return '%.2fm' % (i / 1000000.0)
+    elif i > 10000:
+        return '%.2fk' % (i / 1000.0)
+    return str(i)
+
+
 class ServerSentEvent(object):
     def __init__(self, data):
         self.data = data
@@ -38,16 +46,17 @@ def dash_index():
         obj = json.loads(rdb.get('web:dashboard:stats') or '{}')
 
         if not obj or 'refresh' in request.args:
-            obj['messages'] = Message.select().count()
-            obj['guilds'] = Guild.select().count()
-            obj['users'] = User.select().count()
-            obj['channels'] = Channel.select().count()
+            obj['messages'] = pretty_number(Message.select().count())
+            obj['guilds'] = pretty_number(Guild.select().count())
+            obj['users'] = pretty_number(User.select().count())
+            obj['channels'] = pretty_number(Channel.select().count())
 
             rdb.setex('web:dashboard:stats', json.dumps(obj), 300)
 
         return render_template(
             'dashboard.html',
             stats=obj,
+            guilds=Guild.select().where(Guild.enabled == 1).order_by(Guild.guild_id),
         )
     return render_template('login.html')
 

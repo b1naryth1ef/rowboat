@@ -24,14 +24,6 @@ def with_guild(f):
     return func
 
 
-@guilds.route('/')
-@authed
-def guilds_list():
-    return render_template(
-        'guilds.html',
-        guilds=Guild.select().where(Guild.enabled == 1))
-
-
 @guilds.route('/<gid>')
 @with_guild
 def guild_info(guild):

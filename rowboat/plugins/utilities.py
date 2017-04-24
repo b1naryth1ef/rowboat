@@ -6,10 +6,13 @@ import operator
 
 from six import BytesIO
 from PIL import Image
+from peewee import fn
 from pyquery import PyQuery
 from gevent.pool import Pool
 from datetime import datetime, timedelta
-from disco.types.message import MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
+
+from disco.types.user import GameType, Status
+from disco.types.message import MessageEmbed
 from disco.util.snowflake import to_datetime
 from disco.util.sanitize import S
 
@@ -26,6 +29,27 @@ YEAR_IN_SEC = 60 * 60 * 24 * 365
 CDN_URL = 'https://twemoji.maxcdn.com/2/72x72/{}.png'
 EMOJI_RE = re.compile(r'<:(.+):([0-9]+)>')
 USER_MENTION_RE = re.compile('<@!?([0-9]+)>')
+
+STATUS_EMOJI = {
+    'ONLINE': ':status_online:305889169811439617',
+    'IDLE': ':status_away:305889079222992896',
+    'STREAMING': ':status_streaming:305889126463569920',
+    'OFFLINE': ':status_offline:30588902899607142',
+    'DND': ':status_dnd:305889053255925760',
+}
+
+
+def get_status_emoji(presence):
+    if presence.game and presence.game.type == GameType.STREAMING:
+        return STATUS_EMOJI['STREAMING'], 'Streaming'
+    elif presence.status == Status.ONLINE:
+        return STATUS_EMOJI['ONLINE'], 'Online'
+    elif presence.status == Status.IDLE:
+        return STATUS_EMOJI['IDLE'], 'Idle',
+    elif presence.status == Status.DND:
+        return STATUS_EMOJI['DND'], 'DND'
+    elif presence.status in (Status.OFFLINE, Status.INVISIBLE):
+        return STATUS_EMOJI['OFFLINE'], 'Offline'
 
 
 def get_emoji_url(emoji):
@@ -285,43 +309,86 @@ class UtilitiesPlugin(Plugin):
         else:
             user = users[0]
 
+        # TODO: wat
+        user = self.state.users.get(user.user_id)
+
+        content = []
+        content.append(u'**\u276F User Information**')
+
+        if user.presence:
+            emoji, status = get_status_emoji(user.presence)
+            content.append('Status: {} <{}>'.format(status, emoji))
+            if user.presence.game and user.presence.game.name:
+                if user.presence.game.type == GameType.DEFAULT:
+                    content.append(u'Game: {}'.format(user.presence.game.name))
+                else:
+                    content.append(u'Stream: [{}]({})'.format(user.presence.game.name, user.presence.game.url))
+
+        created_dt = to_datetime(user.id)
+        content.append('Created: {} ({})'.format(
+            humanize.naturaldelta(datetime.utcnow() - created_dt),
+            created_dt.isoformat()
+        ))
+
+        member = event.guild.get_member(user.id) if event.guild else None
+        if member:
+            content.append(u'\n**\u276F Member Information**')
+
+            if member.nick:
+                content.append(u'Nickname: {}'.format(member.nick))
+
+            content.append('Joined: {} ({})'.format(
+                humanize.naturaldelta(datetime.utcnow() - member.joined_at),
+                member.joined_at.isoformat(),
+            ))
+
+            if member.roles:
+                content.append(u'Roles: {}'.format(
+                    ', '.join((member.guild.roles.get(r).name for r in member.roles))
+                ))
+
+        try:
+            msg = Message.select().where(
+                (Message.author_id == user.id)
+            ).order_by(Message.timestamp.desc()).get()
+            content.append(u'\n **\u276F Activity**')
+            content.append('Last Message: {} ({})'.format(
+                humanize.naturaldelta(datetime.utcnow() - msg.timestamp),
+                msg.timestamp.isoformat(),
+            ))
+        except Message.DoesNotExist:
+            pass
+
         embed = MessageEmbed()
 
-        avatar = u'https://discordapp.com/api/users/{}/avatars/{}.jpg'.format(
-            user.user_id,
+        avatar = u'https://cdn.discordapp.com/avatars/{}/{}.png'.format(
+            user.id,
             user.avatar,
         )
 
-        member = event.guild.get_member(user.user_id) if event.guild else None
+        print avatar
+        embed.set_author(name=u'{}#{} ({})'.format(
+            user.username,
+            user.discriminator,
+            user.id,
+        ), icon_url=avatar)
 
-        embed.thumbnail = MessageEmbedThumbnail(url=avatar)
-        embed.fields.append(
-            MessageEmbedField(name='User', value='<@{}>'.format(user.user_id), inline=True))
+        embed.set_thumbnail(url=avatar)
 
-        if member:
-            embed.fields.append(
-                MessageEmbedField(name='Nickname',
-                    value=member.nick if member.nick else '`No Nickname`', inline=True))
+        infractions = list(Infraction.select(
+            Infraction.guild_id,
+            fn.COUNT('*')
+        ).where(
+            (Infraction.user_id == user.id)
+        ).group_by(Infraction.guild_id).tuples())
 
-        embed.fields.append(
-            MessageEmbedField(name='ID', value=str(user.user_id), inline=True))
+        if infractions:
+            total = sum(i[1] for i in infractions)
+            content.append(u'\n**\u276F Infractions**')
+            content.append('Total Infractions: {}'.format(total))
+            content.append('Unique Servers: {}'.format(len(infractions)))
 
-        embed.fields.append(
-            MessageEmbedField(name='Creation Date', value=str(to_datetime(user.user_id)), inline=True))
-
-        if member:
-            embed.fields.append(
-                MessageEmbedField(name='Join Date', value=str(member.joined_at), inline=True))
-
-        infractions = Infraction.select().where(Infraction.user_id == user.id).count()
-        embed.fields.append(
-            MessageEmbedField(name='Infractions', value=str(infractions), inline=True))
-
-        if member:
-            embed.fields.append(
-                MessageEmbedField(name='Roles', value=', '.join(
-                    (event.guild.roles.get(i).name for i in member.roles)) or 'no roles', inline=False))
-
+        embed.description = '\n'.join(content)
         embed.color = get_dominant_colors_user(user, avatar)
         event.msg.reply('', embed=embed)
 
