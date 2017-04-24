@@ -4,9 +4,9 @@ import urlparse
 
 from holster.enum import Enum
 from disco.util.functional import cached_property
+from disco.util.sanitize import S
 
 from rowboat.redis import rdb
-from rowboat.util import C
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
 from rowboat.types.plugin import PluginConfig
@@ -56,22 +56,23 @@ class Censorship(Exception):
         self.reason = reason
         self.event = event
         self.ctx = ctx
-        self.content = C(event.content)
+        self.content = S(event.content, escape_codeblocks=True)
 
     @property
     def details(self):
         if self.reason is CensorReason.INVITE:
             if self.ctx['guild']:
-                return 'invite `{}` to {}'.format(self.ctx['invite'], C(self.ctx['guild']['name']))
+                return 'invite `{}` to {}'.format(self.ctx['invite'], S(self.ctx['guild']['name'], escape_codeblocks=True))
             else:
                 return 'invite `{}`'.format(self.ctx['invite'])
         elif self.reason is CensorReason.DOMAIN:
             if self.ctx['hit'] == 'whitelist':
-                return 'domain `{}` is not in whitelist'.format(C(self.ctx['domain']))
+                return 'domain `{}` is not in whitelist'.format(S(self.ctx['domain'], escape_codeblocks=True))
             else:
-                return 'domain `{}` is in blacklist'.format(C(self.ctx['domain']))
+                return 'domain `{}` is in blacklist'.format(S(self.ctx['domain'], escape_codeblocks=True))
         elif self.reason is CensorReason.WORD:
-            return 'found blacklisted words `{}`'.format(', '.join(map(C, self.ctx['words'])))
+            return 'found blacklisted words `{}`'.format(
+                ', '.join([S(i, escape_codeblocks=True) for i in self.ctx['words']]))
 
 
 @Plugin.with_config(CensorConfig)

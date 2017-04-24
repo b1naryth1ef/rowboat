@@ -19,12 +19,13 @@ from disco.types import UNSET
 from disco.types.message import MessageEmbed, MessageEmbedField
 from disco.util.functional import cached_property
 from disco.util.snowflake import to_unix, to_datetime
+from disco.util.sanitize import S
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.message import Message, MessageArchive
-from rowboat.util import ordered_load, escape_codeblocks, C, MetaException
+from rowboat.util import ordered_load, MetaException
 
 
 Actions = Enum()
@@ -80,7 +81,7 @@ class ModLogConfig(PluginConfig):
 class Formatter(string.Formatter):
     def convert_field(self, value, conversion):
         if conversion == 'z':
-            return escape_codeblocks(unicode(value))
+            return S(unicode(value), escape_mentions=False, escape_codeblocks=True)
         return unicode(value)
         # return super(Formatter, self).convert_field(value, conversion)
 
@@ -193,7 +194,7 @@ class ModLogPlugin(Plugin):
                 if '-' in field.name:
                     field.name = field.name.replace('-', ' ').title()
 
-                field.value = C(v.format(e=event, **details))
+                field.value = S(v.format(e=event, **details), escape_codeblocks=True)
                 embed.fields.append(field)
 
             return '', embed
@@ -205,7 +206,7 @@ class ModLogPlugin(Plugin):
 
             msg = u':{}: {}'.format(
                 info['emoji'],
-                C(contents),
+                S(contents),
             )
 
             if config.timestamps:

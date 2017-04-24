@@ -10,9 +10,9 @@ from datetime import datetime, timedelta
 from disco.bot import CommandLevels
 from disco.types.user import User as DiscoUser
 from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
+from disco.util.sanitize import S
 
 from rowboat.plugins import RowboatPlugin as Plugin, CommandFail, CommandSuccess
-from rowboat.util import C
 from rowboat.util.timing import Eventual
 from rowboat.util.images import get_dominant_colors_user
 from rowboat.util.input import parse_duration
@@ -360,7 +360,7 @@ class AdminPlugin(Plugin):
     def roles(self, event):
         roles = []
         for role in event.guild.roles.values():
-            roles.append(C(u'{} - {}'.format(role.id, role.name)))
+            roles.append(S(u'{} - {}'.format(role.id, role.name), escape_codeblocks=True))
         return event.msg.reply(u'```{}```'.format('\n'.join(roles)))
 
     @Plugin.command('restore', '<user:user>', level=CommandLevels.MOD, group='backups')

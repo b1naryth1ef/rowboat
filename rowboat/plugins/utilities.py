@@ -14,7 +14,6 @@ from disco.util.snowflake import to_datetime
 from disco.util.sanitize import S
 
 from rowboat.plugins import RowboatPlugin as Plugin
-from rowboat.util import C
 from rowboat.util.timing import Eventual
 from rowboat.util.input import parse_duration
 from rowboat.types.plugin import PluginConfig
@@ -278,7 +277,7 @@ class UtilitiesPlugin(Plugin):
 
         users = User.select().where(reduce(operator.or_, queries))
         if len(users) == 0:
-            return event.msg.reply(u'No users found for query `{}`'.format(C(query)))
+            return event.msg.reply(u'No users found for query `{}`'.format(S(query, escape_codeblocks=True)))
         elif len(users) > 1:
             return event.msg.reply(u'Found the following users for your query: ```{}```'.format(
                 u'\n'.join(map(unicode, users))

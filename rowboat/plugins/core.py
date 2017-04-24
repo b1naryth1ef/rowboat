@@ -12,8 +12,9 @@ from holster.emitter import Priority
 from disco.types.message import MessageEmbed
 from disco.api.http import APIException
 from disco.bot.command import CommandEvent
+from disco.util.sanitize import S
 
-from rowboat.util import C, LocalProxy
+from rowboat.util import LocalProxy
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import RowboatPlugin, CommandResponse
 from rowboat.sql import init_db
@@ -352,9 +353,6 @@ class CorePlugin(Plugin):
 
     @Plugin.command('setup')
     def command_setup(self, event):
-        """
-        Setup a new Guild with Rowboat
-        """
         if not event.guild:
             return event.msg.reply(':warning: this command can only be used in servers')
 
@@ -378,29 +376,8 @@ class CorePlugin(Plugin):
         self.guilds[event.guild.id] = guild
         event.msg.reply(':ok_hand: successfully loaded configuration')
 
-    @Plugin.command('help', '<command>')
-    def command_help(self, event, command):
-        """
-        Provides information on a given command.
-        """
-        for cmd in self.bot.commands:
-            if command.lower() in cmd.triggers:
-                break
-        else:
-            event.msg.reply(u"Couldn't find command for `{}`".format(C(command)))
-            return
-
-        event.msg.reply(u'Usage: {} {}\nDescription: {}'.format(
-            command,
-            cmd.raw_args or '',
-            cmd.func.__doc__,
-        ))
-
     @Plugin.command('nuke', '<user:snowflake> <reason:str...>', level=-1)
     def nuke(self, event, user, reason):
-        """
-        Force ban a user from all rowboat Guilds
-        """
         contents = []
 
         for gid, guild in self.guilds.items():
@@ -456,7 +433,7 @@ class CorePlugin(Plugin):
             if command.lower() in cmd.triggers:
                 break
         else:
-            event.msg.reply(u"Couldn't find command for `{}`".format(C(command)))
+            event.msg.reply(u"Couldn't find command for `{}`".format(S(command, escape_codeblocks=True)))
             return
 
         code = cmd.func.__code__
