@@ -35,6 +35,9 @@ class ChannelConfig(SlottedModel):
     # The number which represents the "max" star level
     star_color_max = Field(int, default=15)
 
+    # Prevent users from starring their own posts
+    prevent_self_star = Field(bool, default=False)
+
     def get_color(self, count):
         ratio = min(count / float(self.star_color_max), 1.0)
 
@@ -371,6 +374,18 @@ class StarboardPlugin(Plugin):
         # Don't add stars for blocked users
         if q:
             return
+
+        # Check if the board prevents self stars
+        board = event.config.get_board(event.channel_id)
+        if board.prevent_self_star:
+            try:
+                msg = Message.get(id=event.message_id)
+            except Message.DoesNotExist:
+                return
+
+            if msg.author_id == event.user_id and board.prevent_self_star:
+                self.spawn(event.delete)
+                return
 
         try:
             StarboardEntry.add_star(event.message_id, event.user_id)
