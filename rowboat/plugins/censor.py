@@ -113,6 +113,7 @@ class CensorPlugin(Plugin):
             msg = Message.get(id=event.id)
         except Message.DoesNotExist:
             self.log.warning('Not censoring MessageUpdate for id %s, no stored message', event.id)
+            return
 
         if not event.content:
             return
