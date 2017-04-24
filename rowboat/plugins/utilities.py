@@ -11,6 +11,7 @@ from gevent.pool import Pool
 from datetime import datetime, timedelta
 from disco.types.message import MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
 from disco.util.snowflake import to_datetime
+from disco.util.sanitize import S
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.util import C
@@ -338,10 +339,11 @@ class UtilitiesPlugin(Plugin):
                     message.channel_id)
                 continue
 
-            channel.send_message(u'<@{}> you asked me {} ago to remind you about: {}'.format(
+            channel.send_message(u'<@{}> you asked me at {} ({} ago) to remind you about: {}'.format(
                 message.author_id,
+                reminder.created_at,
                 humanize.naturaldelta(reminder.created_at - datetime.utcnow()),
-                reminder.content
+                S(reminder.content)
             ))
 
             reminder.delete_instance()
@@ -369,7 +371,7 @@ class UtilitiesPlugin(Plugin):
             content=content
         )
         self.reminder_task.set_next_schedule(r.remind_at)
-        event.msg.reply(':ok_hand: I\'ll remind you in {} ({})'.format(
+        event.msg.reply(':ok_hand: I\'ll remind you at {} ({})'.format(
+            r.remind_at.isoformat(),
             humanize.naturaldelta(r.remind_at - datetime.utcnow()),
-            duration
         ))
