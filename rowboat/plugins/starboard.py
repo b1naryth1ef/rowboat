@@ -376,7 +376,7 @@ class StarboardPlugin(Plugin):
             return
 
         # Check if the board prevents self stars
-        board = event.config.get_board(event.channel_id)
+        _, board = event.config.get_board(event.channel_id)
         if board.prevent_self_star:
             try:
                 msg = Message.get(id=event.message_id)
