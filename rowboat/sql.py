@@ -1,5 +1,4 @@
 import os
-import logging
 import psycogreen.gevent; psycogreen.gevent.patch_psycopg()
 
 from peewee import *
