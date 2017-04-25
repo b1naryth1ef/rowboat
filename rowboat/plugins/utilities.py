@@ -34,7 +34,7 @@ STATUS_EMOJI = {
     'ONLINE': ':status_online:305889169811439617',
     'IDLE': ':status_away:305889079222992896',
     'STREAMING': ':status_streaming:305889126463569920',
-    'OFFLINE': ':status_offline:30588902899607142',
+    'OFFLINE': ':status_offline:305889028996071425',
     'DND': ':status_dnd:305889053255925760',
 }
 
