@@ -112,7 +112,7 @@ class CensorPlugin(Plugin):
         try:
             msg = Message.get(id=event.id)
         except Message.DoesNotExist:
-            self.log.warning('Not censoring MessageUpdate for id %s, no stored message', event.id)
+            self.log.warning('Not censoring MessageUpdate for id %s, %s, no stored message', event.channel_id, event.id)
             return
 
         if not event.content:
