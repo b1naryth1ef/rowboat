@@ -3,19 +3,23 @@ import gevent
 import psycopg2
 import markovify
 
+from gevent.pool import Pool
 from holster.enum import Enum
 from holster.emitter import Priority
+from datetime import datetime
 
 from disco.types.message import MessageTable
 from disco.types.user import User as DiscoUser
 from disco.types.guild import Guild as DiscoGuild
-from disco.types.channel import Channel as DiscoChannel
+from disco.types.channel import Channel as DiscoChannel, MessageIterator
+from disco.util.snowflake import to_datetime, from_datetime
 
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.sql import database
 from rowboat.models.guild import GuildEmoji
 from rowboat.models.channel import Channel
 from rowboat.models.message import Message, Reaction
+from rowboat.util.input import parse_duration
 
 
 class SQLPlugin(Plugin):
@@ -177,6 +181,44 @@ class SQLPlugin(Plugin):
         self.models = {}
         event.msg.reply(':ok_hand: cleared models')
 
+    @Plugin.command('global', '<duration:str> [pool:int]', level=-1, global_=True, context={'mode': 'global'}, group='recover')
+    @Plugin.command('here', '<duration:str> [pool:int]', level=-1, global_=True, context={'mode': 'here'}, group='recover')
+    def command_recover(self, event, duration, pool=4, mode=None):
+        if mode == 'global':
+            channels = list(self.state.channels.values())
+        else:
+            channels = list(event.guild.channels.values())
+
+        start_at = parse_duration(duration, negative=True)
+
+        pool = Pool(pool)
+
+        total = len(channels)
+        count = 0
+        msg = event.msg.reply('Recovery Status: 0/{}'.format(total))
+
+        def updater():
+            last = count
+
+            while True:
+                if last != count:
+                    last = count
+                    msg.edit('Recovery Status: {}/{}'.format(count, total))
+                gevent.sleep(5)
+
+        u = self.spawn(updater)
+
+        try:
+            for channel in channels:
+                pool.wait_available()
+                r = Recovery(self.log, channel, start_at)
+                pool.spawn(r.run)
+                count += 1
+        finally:
+            u.kill()
+
+        msg.edit('RECOVERY COMPLETED')
+
     @Plugin.command('backfill channel', '[channel:channel] [mode:str] [direction:str]', level=-1, global_=True)
     def command_backfill_channel(self, event, channel=None, mode=None, direction=None):
         channel = channel or event.channel
@@ -270,6 +312,29 @@ class SQLPlugin(Plugin):
             t.add(word, count)
 
         event.msg.reply(t.compile())
+
+
+class Recovery(object):
+    def __init__(self, log, channel, start_dt, end_dt=None):
+        self.log = log
+        self.channel = channel
+        self.start_dt = start_dt
+        self.end_dt = end_dt or datetime.utcnow()
+
+    def run(self):
+        self.log.info('Starting recovery on channel %s (%s -> %s)', self.channel.id, self.start_dt, self.end_dt)
+
+        msgs = self.channel.messages_iter(
+            bulk=True,
+            direction=MessageIterator.Direction.DOWN,
+            after=str(from_datetime(self.start_dt))
+        )
+
+        for chunk in msgs:
+            print Message.from_disco_message_many(chunk, safe=True)
+
+            if to_datetime(chunk[-1].id) > self.end_dt:
+                break
 
 
 class Backfill(object):

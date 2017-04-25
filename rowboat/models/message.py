@@ -102,8 +102,17 @@ class Message(BaseModel):
         return created
 
     @classmethod
-    def from_disco_message_many(cls, objs):
-        cls.insert_many([{
+    def from_disco_message_many(cls, messages, safe=False):
+        q = cls.insert_many(map(cls.convert_message, messages))
+
+        if safe:
+            q = q.on_conflict('DO NOTHING')
+
+        return q.execute()
+
+    @staticmethod
+    def convert_message(obj):
+        return {
             'id': obj.id,
             'channel_id': obj.channel_id,
             'guild_id': (obj.guild and obj.guild.id),
@@ -116,7 +125,7 @@ class Message(BaseModel):
             'emojis': list(map(int, EMOJI_RE.findall(obj.content))),
             'attachments': [i.url for i in obj.attachments.values()],
             'embeds': [json.dumps(i.to_dict(), default=default_json) for i in obj.embeds],
-        } for obj in objs]).execute()
+        }
 
     @classmethod
     def for_channel(cls, channel):
