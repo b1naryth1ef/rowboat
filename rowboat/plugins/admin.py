@@ -435,8 +435,8 @@ class AdminPlugin(Plugin):
             if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
                     reason,
-                    u':ok_hand: {u} is now muted until {t} (`{o}`)',
-                    u':ok_hand: {u} is now muted until {t}',
+                    u':ok_hand: {u} is now muted for {t} (`{o}`)',
+                    u':ok_hand: {u} is now muted for {t}',
                     u=member.user,
                     t=humanize.naturaldelta(expire_dt - datetime.utcnow()),
                 ))
@@ -540,8 +540,8 @@ class AdminPlugin(Plugin):
             if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
                     reason,
-                    u':ok_hand: temp-banned {u} until {t} (`{o}`)',
-                    u':ok_hand: soft-banned {u} until {t}',
+                    u':ok_hand: temp-banned {u} for {t} (`{o}`)',
+                    u':ok_hand: temp-banned {u} for {t}',
                     u=member.user,
                     t=humanize.naturaldelta(expires_dt - datetime.utcnow()),
                 ))
