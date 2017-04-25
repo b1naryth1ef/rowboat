@@ -373,6 +373,7 @@ class StarboardPlugin(Plugin):
 
         # Don't add stars for blocked users
         if q:
+            event.delete()
             return
 
         # Check if the board prevents self stars
