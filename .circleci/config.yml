@@ -26,6 +26,6 @@ jobs:
           command: mkdir -p /tmp/results/junit/
       - run:
           name: "Run Tests"
-          command: py.test --junitxml /tmp/results/junit/rowboat.xml
+          command: py.test tests --junitxml /tmp/results/junit/rowboat.xml
       - store_test_results:
           path: /tmp/results
