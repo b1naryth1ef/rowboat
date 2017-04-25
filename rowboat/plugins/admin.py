@@ -1,6 +1,8 @@
+import re
 import time
 import gevent
 import humanize
+import operator
 
 from peewee import fn
 from holster.emitter import Priority
@@ -23,7 +25,9 @@ from rowboat.types.plugin import PluginConfig
 from rowboat.plugins.modlog import Actions
 from rowboat.models.user import User, Infraction
 from rowboat.models.guild import GuildMemberBackup, GuildBan, GuildEmoji
-from rowboat.models.message import Message, MessageArchive
+from rowboat.models.message import Message, Reaction, MessageArchive
+
+EMOJI_RE = re.compile(r'<:[a-zA-Z0-9_]+:([0-9]+)>')
 
 B1NZY_USER_ID = 80351110224678912
 
@@ -770,3 +774,67 @@ class AdminPlugin(Plugin):
             msg.edit('Ok, invite prune completed')
         else:
             msg = msg.reply('Not pruning invites')
+
+    @Plugin.command('clean', '<user:user|snowflake> [count:int] [emoji:str]', level=CommandLevels.MOD, group='reactions')
+    def reactions_clean(self, event, user, count=10, emoji=None):
+        if isinstance(user, DiscoUser):
+            user = user.id
+
+        if count > 50:
+            raise CommandFail('cannot clean more than 50 reactions')
+
+        lock = rdb.lock('clean-reactions-{}'.format(user))
+        if not lock.acquire(blocking=False):
+            raise CommandFail('already running a clean on user')
+
+        query = [
+            (Reaction.user_id == user),
+            (Message.guild_id == event.guild.id),
+            (Message.deleted == 0),
+        ]
+
+        if emoji:
+            emoji_id = EMOJI_RE.findall(emoji)
+            if emoji_id:
+                query.append((Reaction.emoji_id == emoji_id[0]))
+            else:
+                # TODO: validation?
+                query.append((Reaction.emoji_name == emoji))
+
+        try:
+            reactions = list(Reaction.select(
+                Reaction.message_id,
+                Reaction.emoji_id,
+                Reaction.emoji_name,
+                Message.channel_id,
+            ).join(
+                Message,
+                on=(Message.id == Reaction.message_id),
+            ).where(
+                reduce(operator.and_, query)
+            ).order_by(Reaction.message_id.desc()).limit(count).tuples())
+
+            if not reactions:
+                raise CommandFail('no reactions to purge')
+
+            msg = event.msg.reply('Hold on while I clean {} reactions'.format(
+                len(reactions)
+            ))
+
+            for message_id, emoji_id, emoji_name, channel_id in reactions:
+                if emoji_id:
+                    emoji = '{}:{}'.format(emoji_name, emoji_id)
+                else:
+                    emoji = emoji_name
+
+                self.client.api.channels_messages_reactions_delete(
+                    channel_id,
+                    message_id,
+                    emoji,
+                    user)
+
+            msg.edit('Ok, I cleaned {} reactions'.format(
+                len(reactions),
+            ))
+        finally:
+            lock.release()
