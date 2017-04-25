@@ -656,19 +656,28 @@ class AdminPlugin(Plugin):
             member))
 
     @Plugin.command('stats', '<user:user>', level=CommandLevels.MOD)
-    def msgstats(self, event, user, ctx=None):
-        base_query = Message.select().where(
-            (Message.author_id == user.id)
-        )
-
+    def msgstats(self, event, user):
         # Query for the basic aggregate message statistics
-        q = list(base_query.select(
+        q = list(Message.select(
             fn.Count('*'),
             fn.Sum(fn.char_length(Message.content)),
             fn.Sum(fn.array_length(Message.emojis, 1)),
             fn.Sum(fn.array_length(Message.mentions, 1)),
             fn.Sum(fn.array_length(Message.attachments, 1)),
+        ).where(
+            (Message.author_id == user.id)
         ).tuples())[0]
+
+        reactions_given = list(Reaction.select(
+            fn.Count('*'),
+            Reaction.emoji_id,
+            Reaction.emoji_name,
+        ).join(
+            Message,
+            on=(Message.id == Reaction.message_id)
+        ).where(
+            (Reaction.user_id == user.id)
+        ).group_by(Reaction.emoji_id, Reaction.emoji_name).order_by(fn.Count('*').desc()).tuples())
 
         # Query for most used emoji
         emojis = list(Message.raw('''
@@ -684,7 +693,10 @@ class AdminPlugin(Plugin):
             LIMIT 1
         ''', (user.id, )).tuples())
 
-        deleted = base_query.where((Message.deleted >> True)).count()
+        deleted = Message.select().where(
+            (Message.author_id == user.id) &
+            (Message.deleted == 1)
+        ).count()
 
         embed = MessageEmbed()
         embed.fields.append(
@@ -699,6 +711,16 @@ class AdminPlugin(Plugin):
             MessageEmbedField(name='Total Mentions', value=q[3], inline=True))
         embed.fields.append(
             MessageEmbedField(name='Total Attachments', value=q[4], inline=True))
+        embed.fields.append(
+            MessageEmbedField(name='Total Reactions', value=sum(i[0] for i in reactions_given), inline=True))
+
+        if reactions_given:
+            emoji = reactions_given[0][2] if not reactions_given[0][1] else '<:{}:{}>'.format(reactions_given[0][2], reactions_given[0][1])
+            embed.fields.append(
+                MessageEmbedField(name='Most Used Reaction', value=u'{} (used {} times)'.format(
+                    emoji,
+                    reactions_given[0][0],
+                ), inline=True))
 
         if emojis:
             embed.fields.append(
