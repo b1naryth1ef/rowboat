@@ -64,3 +64,4 @@ fuzzywuzzy==0.15.0
 pytest==3.0.7
 python-Levenshtein==0.12.0
 -e git+https://github.com/b1naryth1ef/peewee.git@eec1e6f07738cbec93e2041ee202d36d3e1024c0#egg=peewee
+gevent_inotifyx==0.1.1

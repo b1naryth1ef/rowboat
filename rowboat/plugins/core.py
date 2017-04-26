@@ -14,6 +14,7 @@ from disco.api.http import APIException
 from disco.bot.command import CommandEvent
 from disco.util.sanitize import S
 
+from rowboat import ENV
 from rowboat.util import LocalProxy
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import RowboatPlugin, CommandResponse
@@ -24,8 +25,6 @@ from rowboat.models.guild import Guild, GuildBan
 from rowboat.models.message import Message
 from rowboat.models.notification import Notification
 from rowboat.plugins.modlog import Actions
-
-ENV = os.getenv('ENV', 'local')
 
 PY_CODE_BLOCK = u'```py\n{}\n```'
 
@@ -50,7 +49,27 @@ class CorePlugin(Plugin):
             plugin.register_trigger('command', 'pre', functools.partial(self.on_pre, plugin))
             plugin.register_trigger('listener', 'pre', functools.partial(self.on_pre, plugin))
 
+        if ENV == 'local':
+            self.spawn(self.wait_for_plugin_changes)
+
         self.spawn(self.wait_for_actions)
+
+    def wait_for_plugin_changes(self):
+        import gevent_inotifyx as inotify
+
+        fd = inotify.init()
+        inotify.add_watch(fd, 'rowboat/plugins/', inotify.IN_MODIFY)
+        while True:
+            events = inotify.get_events(fd)
+            for event in events:
+                # Can't reload core.py sadly
+                if event.name == 'core.py':
+                    continue
+
+                plugin_name = '{}Plugin'.format(event.name.split('.', 1)[0].title())
+                if plugin_name in self.bot.plugins:
+                    self.log.info('Detected change in %s, reloading...', plugin_name)
+                    self.bot.plugins[plugin_name].reload()
 
     def wait_for_actions(self):
         ps = rdb.pubsub()
