@@ -389,7 +389,7 @@ class StarboardPlugin(Plugin):
             return
 
         # If either the reaction or message author is blocked, prevent this action
-        if msg.starboardblock:
+        if msg.starboardblock.user_id:
             event.delete()
             return
 
