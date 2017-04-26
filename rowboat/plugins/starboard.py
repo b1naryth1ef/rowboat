@@ -1,6 +1,6 @@
 import peewee
 
-from peewee import fn
+from peewee import fn, JOIN
 from datetime import datetime, timedelta
 
 from disco.bot import CommandLevels
@@ -366,27 +366,38 @@ class StarboardPlugin(Plugin):
 
     @Plugin.listen('MessageReactionAdd', conditional=is_star_event)
     def on_message_reaction_add(self, event):
-        q = StarboardBlock.select().where(
-            (StarboardBlock.user_id == event.user_id) &
-            (StarboardBlock.guild_id == event.guild.id)
-        ).exists()
+        try:
+            # Grab the message, and JOIN across blocks to check if a block exists
+            #  for either the message author or the reactor.
+            msg = Message.select(
+                Message,
+                StarboardBlock
+            ).join(
+                StarboardBlock,
+                join_type=JOIN.LEFT_OUTER,
+                on=(
+                    (
+                        (Message.author_id == StarboardBlock.user_id) |
+                        (StarboardBlock.user_id == event.user_id)
+                    ) &
+                    (Message.guild_id == StarboardBlock.guild_id)
+                )
+            ).where(
+                (Message.id == event.message_id)
+            ).get()
+        except Message.DoesNotExist:
+            return
 
-        # Don't add stars for blocked users
-        if q:
+        # If either the reaction or message author is blocked, prevent this action
+        if msg.starboardblock:
             event.delete()
             return
 
         # Check if the board prevents self stars
         _, board = event.config.get_board(event.channel_id)
-        if board.prevent_self_star:
-            try:
-                msg = Message.get(id=event.message_id)
-            except Message.DoesNotExist:
-                return
-
-            if msg.author_id == event.user_id and board.prevent_self_star:
-                self.spawn(event.delete)
-                return
+        if board.prevent_self_star and msg.author_id == event.user_id:
+            event.delete()
+            return
 
         try:
             StarboardEntry.add_star(event.message_id, event.user_id)
