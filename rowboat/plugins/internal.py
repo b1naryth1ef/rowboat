@@ -2,9 +2,11 @@ import gevent
 from gevent.lock import Semaphore
 from datetime import datetime, timedelta
 
-
 from disco.gateway.packets import OPCode, RECV
+
+from rowboat.redis import rdb
 from rowboat.plugins import BasePlugin as Plugin
+from rowboat.util.redis import RedisSet
 from rowboat.models.event import Event
 
 
@@ -12,21 +14,26 @@ class EventLogPlugin(Plugin):
     def load(self, ctx):
         super(EventLogPlugin, self).load(ctx)
 
+        self.events = RedisSet(rdb, 'internal:tracked-events')
         self.session_id = None
         self.lock = Semaphore()
         self.cache = []
 
+    @Plugin.command('add', '<name:str>', group='events', level=-1)
+    def on_events_add(self, event, name):
+        self.events.add(name)
+        event.msg.reply(':ok_hand: added {} to the list of tracked events'.format(name))
+
+    @Plugin.command('remove', '<name:str>', group='events', level=-1)
+    def on_events_remove(self, event, name):
+        self.events.remove(name)
+        event.msg.reply(':ok_hand: removed {} from the list of tracked events'.format(name))
+
     @Plugin.schedule(300, init=False)
     def prune_old_events(self):
-        # Keep 12 hours of PRESENCE/TYPING events
+        # Keep 24 hours of all events
         Event.delete().where(
-            (Event.event << ('PRESENCE_UPDATE', 'TYPING_START')) &
-            (Event.timestamp > datetime.utcnow() - timedelta(hours=12))
-        ).execute()
-
-        # And 3 days of everything else
-        Event.delete().where(
-            (Event.timestamp > datetime.utcnow() - timedelta(days=3))
+            (Event.timestamp > datetime.utcnow() - timedelta(hours=24))
         ).execute()
 
     @Plugin.listen('Ready')
@@ -36,6 +43,9 @@ class EventLogPlugin(Plugin):
 
     @Plugin.listen_packet((RECV, OPCode.DISPATCH))
     def on_gateway_event(self, event):
+        if event['t'] not in self.events:
+            return
+
         with self.lock:
             self.cache.append(event)
 

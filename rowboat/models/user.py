@@ -247,3 +247,8 @@ class StarboardBlock(BaseModel):
     guild_id = BigIntegerField()
     user_id = BigIntegerField()
     actor_id = BigIntegerField()
+
+    class Meta:
+        indexes = (
+            (('guild_id', 'user_id'), True),
+        )
