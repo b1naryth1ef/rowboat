@@ -192,7 +192,7 @@ class CorePlugin(Plugin):
             embed.color = 0xffb347
             embed.add_field(name='Gateway Server', value=event.trace[0], inline=False)
             embed.add_field(name='Session Server', value=event.trace[1], inline=False)
-            embed.add_field(name='Replayed Events', value=str(self.client.gw.resumed_events))
+            embed.add_field(name='Replayed Events', value=str(self.client.gw.replayed_events))
 
     @Plugin.listen('Ready', priority=Priority.BEFORE)
     def on_ready(self, event):

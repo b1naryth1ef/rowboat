@@ -161,7 +161,7 @@ class CensorPlugin(Plugin):
             need_whitelist = (config.invites_guild_whitelist or (config.invites_whitelist or not config.invites_blacklist))
             whitelisted = False
 
-            if invite_info and invite_info['guild'].get('id') in config.invites_guild_whitelist:
+            if invite_info and invite_info.get('id') in config.invites_guild_whitelist:
                 whitelisted = True
 
             if invite[1] in config.invites_whitelist:
