@@ -13,9 +13,29 @@
         Messages
       </div>
       <div class="panel-body">
-        <img src="/guilds/{{ guild.guild_id}}/stats/messages.png" />
+        <div id="chart"></div>
       </div>
     </div>
   </div>
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  var guildID = "{{ guild.guild_id }}";
+$(document).ready(function () {
+  $.get("/guilds/" + guildID + "/stats/messages").done(function (data) {
+    console.log(data);
+
+    var chart = c3.generate({
+      bindto: "#chart",
+      data: {
+        columns: data.data,
+      }
+    });
+  });
+});
+
+</script>
 {% endblock %}

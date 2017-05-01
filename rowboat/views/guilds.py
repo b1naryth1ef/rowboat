@@ -1,13 +1,12 @@
-import time
-import requests
 import yaml
 import functools
 
-from flask import Blueprint, render_template, request, current_app, make_response, g
+from flask import Blueprint, render_template, request, g, jsonify
 
-from rowboat.redis import rdb
+from rowboat.sql import stats_database
 from rowboat.util.decos import authed
 from rowboat.models.guild import Guild
+from rowboat.models.channel import Channel
 
 guilds = Blueprint('guilds', __name__, url_prefix='/guilds')
 
@@ -52,25 +51,35 @@ def guild_config_raw(guild):
     return str(guild.config_raw) if guild.config_raw else yaml.safe_dump(guild.config)
 
 
-@guilds.route('/<gid>/stats/messages.png')
-def guild_stats_messages(gid):
-    key = 'web:graphs:guild_msgs:{}'.format(gid)
-    if rdb.exists(key):
-        data = rdb.get(key)
-    else:
-        r = requests.get('http://zek.hydr0.com:3000/render/dashboard-solo/db/events', params={
-            'from': str(int((time.time() - 604800) * 1000)),
-            'to': str(int((time.time() * 1000))),
-            'var-event': 'MessageCreate',
-            'var-guild_id': gid,
-            'panelId': 1,
-            'width': 1200,
-        }, headers={
-            'Authorization': 'Bearer {}'.format(current_app.config['GRAFANA_KEY'])
-        })
-        data = r.content
-        rdb.setex(key, data, 30)
+@guilds.route('/<gid>/stats/messages')
+@with_guild
+def guild_stats_messages_new(guild):
+    # TODO: control time frame
+    # TODO: caching
 
-    res = make_response(data)
-    res.headers['Content-Type'] = 'image/png'
-    return res
+    channels = [i[0] for i in Channel.select(Channel.channel_id).where(
+        (Channel.guild_id == guild.guild_id) &
+        (Channel.deleted == 0)
+    ).tuples()]
+
+    with stats_database.cursor() as c:
+        c.execute('''
+            SELECT extract(epoch from date_trunc('hour', time)),
+                sum(created) as Created,
+                sum(updated) as Updated,
+                sum(deleted) as Deleted,
+                sum(mentions) as Mentions
+            FROM channel_messages_snapshot
+            WHERE channel_id IN %s AND time > (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'
+            GROUP BY 1
+            ORDER BY 1 DESC
+        ''', (tuple(channels), ))
+
+        data = c.fetchall()
+        cols = [[desc[0]] for desc in c.description]
+
+    for row in data:
+        for a, b in enumerate(row):
+            cols[a].append(b)
+
+    return jsonify({'data': cols[1:]})

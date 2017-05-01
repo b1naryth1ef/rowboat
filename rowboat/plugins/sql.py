@@ -8,6 +8,7 @@ from holster.enum import Enum
 from holster.emitter import Priority
 from datetime import datetime
 
+from disco.types.base import UNSET
 from disco.types.message import MessageTable
 from disco.types.user import User as DiscoUser
 from disco.types.guild import Guild as DiscoGuild
@@ -16,6 +17,7 @@ from disco.util.snowflake import to_datetime, from_datetime
 
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.sql import database
+from rowboat.models.user import User
 from rowboat.models.guild import GuildEmoji
 from rowboat.models.channel import Channel
 from rowboat.models.message import Message, Reaction
@@ -31,6 +33,24 @@ class SQLPlugin(Plugin):
     def unload(self, ctx):
         ctx['models'] = self.models
         super(SQLPlugin, self).unload(ctx)
+
+    @Plugin.listen('PresenceUpdate')
+    def on_presence_update(self, event):
+        updates = {}
+
+        if event.user.avatar != UNSET:
+            updates['avatar'] = event.user.avatar
+
+        if event.user.username != UNSET:
+            updates['username'] = event.user.username
+
+        if event.user.discriminator != UNSET:
+            updates['discriminator'] = int(event.user.discriminator)
+
+        if not updates:
+            return
+
+        User.update(**updates).where((User.user_id == event.user.id)).execute()
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
@@ -312,6 +332,15 @@ class SQLPlugin(Plugin):
             t.add(word, count)
 
         event.msg.reply(t.compile())
+
+
+# Backfill cases
+#  - Full backfill of a channel
+#  - Date range backfill
+#  - 
+
+class Backfill(object):
+    pass
 
 
 class Recovery(object):
