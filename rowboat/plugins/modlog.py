@@ -446,7 +446,7 @@ class ModLogPlugin(Plugin):
                 continue
 
             config = config.get_config()
-            if not config.plugins.modlog:
+            if not config.plugins or not config.plugins.modlog:
                 continue
 
             if event.user.id in config.plugins.modlog.ignored_users:
