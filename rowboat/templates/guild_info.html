@@ -13,6 +13,13 @@
         Messages
       </div>
       <div class="panel-body">
+        <select id="mode" class="form-control input-sm">
+          <option value="15m">15m</option>
+          <option value="1h">1h</option>
+          <option value="24h">24h</option>
+          <option value="7d">7d</option>
+          <option value="30d">30d</option>
+        </select>
         <div id="chart"></div>
       </div>
     </div>
@@ -24,18 +31,21 @@
 {% block scripts %}
 <script>
   var guildID = "{{ guild.guild_id }}";
-$(document).ready(function () {
-  $.get("/guilds/" + guildID + "/stats/messages").done(function (data) {
-    console.log(data);
 
-    var chart = c3.generate({
-      bindto: "#chart",
-      data: {
-        columns: data.data,
-      }
+  function updateChart () {
+    $.get("/guilds/" + guildID + "/stats/messages?mode=" + $("#mode").val()).done(function (data) {
+      console.log(data);
+
+      var chart = c3.generate({
+        bindto: "#chart",
+        data: {
+          columns: data.data,
+        }
+      });
     });
-  });
-});
+  };
 
+  $('select').on('change', updateChart);
+  updateChart();
 </script>
 {% endblock %}
