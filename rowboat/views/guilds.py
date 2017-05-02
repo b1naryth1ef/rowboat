@@ -83,7 +83,7 @@ def guild_stats_messages_new(guild):
             FROM channel_messages_snapshot
             WHERE channel_id IN %s AND time > (NOW() AT TIME ZONE 'UTC') - INTERVAL '{}'
             GROUP BY 1
-            ORDER BY 1 DESC
+            ORDER BY 1 ASC
         '''.format(mode[0], mode[1]), (tuple(channels), ))
 
         data = c.fetchall()
