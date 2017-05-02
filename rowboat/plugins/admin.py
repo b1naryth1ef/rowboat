@@ -1,9 +1,11 @@
 import re
+import csv
 import time
 import gevent
 import humanize
 import operator
 
+from StringIO import StringIO
 from peewee import fn
 from holster.emitter import Priority
 from fuzzywuzzy import fuzz
@@ -219,6 +221,37 @@ class AdminPlugin(Plugin):
         )
         raise CommandSuccess('unbanned user with id `{}`'.format(user))
 
+    @Plugin.command('archive', group='infractions', level=CommandLevels.ADMIN)
+    def infractions_archive(self, event):
+        user = User.alias()
+        actor = User.alias()
+
+        q = Infraction.select(Infraction, user, actor).join(
+            user,
+            on=((Infraction.user_id == user.user_id).alias('user'))
+        ).switch(Infraction).join(
+            actor,
+            on=((Infraction.actor_id == actor.user_id).alias('actor'))
+        ).where(Infraction.guild_id == event.guild.id)
+
+        buff = StringIO()
+        w = csv.writer(buff)
+
+        for inf in q:
+            w.writerow([
+                inf.id,
+                inf.user_id,
+                str(inf.user),
+                inf.actor_id,
+                str(inf.actor),
+                str({i.index: i for i in Infraction.Types.attrs}[inf.type_]),
+                inf.reason,
+            ])
+
+        event.msg.reply('Ok, here is an archive of all infractions', attachments=[
+            ('infractions.csv', buff.getvalue())
+        ])
+
     @Plugin.command('info', '<infraction:int>', group='infractions', level=CommandLevels.MOD)
     def infraction_info(self, event, infraction):
         try:
@@ -231,7 +264,10 @@ class AdminPlugin(Plugin):
             ).switch(Infraction).join(
                 actor,
                 on=((Infraction.actor_id == actor.user_id).alias('actor'))
-            ).where(Infraction.id == infraction).get()
+            ).where(
+                    (Infraction.id == infraction) &
+                    (Infraction.guild_id == event.guild.id)
+            ).get()
         except Infraction.DoesNotExist:
             raise CommandFail('cannot find an infraction with ID `{}`'.format(infraction))
 
