@@ -67,6 +67,7 @@ class ModLogConfig(PluginConfig):
     resolved = Field(bool, default=False, private=True)
 
     ignored_users = ListField(snowflake)
+    ignored_channels = ListField(snowflake)
 
     channels = DictField(ChannelField, ChannelConfig)
     new_member_threshold = Field(int, default=(15 * 60))
@@ -506,6 +507,9 @@ class ModLogPlugin(Plugin):
         if event.author.id in event.config.ignored_users:
             return
 
+        if event.channel_id in event.config.ignored_channels:
+            return
+
         try:
             msg = Message.get(Message.id == event.id)
         except Message.DoesNotExist:
@@ -544,6 +548,9 @@ class ModLogPlugin(Plugin):
             return
 
         if msg.author.id in event.config.ignored_users:
+            return
+
+        if msg.channel_id in event.config.ignored_channels:
             return
 
         self.log_action(Actions.MESSAGE_DELETE, event,
