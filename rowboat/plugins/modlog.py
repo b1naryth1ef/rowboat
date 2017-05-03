@@ -63,7 +63,8 @@ class ModLogPump(object):
     def _emit_loop(self):
         while True:
             self._have.wait()
-            gevent.spawn(self._emit)
+            self._emit()
+
             if not len(self._buffer):
                 self._have.clear()
 
