@@ -186,6 +186,7 @@ class MessageArchive(BaseModel):
 
         q = Message.select(
             Message.id,
+            Message.channel_id,
             Message.timestamp,
             Message.content,
             Message.deleted,
@@ -201,7 +202,7 @@ class MessageArchive(BaseModel):
             return u'\n'.join(map(self.encode_message_text, q))
         elif fmt == 'csv':
             return u'\n'.join(
-                ['id,timestamp,author_id,author,content,deleted,attachments'] + map(self.encode_message_csv, q))
+                ['id,channel_id,timestamp,author_id,author,content,deleted,attachments'] + map(self.encode_message_csv, q))
         elif fmt == 'json':
             return json.dumps({
                 'messages': map(self.encode_message_json, q)
@@ -209,7 +210,7 @@ class MessageArchive(BaseModel):
 
     @staticmethod
     def encode_message_text(msg):
-        return u'{m.timestamp} ({m.id} / {m.author.id}) {m.author}: {m.content} ({attach})'.format(
+        return u'{m.timestamp} ({m.id} / {m.channel_id} / {m.author.id}) {m.author}: {m.content} ({attach})'.format(
             m=msg, attach=', '.join(map(unicode, msg.attachments or [])))
 
     @staticmethod
