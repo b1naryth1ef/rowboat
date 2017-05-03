@@ -44,20 +44,20 @@ class SubConfig(SlottedModel):
     punishment_duration = Field(int, default=300)
 
     def get_max_messages_bucket(self, guild_id):
-        if not self.max_messages_check:
+        if not self.max_messages:
             return None
 
         if not hasattr(self, '_max_messages_bucket'):
-            return LeakyBucket(rdb, 'b:msgs:{}:{}'.format(guild_id, '{}'), self.max_messages.count, self.max_messages.interval * 1000)
+            self._max_messages_bucket = LeakyBucket(rdb, 'b:msgs:{}:{}'.format(guild_id, '{}'), self.max_messages.count, self.max_messages.interval * 1000)
 
         return self._max_messages_bucket
 
     def get_max_mentions_bucket(self, guild_id):
-        if not self.max_mentions_check:
+        if not self.max_mentions:
             return None
 
         if not hasattr(self, '_max_mentions_bucket'):
-            return LeakyBucket(rdb, 'b:mnts:{}:{}'.format(guild_id, '{}'), self.max_mentions.count, self.max_mentions.interval * 1000)
+            self._max_mentions_bucket = LeakyBucket(rdb, 'b:mnts:{}:{}'.format(guild_id, '{}'), self.max_mentions.count, self.max_mentions.interval * 1000)
 
         return self._max_mentions_bucket
 
