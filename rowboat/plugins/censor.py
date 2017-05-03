@@ -7,6 +7,7 @@ from disco.util.functional import cached_property
 from disco.util.sanitize import S
 
 from rowboat.redis import rdb
+from rowboat.util.zalgo import ZALGO_RE
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
 from rowboat.types.plugin import PluginConfig
@@ -18,6 +19,7 @@ CensorReason = Enum(
     'INVITE',
     'DOMAIN',
     'WORD',
+    'ZALGO',
 )
 
 INVITE_LINK_RE = re.compile(r'(discordapp.com/invite|discord.me|discord.gg)(?:/#)?(?:/invite)?/([a-z0-9\-]+)', re.I)
@@ -25,6 +27,8 @@ URL_RE = re.compile(r'(https?://[^\s]+)')
 
 
 class CensorSubConfig(SlottedModel):
+    filter_zalgo = Field(bool, default=True)
+
     filter_invites = Field(bool, default=True)
     invites_guild_whitelist = ListField(snowflake, default=[])
     invites_whitelist = ListField(str, default=[])
@@ -134,7 +138,11 @@ class CensorPlugin(Plugin):
             return
 
         try:
+            # TODO: perhaps imap here? how to raise exception then?
             for config in configs:
+                if config.filter_zalgo:
+                    self.filter_zalgo(event, config)
+
                 if config.filter_invites:
                     self.filter_invites(event, config)
 
@@ -151,6 +159,13 @@ class CensorPlugin(Plugin):
 
             self.bot.plugins.get('ModLogPlugin').create_debounce(event, author.id, 'censor')
             event.delete()
+
+    def filter_zalgo(self, event, config):
+        s = ZALGO_RE.search(event.content)
+        if s:
+            raise Censorship(CensorReason.ZALGO, event, ctx={
+                'position': s.start()
+            })
 
     def filter_invites(self, event, config):
         invites = INVITE_LINK_RE.findall(event.content)
