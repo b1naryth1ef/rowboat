@@ -2,21 +2,20 @@ import re
 import six
 import time
 import pytz
+import gevent
 import string
-import requests
 import operator
 import humanize
 
-from six import BytesIO
-from PIL import Image
 from holster.enum import Enum
 from holster.emitter import Priority
 from datetime import datetime
 from collections import defaultdict
+from gevent.lock import Semaphore
+from gevent.event import Event
 
 from disco.bot import CommandLevels
 from disco.types import UNSET
-from disco.types.message import MessageEmbed, MessageEmbedField
 from disco.util.functional import cached_property
 from disco.util.snowflake import to_unix, to_datetime
 from disco.util.sanitize import S
@@ -37,6 +36,53 @@ COLORS = {
 }
 
 URL_REGEX = re.compile(r'(https?://[^\s]+)')
+
+
+class ModLogPump(object):
+    def __init__(self, channel, max_actions, action_time):
+        self.channel = channel
+        self.action_time = action_time
+
+        self._have = Event()
+        self._buffer = []
+        self._lock = Semaphore(max_actions)
+        self._emitter = gevent.spawn(self._emit_loop)
+
+    def _get_next_message(self):
+        data = ''
+
+        while self._buffer:
+            payload = self._buffer.pop(0)
+            if len(data) + len(payload) > 2000:
+                break
+            data += '\n'
+            data += payload
+
+        return data
+
+    def _emit_loop(self):
+        while True:
+            self._have.wait()
+            gevent.spawn(self._emit)
+            if not len(self._buffer):
+                self._have.clear()
+
+    def _emit(self):
+        self._lock.acquire()
+        msg = self._get_next_message()
+        if not msg:
+            self._lock.release()
+            return
+        self.channel.send_message(msg)
+        gevent.spawn(self._emit_unlock)
+
+    def _emit_unlock(self):
+        gevent.sleep(self.action_time)
+        self._lock.release()
+
+    def add_message(self, payload):
+        self._buffer.append(payload)
+        self._have.set()
 
 
 def filter_urls(content):
@@ -91,6 +137,30 @@ class Formatter(string.Formatter):
 class ModLogPlugin(Plugin):
     fmt = Formatter()
 
+    def load(self, ctx):
+        if not Actions.attrs:
+            self.action_simple = {}
+
+            with open('data/actions_simple.yaml') as f:
+                simple = ordered_load(f.read())
+
+            for k, v in simple.items():
+                self.register_action(k, v)
+        else:
+            self.action_simple = ctx['action_simple']
+
+        self.debounce = ctx.get('debounce', defaultdict(lambda: defaultdict(dict)))
+        self.hushed = {}
+
+        self.pumps = {}
+
+        super(ModLogPlugin, self).load(ctx)
+
+    def unload(self, ctx):
+        ctx['action_simple'] = self.action_simple
+        ctx['debounce'] = self.debounce
+        super(ModLogPlugin, self).unload(ctx)
+
     def create_debounce(self, event, user_id, typ, **kwargs):
         kwargs.update({
             'type': typ,
@@ -129,76 +199,23 @@ class ModLogPlugin(Plugin):
         config._channels = channels
         config.resolved = True
 
-    def register_action(self, name, rich, simple):
+    def register_action(self, name, simple):
         action = Actions.add(name)
-        self.action_rich[action] = rich
         self.action_simple[action] = simple
 
-    def load(self, ctx):
-        if not Actions.attrs:
-            self.action_rich = {}
-            self.action_simple = {}
-
-            with open('data/actions_rich.yaml') as f:
-                rich = ordered_load(f.read())
-
-            with open('data/actions_simple.yaml') as f:
-                simple = ordered_load(f.read())
-
-            for k, v in rich.items():
-                self.register_action(k, v, simple[k])
-        else:
-            self.action_rich = ctx['action_rich']
-            self.action_simple = ctx['action_simple']
-
-        self.debounce = ctx.get('debounce', defaultdict(lambda: defaultdict(dict)))
-        self.hushed = {}
-
-        super(ModLogPlugin, self).load(ctx)
-
-    def unload(self, ctx):
-        ctx['action_rich'] = self.action_rich
-        ctx['action_simple'] = self.action_simple
-        ctx['debounce'] = self.debounce
-        super(ModLogPlugin, self).unload(ctx)
-
-    def log_action_ext(self, action, event, attachment=None, **details):
+    def log_action_ext(self, action, event, **details):
         assert hasattr(event.base_config.plugins, 'modlog')
-        return self.log_action_raw(action, event, event.guild, getattr(event.base_config.plugins, 'modlog'), attachment, **details)
+        return self.log_action_raw(action, event, event.guild, getattr(event.base_config.plugins, 'modlog'), **details)
 
-    def log_action(self, action, event, attachment=None, **details):
-        return self.log_action_raw(action, event, event.guild, event.config, attachment, **details)
+    def log_action(self, action, event, **details):
+        return self.log_action_raw(action, event, event.guild, event.config, **details)
 
-    def log_action_raw(self, action, event, guild, config, attachment=None, **details):
+    def log_action_raw(self, action, event, guild, config, **details):
         if not config.resolved:
             self.resolve_channels(guild, config)
 
         if not {action} & config.subscribed:
             return
-
-        def generate_rich(config):
-            info = self.action_rich.get(action)
-
-            embed = MessageEmbed()
-            embed.color = COLORS[info['color']]
-            embed.description = info['text'].title()
-
-            for k, v in info['fields'].items():
-                field = MessageEmbedField()
-                field.name = k.title()
-
-                field.inline = True
-                if field.name.endswith('!'):
-                    field.inline = False
-                    field.name = field.name[:-1]
-
-                if '-' in field.name:
-                    field.name = field.name.replace('-', ' ').title()
-
-                field.value = S(v.format(e=event, **details), escape_codeblocks=True)
-                embed.fields.append(field)
-
-            return '', embed
 
         def generate_simple(config):
             info = self.action_simple.get(action)
@@ -217,26 +234,19 @@ class ModLogPlugin(Plugin):
             if len(msg) > 2000:
                 msg = msg[0:1997] + '...'
 
-            return msg, None
+            return msg
 
-        for channel, config in config._channels.items():
+        for channel_id, config in config._channels.items():
             if not {action} & config.subscribed:
                 continue
 
-            if config.compact and action not in config.rich:
-                msg, embed = generate_simple(config)
-            else:
-                msg, embed = generate_rich(config)
+            msg = generate_simple(config)
 
-            cobj = self.state.channels.get(channel)
-            if cobj:
-                cobj.send_message(msg, embed=embed, attachment=attachment if config.compact else None)
-
-            if channel not in guild.channels:
-                raise MetaException('Failed to find modlog channel', {
-                    'channel': channel,
-                    'guild.channels.keys': list(guild.channels.keys()),
-                })
+            if channel_id not in self.pumps:
+                self.pumps[channel_id] = ModLogPump(
+                    self.state.channels.get(channel_id), 5, 1.5
+                )
+            self.pumps[channel_id].add_message(msg)
 
     @Plugin.command('hush', group='modlog', level=CommandLevels.ADMIN)
     def command_hush(self, event):
@@ -453,9 +463,8 @@ class ModLogPlugin(Plugin):
             if event.user.id in config.plugins.modlog.ignored_users:
                 continue
 
-            for act in {Actions.CHANGE_USERNAME, Actions.GUILD_MEMBER_AVATAR_CHANGE}:
-                if {act} & config.plugins.modlog.subscribed:
-                    subscribed_guilds[act].append((guild, config))
+            if {Actions.CHANGE_USERNAME} & config.plugins.modlog.subscribed:
+                subscribed_guilds[Actions.CHANGE_USERNAME].append((guild, config))
 
         if not len(subscribed_guilds):
             return
@@ -473,31 +482,6 @@ class ModLogPlugin(Plugin):
                         config.plugins.modlog,
                         before=before,
                         after=unicode(event.user))
-
-        if Actions.GUILD_MEMBER_AVATAR_CHANGE in subscribed_guilds:
-            if event.user.avatar is not UNSET and event.user.avatar != pre_user.avatar:
-
-                image = Image.new('RGB', (256, 128))
-
-                if pre_user.avatar:
-                    r = requests.get(pre_user.avatar_url)
-                    image.paste(Image.open(BytesIO(r.content)), (0, 0))
-
-                if event.user.avatar:
-                    r = requests.get(event.user.avatar_url)
-                    image.paste(Image.open(BytesIO(r.content)), (128, 0))
-
-                combined = BytesIO()
-                image.save(combined, 'jpeg', quality=55)
-                combined.seek(0)
-
-                for guild, config in subscribed_guilds[Actions.GUILD_MEMBER_AVATAR_CHANGE]:
-                    self.log_action_raw(
-                        Actions.GUILD_MEMBER_AVATAR_CHANGE,
-                        event,
-                        guild,
-                        config.plugins.modlog,
-                        attachment=('avatar.jpg', combined))
 
     @Plugin.listen('MessageUpdate', priority=Priority.BEFORE)
     def on_message_update(self, event):

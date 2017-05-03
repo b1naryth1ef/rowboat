@@ -1,4 +1,3 @@
-import re
 import time
 
 from gevent.lock import Semaphore
@@ -16,15 +15,6 @@ from rowboat.types import SlottedModel, DictField, Field
 from rowboat.models.user import Infraction
 from rowboat.models.message import Message
 
-
-# TODO:
-#  - detect mention spam
-#  - detect normal spam
-
-
-INVITE_LINK_RE = re.compile(r'(discord.me|discord.gg)(?:/#)?(?:/invite)?/([a-z0-9\-]+)')
-URL_RE = re.compile(r'(https?://[^\s]+)')
-BAD_WORDS_RE = re.compile('({})'.format('|'.join(open('data/badwords.txt', 'r').read())))
 
 PunishmentType = Enum(
     'NONE',
@@ -204,8 +194,6 @@ class SpamPlugin(Plugin):
 
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
     def on_message_create(self, event):
-        # TODO: temp disabled while I rewrite
-        return
         if event.author.id == self.state.me.id:
             return
 

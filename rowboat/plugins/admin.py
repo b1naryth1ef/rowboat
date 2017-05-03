@@ -322,7 +322,7 @@ class AdminPlugin(Plugin):
 
         tbl = MessageTable()
 
-        tbl.set_header('ID', 'Type', 'User', 'Moderator', 'Active', 'Reason')
+        tbl.set_header('ID', 'Created', 'Type', 'User', 'Moderator', 'Active', 'Reason')
         for inf in infractions:
             type_ = {i.index: i for i in Infraction.Types.attrs}[inf.type_]
             reason = inf.reason or ''
@@ -336,7 +336,7 @@ class AdminPlugin(Plugin):
             else:
                 active = 'no'
 
-            tbl.add(inf.id, str(type_), unicode(inf.user), unicode(inf.actor), active, reason)
+            tbl.add(inf.id, inf.created_at.isoformat(), str(type_), unicode(inf.user), unicode(inf.actor), active, reason)
 
         event.msg.reply(tbl.compile())
 

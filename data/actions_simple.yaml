@@ -54,10 +54,6 @@ GUILD_MEMBER_ROLES_RMV_REASON:
   emoji: key
   format: "{e.user} (`{e.user.id}`) role removed **{role.name}** by **{actor}**: `{reason!z}`"
 
-GUILD_MEMBER_AVATAR_CHANGE:
-  emoji: camera
-  format: '{e.user} (`{e.user.id}`) changed avatars'
-
 GUILD_ROLE_CREATE:
   emoji: pen_ballpoint
   format: 'role {e.role} was created'
@@ -132,4 +128,4 @@ MEMBER_UNMUTED:
 
 CENSORED:
   emoji: no_entry_sign
-  format: "censored message by {e.author} (`{e.author.id}`) {c.details}:\n```{c.content!z}```"
+  format: "censored message by {e.author} (`{e.author.id}`) in {e.channel} (`{e.channel.id}`) {c.details}:\n```{c.content!z}```"
