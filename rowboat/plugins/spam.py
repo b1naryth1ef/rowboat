@@ -43,6 +43,9 @@ class SubConfig(SlottedModel):
     punishment = Field(PunishmentType, default=PunishmentType.NONE)
     punishment_duration = Field(int, default=300)
 
+    _max_messages_bucket = Field(str, private=True)
+    _max_mentions_bucket = Field(str, private=True)
+
     def get_max_messages_bucket(self, guild_id):
         if not self.max_messages:
             return None
