@@ -404,10 +404,14 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('roles', level=CommandLevels.MOD)
     def roles(self, event):
-        roles = []
+        buff = ''
         for role in event.guild.roles.values():
-            roles.append(S(u'{} - {}'.format(role.id, role.name), escape_codeblocks=True))
-        return event.msg.reply(u'```{}```'.format('\n'.join(roles)))
+            role = S(u'{} - {}\n'.format(role.id, role.name), escape_codeblocks=True)
+            if len(role) + len(buff) > 1990:
+                event.msg.reply(u'```{}```'.format(buff))
+                buff = ''
+            buff += role
+        return event.msg.reply(u'```{}```'.format(buff))
 
     @Plugin.command('restore', '<user:user>', level=CommandLevels.MOD, group='backups')
     def restore(self, event, user):
