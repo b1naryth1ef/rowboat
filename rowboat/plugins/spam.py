@@ -187,6 +187,7 @@ class SpamPlugin(Plugin):
                     'MAX_MESSAGES',
                     'Too Many Messages ({} / {}s)'.format(bucket.count(event.author.id), bucket.size(event.author.id)))
 
+        """
         # Next, check max mentions rules
         if rule.max_mentions_per_message and len(event.mentions) > rule.max_mentions_per_message:
             raise Violation(
@@ -195,6 +196,7 @@ class SpamPlugin(Plugin):
                 member,
                 'MAX_MENTIONS_PER_MESSAGE',
                 'Too Many Mentions ({} / {})'.format(len(event.mentions), rule.max_mentions_per_message))
+        """
 
         bucket = rule.get_max_mentions_bucket(event.guild.id)
         if bucket:
