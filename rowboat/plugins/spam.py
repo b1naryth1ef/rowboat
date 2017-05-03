@@ -21,35 +21,34 @@ PunishmentType = Enum(
     'MUTE',
     'KICK',
     'TEMPBAN',
-    'BAN'
+    'BAN',
+    'TEMPMUTE'
 )
 
 
 class CheckConfig(SlottedModel):
     count = Field(int)
     interval = Field(int)
-    punishment = Field(PunishmentType, default=PunishmentType.NONE)
-    punishment_duration = Field(int, default=300)
 
 
 class SubConfig(SlottedModel):
     max_messages = Field(CheckConfig, default=None)
     max_mentions = Field(CheckConfig, default=None)
+
+    # TODO
     max_links = Field(CheckConfig, default=None)
     max_emojis = Field(CheckConfig, default=None)
     max_newlines = Field(CheckConfig, default=None)
 
-    max_mentions_message = Field(CheckConfig, default=None)
-    max_links_message = Field(CheckConfig, default=None)
-    max_emojis_message = Field(CheckConfig, default=None)
-    max_newlines_message = Field(CheckConfig, default=None)
+    punishment = Field(PunishmentType, default=PunishmentType.NONE)
+    punishment_duration = Field(int, default=300)
 
     def get_max_messages_bucket(self, guild_id):
         if not self.max_messages_check:
             return None
 
         if not hasattr(self, '_max_messages_bucket'):
-            return LeakyBucket(rdb, 'b:msgs:{}:{}'.format(guild_id, '{}'), self.max_messages_count, self.max_messages_interval * 1000)
+            return LeakyBucket(rdb, 'b:msgs:{}:{}'.format(guild_id, '{}'), self.max_messages.count, self.max_messages.interval * 1000)
 
         return self._max_messages_bucket
 
@@ -58,7 +57,7 @@ class SubConfig(SlottedModel):
             return None
 
         if not hasattr(self, '_max_mentions_bucket'):
-            return LeakyBucket(rdb, 'b:mnts:{}:{}'.format(guild_id, '{}'), self.max_mentions_count, self.max_mentions_interval * 1000)
+            return LeakyBucket(rdb, 'b:mnts:{}:{}'.format(guild_id, '{}'), self.max_mentions.count, self.max_mentions.interval * 1000)
 
         return self._max_mentions_bucket
 
@@ -108,16 +107,28 @@ class SpamPlugin(Plugin):
 
         if not last_violated > time.time() - 10:
             self.bot.plugins.get('ModLogPlugin').log_action_ext(Actions.SPAM_DEBUG, violation.event, v=violation)
-            self.bot.plugins.get('CorePlugin').send_control_message(
-                u'Spam ({}) detected by {} ({}) in guild {} ({})'.format(
-                    violation.label,
-                    violation.member,
-                    violation.member.id,
-                    violation.event.guild.name,
-                    violation.event.guild.id))
+
+            with self.bot.plugins.get('CorePlugin').send_control_message() as embed:
+                embed.title = 'Spam Detected'
+                embed.color = 0xfdfd96
+                embed.add_field(name='Guild', value=violation.event.guild.name)
+                embed.add_field(name='Label', value=violation.label)
+                embed.add_field(name='User ID', value=violation.event.member.id)
+                embed.add_field(name='User Tag', value=unicode(violation.member))
 
             if violation.rule.punishment is PunishmentType.MUTE:
-                pass
+                Infraction.mute(
+                    self,
+                    violation.event,
+                    violation.member,
+                    'Spam Detected')
+            elif violation.rule.punishment in PunishmentType.TEMPMUTE:
+                Infraction.tempmute(
+                    self,
+                    violation.event,
+                    violation.member,
+                    'Spam Detected',
+                    violation.rule.punishment_duration)
             elif violation.rule.punishment is PunishmentType.KICK:
                 Infraction.kick(
                     self,
