@@ -77,6 +77,10 @@ class Censorship(Exception):
         elif self.reason is CensorReason.WORD:
             return 'found blacklisted words `{}`'.format(
                 ', '.join([S(i, escape_codeblocks=True) for i in self.ctx['words']]))
+        elif self.reason is CensorReason.ZALGO:
+            return 'found zalgo at position `{}` in text'.format(
+                self.ctx['position']
+            )
 
 
 @Plugin.with_config(CensorConfig)
