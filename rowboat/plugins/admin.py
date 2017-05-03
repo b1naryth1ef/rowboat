@@ -241,11 +241,11 @@ class AdminPlugin(Plugin):
             w.writerow([
                 inf.id,
                 inf.user_id,
-                unicode(inf.user),
+                unicode(inf.user).encode('utf-8'),
                 inf.actor_id,
-                unicode(inf.actor),
-                unicode({i.index: i for i in Infraction.Types.attrs}[inf.type_]),
-                inf.reason.encode('utf-8'),
+                unicode(inf.actor).encode('utf-8'),
+                unicode({i.index: i for i in Infraction.Types.attrs}[inf.type_]).encode('utf-8'),
+                unicode(inf.reason).encode('utf-8'),
             ])
 
         event.msg.reply('Ok, here is an archive of all infractions', attachments=[
