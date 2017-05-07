@@ -79,6 +79,8 @@ class Rollup(object):
 
 
 class StatsPlugin(Plugin):
+    global_plugin = True
+
     def load(self, ctx):
         print 'LOAD'
         super(StatsPlugin, self).load(ctx)

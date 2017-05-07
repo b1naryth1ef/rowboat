@@ -9,6 +9,7 @@ import contextlib
 
 from datetime import datetime, timedelta
 from holster.emitter import Priority
+from disco.bot import Bot
 from disco.types.message import MessageEmbed
 from disco.api.http import APIException
 from disco.bot.command import CommandEvent
@@ -42,17 +43,23 @@ class CorePlugin(Plugin):
 
         super(CorePlugin, self).load(ctx)
 
-        for plugin in self.bot.plugins.values():
-            if not isinstance(plugin, RowboatPlugin):
-                continue
-
-            plugin.register_trigger('command', 'pre', functools.partial(self.on_pre, plugin))
-            plugin.register_trigger('listener', 'pre', functools.partial(self.on_pre, plugin))
+        # Overwrite the main bot instances plugin loader so we can magicfy events
+        self.bot.add_plugin = self.our_add_plugin
 
         if ENV == 'local':
             self.spawn(self.wait_for_plugin_changes)
 
         self.spawn(self.wait_for_actions)
+
+    def our_add_plugin(self, cls, *args, **kwargs):
+        if getattr(cls, 'global_plugin', False):
+            Bot.add_plugin(self.bot, cls, *args, **kwargs)
+            return
+
+        inst = cls(self.bot, None)
+        inst.register_trigger('command', 'pre', functools.partial(self.on_pre, inst))
+        inst.register_trigger('listener', 'pre', functools.partial(self.on_pre, inst))
+        Bot.add_plugin(self.bot, inst, *args, **kwargs)
 
     def wait_for_plugin_changes(self):
         import gevent_inotifyx as inotify
@@ -360,7 +367,7 @@ class CorePlugin(Plugin):
 
             # Dispatch the command used modlog event
             if config:
-                event.config = getattr(config.plugins, 'modlog', None)
+                event.config.set(getattr(config.plugins, 'modlog', None))
                 if not event.config:
                     return
 

@@ -25,6 +25,8 @@ from rowboat.util.input import parse_duration
 
 
 class SQLPlugin(Plugin):
+    global_plugin = True
+
     def load(self, ctx):
         self.models = ctx.get('models', {})
         self.backfills = {}

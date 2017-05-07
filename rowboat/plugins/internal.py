@@ -11,6 +11,8 @@ from rowboat.models.event import Event
 
 
 class EventLogPlugin(Plugin):
+    global_plugin = True
+
     def load(self, ctx):
         super(EventLogPlugin, self).load(ctx)
 
