@@ -229,7 +229,7 @@ class SpamPlugin(Plugin):
         check_bucket('max_emojis', 'Too Many Emojis', lambda e: len(EMOJI_RE.findall(e.message.content)))
         check_bucket('max_newlines', 'Too Many Newlines', lambda e: e.message.content.count('\n'))
 
-        if rule.max_duplicates:
+        if rule.max_duplicates and rule.max_messages.interval and rule.max_messages.count:
             self.check_duplicate_messages(event, member, rule)
 
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
