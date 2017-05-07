@@ -22,10 +22,10 @@ def with_guild(f):
             else:
                 guild = Guild.select(
                     Guild,
-                    Guild.config['web_admins'][str(g.user.user_id)].alias('role')
+                    Guild.config['web'][str(g.user.user_id)].alias('role')
                 ).where(
                     (Guild.guild_id == kwargs.pop('gid')) &
-                    (~(Guild.config['web_admins'][str(g.user.user_id)] >> None))
+                    (~(Guild.config['web'][str(g.user.user_id)] >> None))
                 ).get()
             return f(guild, *args, **kwargs)
         except Guild.DoesNotExist:
@@ -57,8 +57,8 @@ def guild_config_update(guild):
         except:
             return 'Invalid YAML', 400
 
-        before = sorted(guild.config.get('web_admins', []).items(), key=lambda i: i[0])
-        after = sorted([(str(k), v) for k, v in data.get('web_admins', []).items()], key=lambda i: i[0])
+        before = sorted(guild.config.get('web', []).items(), key=lambda i: i[0])
+        after = sorted([(str(k), v) for k, v in data.get('web', []).items()], key=lambda i: i[0])
 
         if before != after:
             return 'Cannot Alter Permissions', 403

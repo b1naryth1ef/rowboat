@@ -56,10 +56,10 @@ def dash_index():
         else:
             stats = {}
             guilds = Guild.select(
-                Guild, Guild.config['web_admins'][str(g.user.user_id)].alias('role')
+                Guild, Guild.config['web'][str(g.user.user_id)].alias('role')
             ).where(
                 (Guild.enabled == 1) &
-                (~(Guild.config['web_admins'][str(g.user.user_id)] >> None))
+                (~(Guild.config['web'][str(g.user.user_id)] >> None))
             )
 
         return render_template(
