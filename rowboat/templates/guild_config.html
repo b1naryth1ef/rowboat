@@ -16,7 +16,11 @@
         <div id="editor"></div>
       </div>
       <div class="panel-footer">
-        <button id="save" type="button" class="btn btn-success btn-circle btn-lg"><i class="fa fa-check"></i></button>
+        {% if guild.role in ['editor', 'admin'] %}
+          <button id="save" type="button" class="btn btn-success btn-circle btn-lg"><i class="fa fa-check"></i></button>
+        {% else %}
+          <i>You are in a read-only role</i>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -49,6 +53,8 @@
       url: "/guilds/" + guildID + "/config/update"
     }).done(function (event) {
       notify('success', 'Saved Configuration');
+    }).fail(function (event) {
+      notify('danger', 'Failed: ' + event.responseText);
     });
   });
 

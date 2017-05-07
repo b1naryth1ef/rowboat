@@ -1,11 +1,9 @@
 import json
 
-from flask import Blueprint, render_template, jsonify, request, g, Response, make_response
+from flask import Blueprint, render_template, request, g, make_response
 from datetime import datetime
 
 from rowboat.redis import rdb
-from rowboat.util.decos import authed
-from rowboat.models.notification import Notification
 from rowboat.models.message import Message, MessageArchive
 from rowboat.models.guild import Guild
 from rowboat.models.user import User
@@ -43,48 +41,59 @@ class ServerSentEvent(object):
 @dashboard.route('/')
 def dash_index():
     if g.user:
-        obj = json.loads(rdb.get('web:dashboard:stats') or '{}')
+        if g.user.admin:
+            stats = json.loads(rdb.get('web:dashboard:stats') or '{}')
 
-        if not obj or 'refresh' in request.args:
-            obj['messages'] = pretty_number(Message.select().count())
-            obj['guilds'] = pretty_number(Guild.select().count())
-            obj['users'] = pretty_number(User.select().count())
-            obj['channels'] = pretty_number(Channel.select().count())
+            if not stats or 'refresh' in request.args:
+                stats['messages'] = pretty_number(Message.select().count())
+                stats['guilds'] = pretty_number(Guild.select().count())
+                stats['users'] = pretty_number(User.select().count())
+                stats['channels'] = pretty_number(Channel.select().count())
 
-            rdb.setex('web:dashboard:stats', json.dumps(obj), 300)
+                rdb.setex('web:dashboard:stats', json.dumps(stats), 300)
+
+            guilds = Guild.select().order_by(Guild.guild_id)
+        else:
+            stats = {}
+            guilds = Guild.select(
+                Guild, Guild.config['web_admins'][str(g.user.user_id)].alias('role')
+            ).where(
+                (Guild.enabled == 1) &
+                (~(Guild.config['web_admins'][str(g.user.user_id)] >> None))
+            )
 
         return render_template(
             'dashboard.html',
-            stats=obj,
-            guilds=Guild.select().where(Guild.enabled == 1).order_by(Guild.guild_id),
+            stats=stats,
+            guilds=guilds,
         )
     return render_template('login.html')
 
 
-@dashboard.route('/notification/ack/<id>', methods=['POST'])
-@authed
-def notification_ack(id):
-    Notification.update(read=True).where(
-        Notification.id == id
-    ).execute()
-    return jsonify({})
-
-
-@dashboard.route("/notifications/realtime")
-@authed
-def subscribe():
-    def thread():
-        sub = rdb.pubsub()
-        sub.subscribe('notifications')
-
-        for item in sub.listen():
-            if item['type'] != 'message':
-                continue
-
-            yield ServerSentEvent(item['data']).encode()
-
-    return Response(thread(), mimetype="text/event-stream")
-
+# @dashboard.route('/notification/ack/<id>', methods=['POST'])
+# @authed
+# def notification_ack(id):
+#     Notification.update(read=True).where(
+#         Notification.id == id
+#     ).execute()
+#     return jsonify({})
+#
+#
+# @dashboard.route("/notifications/realtime")
+# @authed
+# def subscribe():
+#     def thread():
+#         sub = rdb.pubsub()
+#         sub.subscribe('notifications')
+#
+#         for item in sub.listen():
+#             if item['type'] != 'message':
+#                 continue
+#
+#             yield ServerSentEvent(item['data']).encode()
+#
+#     return Response(thread(), mimetype="text/event-stream")
+#
 
 @dashboard.route('/archive/<aid>.<fmt>')
 def archive(aid, fmt):

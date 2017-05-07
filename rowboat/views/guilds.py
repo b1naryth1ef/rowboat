@@ -16,7 +16,17 @@ def with_guild(f):
     @functools.wraps(f)
     def func(*args, **kwargs):
         try:
-            guild = Guild.get(Guild.guild_id == kwargs.pop('gid'))
+            if g.user.admin:
+                guild = Guild.get(Guild.guild_id == kwargs.pop('gid'))
+                guild.role = 'admin'
+            else:
+                guild = Guild.select(
+                    Guild,
+                    Guild.config['web_admins'][str(g.user.user_id)].alias('role')
+                ).where(
+                    (Guild.guild_id == kwargs.pop('gid')) &
+                    (~(Guild.config['web_admins'][str(g.user.user_id)] >> None))
+                ).get()
             return f(guild, *args, **kwargs)
         except Guild.DoesNotExist:
             return 'Invalid Guild', 404
@@ -38,6 +48,21 @@ def guild_config(guild):
 @guilds.route('/<gid>/config/update', methods=['POST'])
 @with_guild
 def guild_config_update(guild):
+    if guild.role not in ['admin', 'editor']:
+        return 'Missing Permissions', 403
+
+    if guild.role != 'admin':
+        try:
+            data = yaml.load(request.values.get('data'))
+        except:
+            return 'Invalid YAML', 400
+
+        before = sorted(guild.config.get('web_admins', []).items(), key=lambda i: i[0])
+        after = sorted([(str(k), v) for k, v in data.get('web_admins', []).items()], key=lambda i: i[0])
+
+        if before != after:
+            return 'Cannot Alter Permissions', 403
+
     try:
         guild.update_config(g.user.user_id, request.values.get('data'))
         return '', 200

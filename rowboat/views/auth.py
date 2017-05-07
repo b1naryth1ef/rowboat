@@ -63,8 +63,8 @@ def auth_discord_callback():
     if not user:
         return 'Unknown User', 403
 
-    if not user.admin:
-        return 'Invalid User', 403
+    # if not user.admin:
+    #     return 'Invalid User', 403
 
     g.user = user
 
