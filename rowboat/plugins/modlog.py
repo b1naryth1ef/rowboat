@@ -16,7 +16,7 @@ from gevent.event import Event
 
 from disco.bot import CommandLevels
 from disco.types import UNSET
-from disco.api import APIException
+from disco.api.http import APIException
 from disco.util.functional import cached_property
 from disco.util.snowflake import to_unix, to_datetime
 from disco.util.sanitize import S
