@@ -40,10 +40,6 @@ class Message(BaseModel):
         CREATE INDEX\
                 IF NOT EXISTS messages_content_fts ON messages USING gin(to_tsvector('english', content));
         CREATE INDEX\
-                IF NOT EXISTS messages_content_trgm ON messages USING gin(content gin_trgm_ops);
-        CREATE INDEX\
-                IF NOT EXISTS messages_mentions ON messages USING gin (mentions);
-        CREATE INDEX\
                 IF NOT EXISTS messages_mentions ON messages USING gin (mentions);
     '''
 
@@ -51,9 +47,17 @@ class Message(BaseModel):
         db_table = 'messages'
 
         indexes = (
-            (('channel_id', 'id'), True),
-            (('guild_id', 'id'), True),
-            (('author_id', 'id'), True),
+            # These indexes are mostly just general use
+            (('channel_id', ), False),
+            (('guild_id', ), False),
+            (('author_id', ), False),
+            (('deleted', ), False),
+
+            # Timestamp is regularly sorted on
+            (('timestamp', ), False),
+
+            # Some queries want to get history in a guild or channel
+            (('author_id', 'guild_id', 'channel_id'), False),
         )
 
     @classmethod
