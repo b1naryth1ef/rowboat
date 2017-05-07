@@ -46,6 +46,9 @@ class SubConfig(SlottedModel):
     punishment = Field(PunishmentType, default=PunishmentType.NONE)
     punishment_duration = Field(int, default=300)
 
+    clean = Field(bool, default=False)
+    clean_duration = Field(int, default=300)
+
     _cached_max_messages_bucket = Field(str, private=True)
     _cached_max_mentions_bucket = Field(str, private=True)
     _cached_max_links_bucket = Field(str, private=True)
@@ -156,21 +159,20 @@ class SpamPlugin(Plugin):
                     'Spam Detected',
                     violation.event.guild)
 
-            if violation.rule.punishment == PunishmentType.NONE:
-                # Clean messages (TODO move to Infraction)
+            # Clean messages if requested
+            if violation.rule.punishment != PunishmentType.NONE and violation.rule.clean:
                 msgs = Message.select(
                     Message.id,
                     Message.channel_id
                 ).where(
                     (Message.guild_id == violation.event.guild.id) &
                     (Message.author_id == violation.member.id) &
-                    (Message.timestamp >= datetime.utcnow() - timedelta(hours=1))
-                )
+                    (Message.timestamp >= datetime.utcnow() - timedelta(minutes=violation.rule.clean_duration))
+                ).tuples()
 
                 channels = defaultdict(list)
-
-                for msg in msgs:
-                    channels[msg.channel_id].append(msg.id)
+                for mid, chan in msgs:
+                    channels[chan].append(mid)
 
                 for channel, messages in channels.items():
                     channel = self.state.channels.get(channel)
