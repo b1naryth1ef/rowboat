@@ -1,4 +1,5 @@
 import time
+import operator
 
 from gevent.lock import Semaphore
 from datetime import datetime, timedelta
@@ -182,17 +183,20 @@ class SpamPlugin(Plugin):
                     channel.delete_messages(messages)
 
     def check_duplicate_messages(self, event, member, rule):
-        # TODO: rule option to detect all messages by all members
+        q = [
+            (Message.guild_id == event.guild.id),
+            (Message.timestamp > (datetime.utcnow() - timedelta(seconds=rule.max_duplicates.interval)))
+        ]
+
+        # If we're not checking globally, include the member id
+        if not rule.max_duplicates.meta or not rule.max_duplicates.meta.get('global'):
+            q.append((Message.author_id == member.id))
 
         # Grab the previous messages the user sent in this server
         msgs = list(Message.select(
             Message.id,
             Message.content,
-        ).where(
-            (Message.author_id == member.id) &
-            (Message.guild_id == event.guild.id) &
-            (Message.timestamp > (datetime.utcnow() - timedelta(seconds=rule.max_duplicates.interval)))
-        ).order_by(
+        ).where(reduce(operator.and_, q)).order_by(
             Message.timestamp.desc()
         ).limit(50).tuples())
 
@@ -231,7 +235,7 @@ class SpamPlugin(Plugin):
         check_bucket('max_emojis', 'Too Many Emojis', lambda e: len(EMOJI_RE.findall(e.message.content)))
         check_bucket('max_newlines', 'Too Many Newlines', lambda e: e.message.content.count('\n'))
 
-        if rule.max_duplicates and rule.max_messages.interval and rule.max_messages.count:
+        if rule.max_duplicates and rule.max_duplicates.interval and rule.max_duplicates.count:
             self.check_duplicate_messages(event, member, rule)
 
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
