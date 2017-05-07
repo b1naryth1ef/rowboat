@@ -16,6 +16,7 @@ from gevent.event import Event
 
 from disco.bot import CommandLevels
 from disco.types import UNSET
+from disco.api import APIException
 from disco.util.functional import cached_property
 from disco.util.snowflake import to_unix, to_datetime
 from disco.util.sanitize import S
@@ -63,7 +64,14 @@ class ModLogPump(object):
     def _emit_loop(self):
         while True:
             self._have.wait()
-            self._emit()
+
+            try:
+                self._emit()
+            except APIException as e:
+                # If send message is disabled, backoff (we'll drop events but
+                #  thats ok)
+                if e.code == 40004:
+                    gevent.sleep(5)
 
             if not len(self._buffer):
                 self._have.clear()

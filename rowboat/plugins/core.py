@@ -305,13 +305,12 @@ class CorePlugin(Plugin):
         config = guild and guild.get_config()
 
         # If the guild has configuration, use that (otherwise use defaults)
-        if config:
-            if config.commands:
-                commands = list(self.bot.get_commands_for_message(
-                    config.commands.mention,
-                    {},
-                    config.commands.prefix,
-                    event.message))
+        if config and config.commands:
+            commands = list(self.bot.get_commands_for_message(
+                config.commands.mention,
+                {},
+                config.commands.prefix,
+                event.message))
         elif guild_id:
             # Otherwise, default to requiring mentions
             commands = list(self.bot.get_commands_for_message(True, {}, '', event.message))

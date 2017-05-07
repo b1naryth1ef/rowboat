@@ -31,6 +31,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/ace.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/keybinding-vim.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/mode-yaml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/mode-yaml.js"></script>
 <script>
   var guildID = "{{ guild.guild_id }}";
 
@@ -39,6 +40,8 @@
   editor.getSession().setMode("ace/mode/yaml");
   editor.getSession().setTabSize(2);
   editor.getSession().setUseSoftTabs(true);
+  editor.getSession().setUseWrapMode(true);
+  editor.getSession().setUndoManager(new ace.UndoManager());
 
   $.get("/guilds/" + guildID + "/config/raw").done(function (data) {
     editor.setValue(data);
