@@ -740,17 +740,17 @@ class AdminPlugin(Plugin):
 
         embed = MessageEmbed()
         embed.fields.append(
-            MessageEmbedField(name='Total Messages Sent', value=q[0], inline=True))
+            MessageEmbedField(name='Total Messages Sent', value=q[0] or '0', inline=True))
         embed.fields.append(
-            MessageEmbedField(name='Total Characters Sent', value=q[1], inline=True))
+            MessageEmbedField(name='Total Characters Sent', value=q[1] or '0', inline=True))
         embed.fields.append(
-            MessageEmbedField(name='Total Deleted Messages', value=deleted, inline=True))
+            MessageEmbedField(name='Total Deleted Messages', value=deleted or '0', inline=True))
         embed.fields.append(
-            MessageEmbedField(name='Total Custom Emoji\'s', value=q[2], inline=True))
+            MessageEmbedField(name='Total Custom Emoji\'s', value=q[2] or '0', inline=True))
         embed.fields.append(
-            MessageEmbedField(name='Total Mentions', value=q[3], inline=True))
+            MessageEmbedField(name='Total Mentions', value=q[3] or '0', inline=True))
         embed.fields.append(
-            MessageEmbedField(name='Total Attachments', value=q[4], inline=True))
+            MessageEmbedField(name='Total Attachments', value=q[4] or '0', inline=True))
         embed.fields.append(
             MessageEmbedField(name='Total Reactions', value=sum(i[0] for i in reactions_given), inline=True))
 
