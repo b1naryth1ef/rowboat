@@ -87,6 +87,19 @@ def guild_infractions_list(guild):
     user = User.alias()
     actor = User.alias()
 
+    columns = [
+        Infraction.id,
+        Infraction.type_,
+        user.user_id,
+        user.username,
+        actor.user_id,
+        actor.username,
+        Infraction.reason,
+        Infraction.created_at,
+        Infraction.expires_at,
+        Infraction.active,
+    ]
+
     def serialize(inf):
         type_ = {i.index: i for i in Infraction.Types.attrs}[inf.type_]
         return {
@@ -101,6 +114,23 @@ def guild_infractions_list(guild):
             'active': inf.active
         }
 
+    sort_order = []
+    for idx in xrange(32):
+        ch = 'order[{}][column]'.format(idx)
+        if ch not in request.values:
+            break
+
+        cd = 'order[{}][dir]'.format(idx)
+        column = columns[int(request.values.get(ch))]
+        order = request.values.get(cd)
+
+        if order == 'asc':
+            column = column.asc()
+        else:
+            column = column.desc()
+
+        sort_order.append(column)
+
     base_q = Infraction.select(
             Infraction,
             user,
@@ -111,7 +141,7 @@ def guild_infractions_list(guild):
         actor, on=(Infraction.actor_id == actor.user_id).alias('actor'),
     ).where(
         (Infraction.guild_id == guild.guild_id)
-    )
+    ).order_by(*sort_order)
 
     search = request.values.get('search[value]')
     if search:
