@@ -126,8 +126,11 @@ class AdminPlugin(Plugin):
             elif type_ == Infraction.Types.TEMPMUTE:
                 # TODO: remove in backups
                 member = guild.get_member(item.user_id)
-                if member and item.metadata['role'] in member.roles:
-                    member.remove_role(item.metadata['role'])
+                if member:
+                    if item.metadata['role'] in member.roles:
+                        member.remove_role(item.metadata['role'])
+                else:
+                    pass
 
             # TODO: n+1
             item.active = False

@@ -1,3 +1,6 @@
+import time
+import operator
+
 from playhouse.migrate import PostgresqlMigrator, migrate
 from rowboat.sql import database, init_db
 
@@ -48,6 +51,9 @@ class Migrate(object):
         for field in fields:
             self.actions.append(self.m.add_column(table._meta.db_table, field.name, field))
 
+    def rename_column(self, table, field, new_name):
+        self.actions.append(self.m.rename_column(table._meta.db_table, field.name, new_name))
+
     def drop_not_nulls(self, table, *fields):
         for field in fields:
             self.actions.append(self.m.drop_not_null(table._meta.db_table, field.name))
@@ -58,6 +64,48 @@ class Migrate(object):
 
     def execute(self, query, params=None):
         self.raw_actions.append((query, params or []))
+
+    def backfill_column(self, table, old_columns, new_columns, pkeys=None, cast_funcs=None):
+        total = table.select().count()
+
+        if not pkeys:
+            pkeys = [table._meta.primary_key]
+
+        q = table.select(
+            *(pkeys + old_columns)
+        ).tuples()
+
+        idx = 0
+        modified = 0
+
+        start = time.time()
+        with database.transaction() as txn:
+            for values in q:
+                idx += 1
+
+                if idx % 10000 == 0:
+                    print '[%ss] Backfilling %s %s/%s (wrote %s)' % (time.time() - start, str(table), idx, total, modified)
+
+                if modified % 1000:
+                    txn.commit()
+
+                obj = {
+                    new_column.name: cast_funcs[new_column](values[i + len(pkeys)])
+                    if cast_funcs and new_column in cast_funcs else values[i] + len(pkeys)
+                    for i, new_column in enumerate(new_columns)
+                }
+                if not any(obj.values()):
+                    continue
+
+                modified += 1
+                table.update(
+                    **{new_column.name: values[i + len(pkeys)] for i, new_column in enumerate(new_columns)}
+                ).where(
+                    reduce(operator.and_, [(iz == values[i]) for i, iz in enumerate(pkeys)])
+                ).execute()
+
+        txn.commit()
+        print 'DONE, %s scanned %s written' % (idx, modified)
 
     @staticmethod
     def missing(table, field):

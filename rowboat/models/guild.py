@@ -5,7 +5,7 @@ from peewee import (
     BigIntegerField, CharField, TextField, BooleanField, DateTimeField, CompositeKey, BlobField
 )
 from datetime import datetime
-from playhouse.postgres_ext import BinaryJSONField
+from playhouse.postgres_ext import BinaryJSONField, ArrayField
 
 from rowboat.sql import BaseModel
 from rowboat.redis import rdb
@@ -121,6 +121,7 @@ class GuildEmoji(BaseModel):
     require_colons = BooleanField()
     managed = BooleanField()
     roles = BinaryJSONField()
+    roles_new = ArrayField(BigIntegerField, default=[], null=True)
 
     deleted = BooleanField(default=False)
 
@@ -140,7 +141,7 @@ class GuildEmoji(BaseModel):
         ge.name = emoji.name
         ge.require_colons = emoji.require_colons
         ge.managed = emoji.managed
-        ge.roles = emoji.roles
+        ge.roles = ge.roles_new = emoji.roles
         ge.save(force_insert=new)
         return ge
 
@@ -202,6 +203,7 @@ class GuildMemberBackup(BaseModel):
 
     nick = CharField(null=True)
     roles = BinaryJSONField(default=[])
+    roles_new = ArrayField(BigIntegerField, default=[], null=True)
 
     mute = BooleanField(null=True)
     deaf = BooleanField(null=True)
@@ -222,6 +224,7 @@ class GuildMemberBackup(BaseModel):
             guild_id=member.guild_id,
             nick=member.nick,
             roles=member.roles,
+            roles_new=member.roles,
             mute=member.mute,
             deaf=member.deaf,
         )
