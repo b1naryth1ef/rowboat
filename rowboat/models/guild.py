@@ -120,13 +120,12 @@ class GuildEmoji(BaseModel):
 
     require_colons = BooleanField()
     managed = BooleanField()
-    roles = BinaryJSONField()
-    roles_new = ArrayField(BigIntegerField, default=[], null=True)
+    roles = ArrayField(BigIntegerField, default=[], null=True)
 
     deleted = BooleanField(default=False)
 
     class Meta:
-        db_table = 'guildemojis'
+        db_table = 'guild_emojis'
 
     @classmethod
     def from_disco_guild_emoji(cls, emoji, guild_id=None):
@@ -141,7 +140,7 @@ class GuildEmoji(BaseModel):
         ge.name = emoji.name
         ge.require_colons = emoji.require_colons
         ge.managed = emoji.managed
-        ge.roles = ge.roles_new = emoji.roles
+        ge.roles = emoji.roles
         ge.save(force_insert=new)
         return ge
 
@@ -153,7 +152,7 @@ class GuildBan(BaseModel):
     reason = TextField(null=True)
 
     class Meta:
-        db_table = 'guildbans'
+        db_table = 'guild_bans'
         primary_key = CompositeKey('user_id', 'guild_id')
 
     @classmethod
@@ -202,8 +201,7 @@ class GuildMemberBackup(BaseModel):
     guild_id = BigIntegerField()
 
     nick = CharField(null=True)
-    roles = BinaryJSONField(default=[])
-    roles_new = ArrayField(BigIntegerField, default=[], null=True)
+    roles = ArrayField(BigIntegerField, default=[], null=True)
 
     mute = BooleanField(null=True)
     deaf = BooleanField(null=True)
@@ -224,7 +222,6 @@ class GuildMemberBackup(BaseModel):
             guild_id=member.guild_id,
             nick=member.nick,
             roles=member.roles,
-            roles_new=member.roles,
             mute=member.mute,
             deaf=member.deaf,
         )
