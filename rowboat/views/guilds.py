@@ -97,7 +97,6 @@ def guild_infractions_list(guild):
         Infraction.reason,
         Infraction.created_at,
         Infraction.expires_at,
-        Infraction.active,
     ]
 
     def serialize(inf):
@@ -109,9 +108,8 @@ def guild_infractions_list(guild):
             'type': str(type_),
             'reason': inf.reason,
             'metadata': inf.metadata,
-            'expires_at': inf.expires_at.isoformat() if inf.expires_at else None,
-            'created_at': inf.created_at.isoformat() if inf.created_at else None,
-            'active': inf.active
+            'expires_at': (inf.expires_at.isoformat() if inf.expires_at else None) if inf.active else 'Expired',
+            'created_at': inf.created_at.isoformat() if inf.created_at else None
         }
 
     sort_order = []

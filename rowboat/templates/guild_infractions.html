@@ -26,7 +26,6 @@
 							<th>Reason</th>
 							<th>Created At</th>
 							<th>Expires At</th>
-							<th>Active</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -55,7 +54,6 @@ $('#infractions-table').DataTable({
 		{ data: 'reason' },
 		{ data: 'created_at' },
 		{ data: 'expires_at' },
-		{ data: 'active' }
 	],
 	initComplete: function(){
 		var api = this.api();
