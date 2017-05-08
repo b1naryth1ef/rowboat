@@ -42,7 +42,6 @@ var guildID = "{{ guild.guild_id }}";
 
 $('#infractions-table').DataTable({
 	serverSide: true,
-	processing: true,
 	ajax: '/api/guilds/' + guildID + '/infractions',
 	columns: [
 		{ data: 'id' },

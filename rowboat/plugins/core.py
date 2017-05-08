@@ -511,7 +511,7 @@ class CorePlugin(Plugin):
                 return
 
         if len(result) > 1990:
-            event.msg.reply('', attachment=('result.txt', result))
+            event.msg.reply('', attachments=[('result.txt', result)])
         else:
             event.msg.reply(PY_CODE_BLOCK.format(result))
 

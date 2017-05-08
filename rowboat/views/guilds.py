@@ -137,9 +137,9 @@ def guild_infractions_list(guild):
         user, on=(Infraction.user_id == user.user_id).alias('user'),
     ).switch(Infraction).join(
         actor, on=(Infraction.actor_id == actor.user_id).alias('actor'),
-    ).where(
-        (Infraction.guild_id == guild.guild_id)
     ).order_by(*sort_order)
+
+    q = base_q.where(Infraction.guild_id == guild.guild_id)
 
     search = request.values.get('search[value]')
     if search:
@@ -153,9 +153,9 @@ def guild_infractions_list(guild):
             opts.append(actor.user_id == int(search))
             opts.append(Infraction.id == int(search))
 
-        base_q = base_q.where(reduce(operator.or_, opts))
+        q = q.where(reduce(operator.or_, opts))
 
-    q = base_q.offset(
+    final_q = q.offset(
         int(request.values.get('start'))
     ).limit(
         int(request.values.get('length'))
@@ -165,7 +165,7 @@ def guild_infractions_list(guild):
         'draw': int(request.values.get('draw')),
         'recordsTotal': base_q.count(),
         'recordsFiltered': q.count(),
-        'data': map(serialize, q),
+        'data': map(serialize, final_q),
     })
 
 

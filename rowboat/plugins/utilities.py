@@ -119,7 +119,7 @@ class UtilitiesPlugin(Plugin):
 
         r = requests.get(url)
         r.raise_for_status()
-        event.msg.reply('', attachment=('cat.jpg', r.content))
+        event.msg.reply('', attachments=[('cat.jpg', r.content)])
 
     @Plugin.command('urban', '<term:str...>', global_=True)
     def urban(self, event, term):
@@ -224,7 +224,7 @@ class UtilitiesPlugin(Plugin):
         url = 'https://discordapp.com/api/emojis/{}.png'.format(eid)
         r = requests.get(url)
         r.raise_for_status()
-        return event.msg.reply('\n'.join(fields), attachment=('emoji.png', r.content))
+        return event.msg.reply('\n'.join(fields), attachments=[('emoji.png', r.content)])
 
     @Plugin.command('jumbo', '<emojis:str...>', global_=True)
     def jumbo(self, event, emojis):
@@ -259,7 +259,7 @@ class UtilitiesPlugin(Plugin):
         combined = BytesIO()
         image.save(combined, 'png', quality=55)
         combined.seek(0)
-        return event.msg.reply('', attachment=('emoji.png', combined))
+        return event.msg.reply('', attachments=[('emoji.png', combined)])
 
     @Plugin.command('seen', '<user:user>', global_=True)
     def seen(self, event, user):
