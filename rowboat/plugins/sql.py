@@ -336,15 +336,6 @@ class SQLPlugin(Plugin):
         event.msg.reply(t.compile())
 
 
-# Backfill cases
-#  - Full backfill of a channel
-#  - Date range backfill
-#  - 
-
-class Backfill(object):
-    pass
-
-
 class Recovery(object):
     def __init__(self, log, channel, start_dt, end_dt=None):
         self.log = log
@@ -362,7 +353,7 @@ class Recovery(object):
         )
 
         for chunk in msgs:
-            print Message.from_disco_message_many(chunk, safe=True)
+            Message.from_disco_message_many(chunk, safe=True)
 
             if to_datetime(chunk[-1].id) > self.end_dt:
                 break

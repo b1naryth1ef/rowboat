@@ -124,13 +124,15 @@ class AdminPlugin(Plugin):
                 # TODO: debounce
                 guild.delete_ban(item.user_id)
             elif type_ == Infraction.Types.TEMPMUTE:
-                # TODO: remove in backups
                 member = guild.get_member(item.user_id)
                 if member:
                     if item.metadata['role'] in member.roles:
                         member.remove_role(item.metadata['role'])
                 else:
-                    pass
+                    GuildMemberBackup.remove_role(
+                        item.guild_id,
+                        item.user_id,
+                        item.metadata['role'])
 
             # TODO: n+1
             item.active = False

@@ -211,6 +211,18 @@ class GuildMemberBackup(BaseModel):
         primary_key = CompositeKey('user_id', 'guild_id')
 
     @classmethod
+    def remove_role(cls, guild_id, user_id, role_id):
+        sql = '''
+            UPDATE guild_member_backups
+                SET roles = array_remove(roles, %s)
+            WHERE
+                guild_member_backups.guild_id = %s AND
+                guild_member_backups.user_id = %s AND
+                guild_member_backups.roles @> ARRAY[%s]
+        '''
+        cls.raw(sql, role_id, guild_id, user_id, role_id)
+
+    @classmethod
     def create_from_member(cls, member):
         cls.delete().where(
             (cls.user_id == member.user.id) &
