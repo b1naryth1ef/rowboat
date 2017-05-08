@@ -138,7 +138,7 @@ class SpamPlugin(Plugin):
                     violation.event,
                     violation.member,
                     'Spam Detected',
-                    violation.rule.punishment_duration)
+                    datetime.utcnow() + timedelta(seconds=violation.rule.punishment_duration))
             elif violation.rule.punishment == PunishmentType.KICK:
                 Infraction.kick(
                     self,
@@ -151,7 +151,7 @@ class SpamPlugin(Plugin):
                     violation.event,
                     violation.member,
                     'Spam Detected',
-                    violation.rule.punishment_duration)
+                    datetime.utcnow() + timedelta(seconds=violation.rule.punishment_duration))
             elif violation.rule.punishment == PunishmentType.BAN:
                 Infraction.ban(
                     self,
