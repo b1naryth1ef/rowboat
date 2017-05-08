@@ -66,19 +66,19 @@ class Censorship(Exception):
     def details(self):
         if self.reason is CensorReason.INVITE:
             if self.ctx['guild']:
-                return 'invite `{}` to {}'.format(self.ctx['invite'], S(self.ctx['guild']['name'], escape_codeblocks=True))
+                return u'invite `{}` to {}'.format(self.ctx['invite'], S(self.ctx['guild']['name'], escape_codeblocks=True))
             else:
-                return 'invite `{}`'.format(self.ctx['invite'])
+                return u'invite `{}`'.format(self.ctx['invite'])
         elif self.reason is CensorReason.DOMAIN:
             if self.ctx['hit'] == 'whitelist':
-                return 'domain `{}` is not in whitelist'.format(S(self.ctx['domain'], escape_codeblocks=True))
+                return u'domain `{}` is not in whitelist'.format(S(self.ctx['domain'], escape_codeblocks=True))
             else:
-                return 'domain `{}` is in blacklist'.format(S(self.ctx['domain'], escape_codeblocks=True))
+                return u'domain `{}` is in blacklist'.format(S(self.ctx['domain'], escape_codeblocks=True))
         elif self.reason is CensorReason.WORD:
-            return 'found blacklisted words `{}`'.format(
+            return u'found blacklisted words `{}`'.format(
                 ', '.join([S(i, escape_codeblocks=True) for i in self.ctx['words']]))
         elif self.reason is CensorReason.ZALGO:
-            return 'found zalgo at position `{}` in text'.format(
+            return u'found zalgo at position `{}` in text'.format(
                 self.ctx['position']
             )
 

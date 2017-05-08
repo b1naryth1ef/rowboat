@@ -18,7 +18,7 @@ from disco.util.sanitize import S
 from rowboat import ENV
 from rowboat.util import LocalProxy
 from rowboat.plugins import BasePlugin as Plugin
-from rowboat.plugins import RowboatPlugin, CommandResponse
+from rowboat.plugins import CommandResponse
 from rowboat.sql import init_db
 from rowboat.redis import rdb
 from rowboat.models.user import Infraction
@@ -93,8 +93,11 @@ class CorePlugin(Plugin):
                         self.guilds[data['id']].name
                     )
 
-                self.log.info('Reloading config for guild %s', self.guilds[data['id']].name)
-                self.guilds[data['id']].get_config(refresh=True)
+                self.log.info(u'Reloading config for guild %s', self.guilds[data['id']].name)
+                try:
+                    self.guilds[data['id']].get_config(refresh=True)
+                except:
+                    self.log.exception(u'Failed to reload config for guild %s', self.guilds[data['id']].name)
             elif data['type'] == 'RESTART':
                 self.log.info('Restart requested, signaling parent')
                 os.kill(os.getppid(), signal.SIGUSR1)
