@@ -41,6 +41,22 @@
       <li>
         <a href="/"><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>
       </li>
+      {% if guild %}
+      <li>
+        <a> {{ guild.name }}</a>
+        <ul class="nav nav-second-level collapse in">
+          <li>
+            <a href="/guilds/{{ guild.guild_id}}"><i class="fa fa-info fa-fw"></i> Information</a>
+          </li>
+          <li>
+            <a href="/guilds/{{ guild.guild_id}}/config"><i class="fa fa-cog fa-fw"></i> Config</a>
+          </li>
+          <li>
+            <a href="/guilds/{{ guild.guild_id}}/infractions"><i class="fa fa-ban fa-fw"></i> Infractions</a>
+          </li>
+        </ul>
+      </li>
+      {% endif %}
     </ul>
   </div>
 </div>

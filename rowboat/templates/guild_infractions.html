@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="row">
+	<div class="col-lg-12">
+		<h1 class="page-header">{{ guild.name }} - {{ guild.guild_id }} - Infractions<h1>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-lg-12">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				Infractions
+			</div>
+			<!-- /.panel-heading -->
+			<div class="panel-body">
+				<table width="100%" class="table table-striped table-bordered table-hover" id="infractions-table">
+					<thead>
+						<tr>
+							<th>ID</th>
+							<th>Type</th>
+							<th>User ID</th>
+							<th>User</th>
+							<th>Actor ID</th>
+							<th>Actor</th>
+							<th>Reason</th>
+							<th>Created At</th>
+							<th>Expires At</th>
+							<th>Active</th>
+						</tr>
+					</thead>
+					<tbody>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+	{% endblock %}
+
+	{% block scripts %}
+	<script>
+var guildID = "{{ guild.guild_id }}";
+
+$('#infractions-table').DataTable({
+	serverSide: true,
+	processing: true,
+	ajax: '/api/guilds/' + guildID + '/infractions',
+	columns: [
+		{ data: 'id' },
+		{ data: 'type' },
+		{ data: 'user.user_id' },
+		{ data: 'user.username' },
+		{ data: 'actor.user_id' },
+		{ data: 'actor.username' },
+		{ data: 'reason' },
+		{ data: 'created_at' },
+		{ data: 'expires_at' },
+		{ data: 'active' }
+	],
+	initComplete: function(){
+		var api = this.api();
+		$('#infractions-table_filter input')
+			.off('.DT')
+			.on('keyup.DT', function (e) {
+				if (e.keyCode == 13) {
+					api.search(this.value).draw();
+				}
+			});
+	},
+
+})
+
+	</script>
+	{% endblock %}

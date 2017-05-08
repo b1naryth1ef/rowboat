@@ -1,4 +1,5 @@
 import yaml
+import operator
 import functools
 
 from flask import Blueprint, render_template, request, g, jsonify
@@ -6,10 +7,18 @@ from flask import Blueprint, render_template, request, g, jsonify
 from rowboat.sql import stats_database
 from rowboat.util.decos import authed
 from rowboat.models.guild import Guild, GuildConfigChange
-from rowboat.models.user import User
+from rowboat.models.user import User, Infraction
 from rowboat.models.channel import Channel
 
-guilds = Blueprint('guilds', __name__, url_prefix='/guilds')
+guilds = Blueprint('guilds', __name__)
+
+
+def serialize_user(u):
+    return {
+        'user_id': str(u.user_id),
+        'username': u.username,
+        'discriminator': u.discriminator,
+    }
 
 
 def with_guild(f):
@@ -34,44 +43,105 @@ def with_guild(f):
     return func
 
 
-@guilds.route('/<gid>')
+@guilds.route('/guilds/<gid>')
 @with_guild
 def guild_info(guild):
     return render_template('guild_info.html', guild=guild)
 
 
-@guilds.route('/<gid>/config')
+@guilds.route('/guilds/<gid>/config')
 @with_guild
 def guild_config(guild):
     return render_template('guild_config.html', guild=guild)
 
 
-@guilds.route('/<gid>/config/history')
+@guilds.route('/guilds/<gid>/infractions')
+@with_guild
+def guild_infractions(guild):
+    return render_template('guild_infractions.html', guild=guild)
+
+
+@guilds.route('/api/guilds/<gid>/config/history')
 @with_guild
 def guild_config_history(guild):
     def serialize(gcc):
-        user = gcc.user_id
         return {
-            'user': {
-                'user_id': user.user_id,
-                'username': user.username,
-                'discriminator': user.discriminator,
-            },
+            'user': serialize_user(gcc.user_id),
             'before': unicode(gcc.before_raw),
             'after': unicode(gcc.after_raw),
             'created_at': gcc.created_at.isoformat(),
         }
 
-    objs = GuildConfigChange.select(GuildConfigChange, User).join(
+    q = GuildConfigChange.select(GuildConfigChange, User).join(
         User, on=(User.user_id == GuildConfigChange.user_id),
     ).where(GuildConfigChange.guild_id == guild.guild_id).order_by(
         GuildConfigChange.created_at.desc()
     ).paginate(int(request.values.get('page', 1)), 25)
 
-    return jsonify([serialize(i) for i in objs])
+    return jsonify(map(serialize, q))
 
 
-@guilds.route('/<gid>/config/update', methods=['POST'])
+@guilds.route('/api/guilds/<gid>/infractions')
+@with_guild
+def guild_infractions_list(guild):
+    user = User.alias()
+    actor = User.alias()
+
+    def serialize(inf):
+        type_ = {i.index: i for i in Infraction.Types.attrs}[inf.type_]
+        return {
+            'id': inf.id,
+            'user': serialize_user(inf.user),
+            'actor': serialize_user(inf.actor),
+            'type': str(type_),
+            'reason': inf.reason,
+            'metadata': inf.metadata,
+            'expires_at': inf.expires_at.isoformat() if inf.expires_at else None,
+            'created_at': inf.created_at.isoformat() if inf.created_at else None,
+            'active': inf.active
+        }
+
+    base_q = Infraction.select(
+            Infraction,
+            user,
+            actor
+    ).join(
+        user, on=(Infraction.user_id == user.user_id).alias('user'),
+    ).switch(Infraction).join(
+        actor, on=(Infraction.actor_id == actor.user_id).alias('actor'),
+    ).where(
+        (Infraction.guild_id == guild.guild_id)
+    )
+
+    search = request.values.get('search[value]')
+    if search:
+        opts = []
+        opts.append(user.username ** u'%{}%'.format(search))
+        opts.append(actor.username ** u'%{}%'.format(search))
+        opts.append(Infraction.reason ** u'%{}%'.format(search))
+
+        if search.isdigit():
+            opts.append(user.user_id == int(search))
+            opts.append(actor.user_id == int(search))
+            opts.append(Infraction.id == int(search))
+
+        base_q = base_q.where(reduce(operator.or_, opts))
+
+    q = base_q.offset(
+        int(request.values.get('start'))
+    ).limit(
+        int(request.values.get('length'))
+    )
+
+    return jsonify({
+        'draw': int(request.values.get('draw')),
+        'recordsTotal': base_q.count(),
+        'recordsFiltered': q.count(),
+        'data': map(serialize, q),
+    })
+
+
+@guilds.route('/api/guilds/<gid>/config/update', methods=['POST'])
 @with_guild
 def guild_config_update(guild):
     if guild.role not in ['admin', 'editor']:
@@ -96,13 +166,13 @@ def guild_config_update(guild):
         return 'Invalid Guild', 404
 
 
-@guilds.route('/<gid>/config/raw')
+@guilds.route('/api/guilds/<gid>/config/raw')
 @with_guild
 def guild_config_raw(guild):
     return str(guild.config_raw) if guild.config_raw else yaml.safe_dump(guild.config)
 
 
-@guilds.route('/<gid>/stats/messages')
+@guilds.route('/api/guilds/<gid>/stats/messages')
 @with_guild
 def guild_stats_messages_new(guild):
     mode = {

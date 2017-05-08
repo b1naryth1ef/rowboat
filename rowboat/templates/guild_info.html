@@ -2,7 +2,7 @@
 {% block body %}
 <div class="row">
   <div class="col-lg-12">
-    <h1 class="page-header">{{ guild.name }} - {{ guild.guild_id }}<h1>
+    <h1 class="page-header">{{ guild.name }} - {{ guild.guild_id }} - Overview<h1>
   </div>
 </div>
 
@@ -33,7 +33,7 @@
   var guildID = "{{ guild.guild_id }}";
 
   function updateChart () {
-    $.get("/guilds/" + guildID + "/stats/messages?mode=" + $("#mode").val()).done(function (data) {
+    $.get("/api/guilds/" + guildID + "/stats/messages?mode=" + $("#mode").val()).done(function (data) {
       console.log(data);
 
       var chart = c3.generate({

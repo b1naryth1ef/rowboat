@@ -2,7 +2,7 @@
 {% block body %}
 <div class="row">
   <div class="col-lg-12">
-    <h1 class="page-header">{{ guild.name }} Configuration</h1>
+    <h1 class="page-header">{{ guild.name }} - {{ guild.guild_id }} - Configuration<h1>
   </div>
 </div>
 
@@ -43,7 +43,7 @@
   editor.getSession().setUseWrapMode(true);
   editor.getSession().setUndoManager(new ace.UndoManager());
 
-  $.get("/guilds/" + guildID + "/config/raw").done(function (data) {
+  $.get("/api/guilds/" + guildID + "/config/raw").done(function (data) {
     editor.setValue(data);
   });
 
@@ -53,7 +53,7 @@
     $.ajax({
       type: "POST",
       data: {"data": editor.getValue()},
-      url: "/guilds/" + guildID + "/config/update"
+      url: "/api/guilds/" + guildID + "/config/update"
     }).done(function (event) {
       notify('success', 'Saved Configuration');
     }).fail(function (event) {

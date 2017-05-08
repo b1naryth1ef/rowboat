@@ -229,6 +229,7 @@ class GuildMemberBackup(BaseModel):
             (cls.guild_id == member.guild_id)
         ).execute()
 
+        print member.roles
         return cls.create(
             user_id=member.user.id,
             guild_id=member.guild_id,
