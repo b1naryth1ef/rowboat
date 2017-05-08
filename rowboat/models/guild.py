@@ -181,6 +181,7 @@ class GuildConfigChange(BaseModel):
             (('user_id', 'guild_id'), False),
         )
 
+    # TODO: dispatch guild change events
     def rollback_to(self):
         Guild.update(
             config_raw=self.after_raw,

@@ -5,7 +5,8 @@ from flask import Blueprint, render_template, request, g, jsonify
 
 from rowboat.sql import stats_database
 from rowboat.util.decos import authed
-from rowboat.models.guild import Guild
+from rowboat.models.guild import Guild, GuildConfigChange
+from rowboat.models.user import User
 from rowboat.models.channel import Channel
 
 guilds = Blueprint('guilds', __name__, url_prefix='/guilds')
@@ -43,6 +44,31 @@ def guild_info(guild):
 @with_guild
 def guild_config(guild):
     return render_template('guild_config.html', guild=guild)
+
+
+@guilds.route('/<gid>/config/history')
+@with_guild
+def guild_config_history(guild):
+    def serialize(gcc):
+        user = gcc.user_id
+        return {
+            'user': {
+                'user_id': user.user_id,
+                'username': user.username,
+                'discriminator': user.discriminator,
+            },
+            'before': unicode(gcc.before_raw),
+            'after': unicode(gcc.after_raw),
+            'created_at': gcc.created_at.isoformat(),
+        }
+
+    objs = GuildConfigChange.select(GuildConfigChange, User).join(
+        User, on=(User.user_id == GuildConfigChange.user_id),
+    ).where(GuildConfigChange.guild_id == guild.guild_id).order_by(
+        GuildConfigChange.created_at.desc()
+    ).paginate(int(request.values.get('page', 1)), 25)
+
+    return jsonify([serialize(i) for i in objs])
 
 
 @guilds.route('/<gid>/config/update', methods=['POST'])
