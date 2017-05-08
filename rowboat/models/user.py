@@ -116,10 +116,12 @@ class Infraction(BaseModel):
         db_table = 'infractions'
 
         indexes = (
-            (('guild', 'user_id'), False),
+            (('guild_id', 'user_id'), False),
         )
 
-    # TODO: debounces should not blow dick here, use real types n such
+    @staticmethod
+    def admin_config(event):
+        return getattr(event.base_config.plugins, 'admin', None)
 
     @classmethod
     def kick(cls, plugin, event, member, reason):
@@ -198,6 +200,8 @@ class Infraction(BaseModel):
 
     @classmethod
     def mute(cls, plugin, event, member, reason):
+        admin_config = cls.admin_config(event)
+
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(
             event,
             member.user.id,
@@ -205,19 +209,21 @@ class Infraction(BaseModel):
             reason=reason,
             expires_at=None,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
-            role=event.config.mute_role)
+            role=admin_config.mute_role)
 
-        member.add_role(event.config.mute_role)
+        member.add_role(admin_config.mute_role)
         cls.create(
             guild_id=event.guild.id,
             user_id=member.user.id,
             actor_id=event.author.id,
             type_=cls.Types.MUTE,
             reason=reason,
-            metadata={'role': event.config.mute_role})
+            metadata={'role': admin_config.mute_role})
 
     @classmethod
     def tempmute(cls, plugin, event, member, reason, expires_at):
+        admin_config = cls.admin_config(event)
+
         plugin.bot.plugins.get('ModLogPlugin').create_debounce(
             event,
             member.user.id,
@@ -226,10 +232,10 @@ class Infraction(BaseModel):
             expires_at=expires_at,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             role=(
-                event.config.temp_mute_role or event.config.mute_role
+                admin_config.temp_mute_role or admin_config.mute_role
             ))
 
-        role = (event.config.temp_mute_role or event.config.mute_role)
+        role = (admin_config.temp_mute_role or admin_config.mute_role)
         member.add_role(role)
 
         cls.create(
