@@ -154,7 +154,8 @@ class AdminPlugin(Plugin):
             if event.config.persist.role_ids:
                 roles &= set(event.config.persist.role_ids)
 
-            kwargs['roles'] = list(set(backup.roles) & roles)
+            if roles:
+                kwargs['roles'] = list(set(backup.roles) & roles)
 
         if event.config.persist.nickname and backup.nick is not None:
             kwargs['nick'] = backup.nick
