@@ -33,6 +33,9 @@ BOT_INFO = '''
 Rowboat is a moderation and utilitarian Bot built for large Discord servers.
 '''
 
+GREEN_TICK_EMOJI = 'green_tick:305231298799206401'
+RED_TICK_EMOJI = 'red_tick:305231335512080385'
+
 
 class CorePlugin(Plugin):
     def load(self, ctx):
@@ -514,6 +517,19 @@ class CorePlugin(Plugin):
             event.msg.reply('', attachments=[('result.txt', result)])
         else:
             event.msg.reply(PY_CODE_BLOCK.format(result))
+
+    @Plugin.command('sync-bans', group='control', level=-1)
+    def control_sync_bans(self, event):
+        guilds = list(Guild.select().where(
+            Guild.active == 1
+        ))
+
+        msg = event.msg.reply(':timer: pls wait while I sync...')
+
+        for guild in guilds:
+            guild.sync_bans(self.client.state.guilds.get(guild.guild_id))
+
+        msg.edit('<:{}> synced {} guilds'.format(GREEN_TICK_EMOJI, len(guilds)))
 
     @Plugin.command('reconnect', group='control', level=-1)
     def control_reconnect(self, event):

@@ -1,5 +1,6 @@
 import json
 import yaml
+import logging
 
 from peewee import (
     BigIntegerField, CharField, TextField, BooleanField, DateTimeField, CompositeKey, BlobField
@@ -10,6 +11,8 @@ from playhouse.postgres_ext import BinaryJSONField, ArrayField
 from rowboat.sql import BaseModel
 from rowboat.redis import rdb
 from rowboat.models.user import User
+
+log = logging.getLogger(__name__)
 
 
 @BaseModel.register
@@ -93,23 +96,26 @@ class Guild(BaseModel):
         return self._cached_config
 
     def sync_bans(self, guild):
+        # Update last synced time
+        Guild.update(
+            last_ban_sync=datetime.utcnow()
+        ).where(Guild.guild_id == self.guild_id).execute()
+
         try:
             bans = guild.get_bans()
         except:
+            log.exception('sync_bans failed:')
             return
 
-        for ban in bans.values():
-            GuildBan.ensure(guild, ban.user, ban.reason)
+        log.info('Syncing %s bans for guild %s', len(bans), guild.id)
 
         GuildBan.delete().where(
             (~(GuildBan.user_id << list(bans.keys()))) &
             (GuildBan.guild_id == guild.id)
         ).execute()
 
-        # Update last synced time
-        Guild.update(
-            last_ban_sync=datetime.utcnow()
-        ).where(Guild.guild_id == self.guild_id).execute()
+        for ban in bans.values():
+            GuildBan.ensure(guild, ban.user, ban.reason)
 
 
 @BaseModel.register
@@ -229,7 +235,6 @@ class GuildMemberBackup(BaseModel):
             (cls.guild_id == member.guild_id)
         ).execute()
 
-        print member.roles
         return cls.create(
             user_id=member.user.id,
             guild_id=member.guild_id,

@@ -137,13 +137,13 @@ def guild_infractions_list(guild):
         user, on=(Infraction.user_id == user.user_id).alias('user'),
     ).switch(Infraction).join(
         actor, on=(Infraction.actor_id == actor.user_id).alias('actor'),
+    ).where(
+        Infraction.guild_id == guild.guild_id
     ).order_by(*sort_order)
 
-    q = base_q.where(Infraction.guild_id == guild.guild_id)
-
     search = request.values.get('search[value]')
+    opts = []
     if search:
-        opts = []
         opts.append(user.username ** u'%{}%'.format(search))
         opts.append(actor.username ** u'%{}%'.format(search))
         opts.append(Infraction.reason ** u'%{}%'.format(search))
@@ -153,9 +153,9 @@ def guild_infractions_list(guild):
             opts.append(actor.user_id == int(search))
             opts.append(Infraction.id == int(search))
 
-        q = q.where(reduce(operator.or_, opts))
+    filter_q = base_q.where(reduce(operator.or_, opts))
 
-    final_q = q.offset(
+    final_q = filter_q.offset(
         int(request.values.get('start'))
     ).limit(
         int(request.values.get('length'))
@@ -164,7 +164,7 @@ def guild_infractions_list(guild):
     return jsonify({
         'draw': int(request.values.get('draw')),
         'recordsTotal': base_q.count(),
-        'recordsFiltered': q.count(),
+        'recordsFiltered': filter_q.count(),
         'data': map(serialize, final_q),
     })
 
