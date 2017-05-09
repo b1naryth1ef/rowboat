@@ -77,7 +77,6 @@ def bot(env):
     supervisor = BotSupervisor(env={
         'ENV': env,
         'DSN': config['DSN'],
-        'GOOGLE_APPLICATION_CREDENTIALS': config['GOOGLE_APPLICATION_CREDENTIALS'],
     })
     supervisor.run_forever()
 

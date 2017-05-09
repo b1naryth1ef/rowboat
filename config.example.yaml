@@ -3,15 +3,20 @@ token: ''
 manhole_enable: true
 manhole_bind: 127.0.0.1:7171
 
+state:
+  sync_guild_members: false
+
 bot:
   commands_enabled: false
   plugins:
-    - rowboat.plugins.modlog
-    - rowboat.plugins.reactions
-    - rowboat.plugins.admin
     - rowboat.plugins.core
-    - rowboat.plugins.messages
-  levels:
-    80351110224678912: owner
-    103559217914318848: trusted
-    108598213681922048: trusted
+    - rowboat.plugins.modlog
+    - rowboat.plugins.admin
+    - rowboat.plugins.spam
+    - rowboat.plugins.censor
+    - rowboat.plugins.reddit
+    - rowboat.plugins.starboard
+    - rowboat.plugins.utilities
+    - rowboat.plugins.sql
+    - rowboat.plugins.internal
+    - rowboat.plugins.stats
