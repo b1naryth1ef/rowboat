@@ -521,7 +521,7 @@ class CorePlugin(Plugin):
     @Plugin.command('sync-bans', group='control', level=-1)
     def control_sync_bans(self, event):
         guilds = list(Guild.select().where(
-            Guild.active == 1
+            Guild.enabled == 1
         ))
 
         msg = event.msg.reply(':timer: pls wait while I sync...')
