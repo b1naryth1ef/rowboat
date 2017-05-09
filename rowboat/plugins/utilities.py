@@ -276,9 +276,8 @@ class UtilitiesPlugin(Plugin):
             msg.timestamp
         ))
 
-    @Plugin.command('info', '<query:str...>', context={'mode': 'default'}, global_=True)
-    @Plugin.command('search', '<query:str...>', context={'mode': 'search'}, global_=True)
-    def info(self, event, query, mode=None):
+    @Plugin.command('search', '<query:str...>', global_=True)
+    def search(self, event, query):
         queries = []
 
         if query.isdigit():
@@ -287,10 +286,8 @@ class UtilitiesPlugin(Plugin):
         q = USER_MENTION_RE.findall(query)
         if len(q) and q[0].isdigit():
             queries.append((User.user_id == q[0]))
-        elif mode == 'search':
-            queries.append((User.username ** u'%{}%'.format(query.replace('%', ''))))
         else:
-            queries.append((User.username ** query.replace('%', '')))
+            queries.append((User.username ** u'%{}%'.format(query.replace('%', ''))))
 
         if '#' in query:
             username, discrim = query.rsplit('#', 1)
@@ -302,16 +299,17 @@ class UtilitiesPlugin(Plugin):
         users = User.select().where(reduce(operator.or_, queries))
         if len(users) == 0:
             return event.msg.reply(u'No users found for query `{}`'.format(S(query, escape_codeblocks=True)))
-        elif len(users) > 1:
-            return event.msg.reply(u'Found the following users for your query: ```{}```'.format(
-                u'\n'.join(map(unicode, users))
-            ))
-        else:
-            user = users[0]
 
-        # TODO: wat
-        user = self.state.users.get(user.user_id)
+        if len(users) == 1:
+            if users[0].user_id in self.state.users:
+                return self.info(event, self.state.users.get(users[0].user_id))
 
+        return event.msg.reply(u'Found the following users for your query: ```{}```'.format(
+            u'\n'.join(map(lambda i: u'{} ({})'.format(unicode(i), i.user_id), users[:25]))
+        ))
+
+    @Plugin.command('info', '<user:user>', global_=True)
+    def info(self, event, user):
         content = []
         content.append(u'**\u276F User Information**')
 
@@ -366,7 +364,7 @@ class UtilitiesPlugin(Plugin):
             user.avatar,
         )
 
-        embed.set_author(name=u'{}#{} ({})'.format(
+        embed.set_author(name=u'{}#{} (<@{}>)'.format(
             user.username,
             user.discriminator,
             user.id,
