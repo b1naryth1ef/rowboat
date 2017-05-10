@@ -153,7 +153,10 @@ def guild_infractions_list(guild):
             opts.append(actor.user_id == int(search))
             opts.append(Infraction.id == int(search))
 
-    filter_q = base_q.where(reduce(operator.or_, opts))
+    if opts:
+        filter_q = base_q.where(reduce(operator.or_, opts))
+    else:
+        filter_q = base_q
 
     final_q = filter_q.offset(
         int(request.values.get('start'))
