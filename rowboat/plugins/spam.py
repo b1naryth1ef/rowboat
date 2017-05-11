@@ -203,7 +203,8 @@ class SpamPlugin(Plugin):
         # Group the messages by their content
         dupes = defaultdict(int)
         for mid, content in msgs:
-            dupes[content] += 1
+            if content:
+                dupes[content] += 1
 
         # If any of them are above the max dupes count, trigger a violation
         dupes = [v for k, v in dupes.items() if v > rule.max_duplicates.count]
