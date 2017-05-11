@@ -5,7 +5,6 @@ import signal
 import inspect
 import humanize
 import functools
-import traceback
 import contextlib
 
 from datetime import datetime, timedelta
@@ -122,7 +121,7 @@ class CorePlugin(Plugin):
         elif hasattr(event, 'guild_id') and event.guild_id:
             guild_id = event.guild_id
         else:
-            return
+            guild_id = None
 
         if guild_id not in self.guilds:
             if isinstance(event, CommandEvent):
@@ -367,30 +366,8 @@ class CorePlugin(Plugin):
             except CommandResponse as e:
                 return event.reply(e.response)
             except:
-                embed = MessageEmbed()
-                embed.color = 0xb19cd9
-                embed.title = 'Command Error'
-                embed.description = '```\n{}\n```'.format(
-                    traceback.format_exc()
-                )
-                embed.add_field(name='Command', value=command.name, inline=True)
-                embed.add_field(name='Plugin', value=command.plugin.name, inline=True)
-                embed.add_field(name='Author', value=unicode(event.author), inline=True)
-                if event.guild:
-                    embed.add_field(name='Guild', value=u'{} (`{}`)'.format(
-                        event.guild.name,
-                        event.guild.id,
-                    ), inline=True)
-
-                embed.add_field(name='Channel', value=u'{} (`{}`)'.format(
-                    unicode(event.channel.name),
-                    event.channel.id,
-                ), inline=True)
-
-                if ENV != 'prod':
-                    self.bot.client.api.channels_messages_create(311317125178327042, embed=embed)
-
-                return event.msg.reply('<:{}> something went wrong, perhaps try again later'.format(RED_TICK_EMOJI))
+                event.reply('<:{}> something went wrong, perhaps try again later'.format(RED_TICK_EMOJI))
+                self.log.exception('Command error:')
 
             Message.update(command=command.plugin.name + ':' + command.name).where(
                 (Message.id == event.message.id)

@@ -49,6 +49,26 @@ def get_dominant_colors_user(user, url=None):
         return color
 
 
+def get_dominant_colors_guild(guild):
+    import requests
+    from rowboat.redis import rdb
+    from PIL import Image
+    from six import BytesIO
+
+    key = 'guild:color:{}'.format(guild.icon)
+    if rdb.exists(key):
+        return int(rdb.get(key))
+    else:
+        r = requests.get(guild.icon_url)
+        try:
+            r.raise_for_status()
+        except:
+            return 0
+        color = int(get_dominant_colors(Image.open(BytesIO(r.content)))[0], 16)
+        rdb.set(key, color)
+        return color
+
+
 def euclidean(p1, p2):
     return sqrt(sum([
         (p1.coords[i] - p2.coords[i]) ** 2 for i in range(p1.n)

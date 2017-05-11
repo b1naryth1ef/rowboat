@@ -20,11 +20,11 @@ CREATE TABLE channel_messages_snapshot (
   time        TIMESTAMPTZ  NOT NULL,
   channel_id  BIGINT       NOT NULL,
 
-  created SMALLINT,
-  updated SMALLINT,
-  deleted SMALLINT,
-  mentions SMALLINT,
-  users SMALLINT,
+  created INTEGER,
+  updated INTEGER,
+  deleted INTEGER,
+  mentions INTEGER,
+  users INTEGER,
 
   PRIMARY KEY (time, channel_id)
 );

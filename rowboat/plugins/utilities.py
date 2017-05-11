@@ -10,19 +10,20 @@ from peewee import fn
 from pyquery import PyQuery
 from gevent.pool import Pool
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 from disco.types.user import GameType, Status
 from disco.types.message import MessageEmbed
 from disco.util.snowflake import to_datetime
 from disco.util.sanitize import S
 
-from rowboat.plugins import RowboatPlugin as Plugin
+from rowboat.plugins import RowboatPlugin as Plugin, CommandFail
 from rowboat.util.timing import Eventual
 from rowboat.util.input import parse_duration
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.user import User, Infraction
 from rowboat.models.message import Message, Reminder
-from rowboat.util.images import get_dominant_colors_user
+from rowboat.util.images import get_dominant_colors_user, get_dominant_colors_guild
 
 
 YEAR_IN_SEC = 60 * 60 * 24 * 365
@@ -31,25 +32,25 @@ EMOJI_RE = re.compile(r'<:(.+):([0-9]+)>')
 USER_MENTION_RE = re.compile('<@!?([0-9]+)>')
 
 STATUS_EMOJI = {
-    'ONLINE': ':status_online:305889169811439617',
-    'IDLE': ':status_away:305889079222992896',
-    'STREAMING': ':status_streaming:305889126463569920',
-    'OFFLINE': ':status_offline:305889028996071425',
-    'DND': ':status_dnd:305889053255925760',
+    Status.ONLINE: ':status_online:305889169811439617',
+    Status.IDLE: ':status_away:305889079222992896',
+    Status.DND: ':status_dnd:305889053255925760',
+    Status.OFFLINE: ':status_offline:305889028996071425',
+    GameType.STREAMING: ':status_streaming:305889126463569920',
 }
 
 
 def get_status_emoji(presence):
     if presence.game and presence.game.type == GameType.STREAMING:
-        return STATUS_EMOJI['STREAMING'], 'Streaming'
+        return STATUS_EMOJI[GameType.STREAMING], 'Streaming'
     elif presence.status == Status.ONLINE:
-        return STATUS_EMOJI['ONLINE'], 'Online'
+        return STATUS_EMOJI[Status.ONLINE], 'Online'
     elif presence.status == Status.IDLE:
-        return STATUS_EMOJI['IDLE'], 'Idle',
+        return STATUS_EMOJI[Status.IDLE], 'Idle',
     elif presence.status == Status.DND:
-        return STATUS_EMOJI['DND'], 'DND'
+        return STATUS_EMOJI[Status.DND], 'DND'
     elif presence.status in (Status.OFFLINE, Status.INVISIBLE):
-        return STATUS_EMOJI['OFFLINE'], 'Offline'
+        return STATUS_EMOJI[Status.OFFLINE], 'Offline'
 
 
 def get_emoji_url(emoji):
@@ -308,6 +309,51 @@ class UtilitiesPlugin(Plugin):
             u'\n'.join(map(lambda i: u'{} ({})'.format(unicode(i), i.user_id), users[:25]))
         ))
 
+    @Plugin.command('server', '<guild_id:snowflake>', global_=True)
+    def server(self, event, guild_id=None):
+        guild = self.state.guilds.get(guild_id) if guild_id else event.guild
+        if not guild:
+            raise CommandFail('invalid server')
+
+        content = []
+        content.append(u'**\u276F Server Information**')
+
+        created_at = to_datetime(guild.id)
+        content.append(u'Created: {} ago ({})'.format(
+            humanize.naturaldelta(datetime.utcnow() - created_at),
+            created_at.isoformat(),
+        ))
+        content.append(u'Members: {}'.format(len(guild.members)))
+        content.append(u'Features: {}'.format(', '.join(guild.features) or 'none'))
+
+        content.append(u'\n**\u276F Counts**')
+        text_count = sum(1 for c in guild.channels.values() if not c.is_voice)
+        voice_count = len(guild.channels) - text_count
+        content.append(u'Roles: {}'.format(len(guild.roles)))
+        content.append(u'Text: {}'.format(text_count))
+        content.append(u'Voice: {}'.format(voice_count))
+
+        content.append(u'\n**\u276F Members**')
+        status_counts = defaultdict(int)
+        for member in guild.members.values():
+            if not member.user.presence:
+                status = Status.OFFLINE
+            else:
+                status = member.user.presence.status
+            status_counts[status] += 1
+
+        for status, count in sorted(status_counts.items(), key=lambda i: str(i[0]), reverse=True):
+            content.append(u'<{}> - {}'.format(
+                STATUS_EMOJI[status], count
+            ))
+
+        embed = MessageEmbed()
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon_url)
+            embed.color = get_dominant_colors_guild(guild)
+        embed.description = '\n'.join(content)
+        event.msg.reply('', embed=embed)
+
     @Plugin.command('info', '<user:user>', global_=True)
     def info(self, event, user):
         content = []
@@ -413,13 +459,13 @@ class UtilitiesPlugin(Plugin):
 
         self.queue_reminders()
 
-    @Plugin.command('clear', group='r')
+    @Plugin.command('clear', group='r', global_=True)
     def cmd_remind_clear(self, event):
         count = Reminder.delete_for_user(event.author.id)
         return event.msg.reply(':ok_hand: I cleared {} reminders for you'.format(count))
 
-    @Plugin.command('add', '<duration:str> <content:str...>', group='r')
-    @Plugin.command('remind', '<duration:str> <content:str...>')
+    @Plugin.command('add', '<duration:str> <content:str...>', group='r', global_=True)
+    @Plugin.command('remind', '<duration:str> <content:str...>', global_=True)
     def cmd_remind(self, event, duration, content):
         if Reminder.count_for_user(event.author.id) > 30:
             return event.msg.reply(':warning: you an only have 15 reminders going at once!')
