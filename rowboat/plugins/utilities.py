@@ -179,34 +179,6 @@ class UtilitiesPlugin(Plugin):
             data['longitude'],
         ))
 
-    @Plugin.command('google', '<query:str...>', global_=True)
-    def google(self, event, query):
-        url = 'https://www.google.com/search?hl=en&q={}&btnG=Google+Search&tbs=0&safe=off&tbm='
-        r = requests.get(url.format(query))
-        pq = PyQuery(r.content)
-
-        results = []
-        for result in pq('.g'):
-            try:
-                url = result.getchildren()[0].getchildren()[0]
-                txt = result.getchildren()[1].getchildren()[1].text_content()
-                results.append({
-                    'url': url.attrib['href'],
-                    'title': url.text_content(),
-                    'text': txt,
-                })
-            except:
-                continue
-
-        if not results:
-            return event.msg.reply('No results found')
-
-        embed = MessageEmbed()
-        embed.title = results[0]['title']
-        embed.url = results[0]['url'].split('q=', 1)[-1].split('&', 1)[0]
-        embed.description = results[0]['text']
-        return event.msg.reply('', embed=embed)
-
     @Plugin.command('emoji', '<emoji:str>', global_=True)
     def emoji(self, event, emoji):
         if not EMOJI_RE.match(emoji):
