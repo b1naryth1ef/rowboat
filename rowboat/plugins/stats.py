@@ -1,5 +1,6 @@
 from gevent.lock import Semaphore
 from datetime import datetime
+from collections import defaultdict
 from influxdb import InfluxDBClient
 
 from rowboat.plugins import BasePlugin as Plugin, raven_client
@@ -53,7 +54,21 @@ class StatsPlugin(Plugin):
         elif hasattr(event, 'guild') and event.guild:
             metadata['guild_id'] = event.guild.id
 
-        self.write_point('gateway.recv', metadata)
+        self.write_point('gateway.events.receive', metadata)
+
+    @Plugin.schedule(120, init=False)
+    def track_presence(self):
+        for guild in self.state.guilds.values():
+            member_status = defaultdict(int)
+            for member in guild.members.values():
+                if member.user.presence and member.user.presence.status:
+                    member_status[member.user.presence.status] += 1
+
+            for k, v in member_status.items():
+                self.write_point('guild.presence.snapshot', {
+                    'guild_id': guild.id,
+                    'status': str(k).lower()
+                }, v)
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
@@ -65,7 +80,7 @@ class StatsPlugin(Plugin):
         if event.guild:
             tags['guild_id'] = event.guild.id
 
-        self.write_point('message.create', tags)
+        self.write_point('guild.message.create', tags)
 
     @Plugin.listen('MessageUpdate')
     def on_message_update(self, event):
@@ -77,7 +92,7 @@ class StatsPlugin(Plugin):
         if event.guild:
             tags['guild_id'] = event.guild.id
 
-        self.write_point('message.update', tags)
+        self.write_point('guild.message.update', tags)
 
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
@@ -85,11 +100,11 @@ class StatsPlugin(Plugin):
             'channel_id': event.channel_id,
         }
 
-        self.write_point('message.delete', tags)
+        self.write_point('guild.message.delete', tags)
 
     @Plugin.listen('MessageReactionAdd')
     def on_message_reaction_add(self, event):
-        self.write_point('message.reaction.add', {
+        self.write_point('guild.message.reaction.add', {
             'channel_id': event.channel_id,
             'user_id': event.user_id,
             'emoji_id': event.emoji.id,
@@ -98,7 +113,7 @@ class StatsPlugin(Plugin):
 
     @Plugin.listen('MessageReactionRemove')
     def on_message_reaction_remove(self, event):
-        self.write_point('message.reaction.remove', {
+        self.write_point('guild.message.reaction.remove', {
             'channel_id': event.channel_id,
             'user_id': event.user_id,
             'emoji_id': event.emoji.id,
