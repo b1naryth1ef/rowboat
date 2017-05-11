@@ -309,7 +309,7 @@ class UtilitiesPlugin(Plugin):
             u'\n'.join(map(lambda i: u'{} ({})'.format(unicode(i), i.user_id), users[:25]))
         ))
 
-    @Plugin.command('server', '<guild_id:snowflake>', global_=True)
+    @Plugin.command('server', '[guild_id:snowflake]', global_=True)
     def server(self, event, guild_id=None):
         guild = self.state.guilds.get(guild_id) if guild_id else event.guild
         if not guild:
