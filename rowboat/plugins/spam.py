@@ -41,6 +41,7 @@ class SubConfig(SlottedModel):
     max_links = Field(CheckConfig, default=None)
     max_emojis = Field(CheckConfig, default=None)
     max_newlines = Field(CheckConfig, default=None)
+    max_attachments = Field(CheckConfig, default=None)
 
     max_duplicates = Field(CheckConfig, default=None)
 
@@ -55,6 +56,7 @@ class SubConfig(SlottedModel):
     _cached_max_links_bucket = Field(str, private=True)
     _cached_max_emojis_bucket = Field(str, private=True)
     _cached_max_newlines_bucket = Field(str, private=True)
+    _cached_max_attachments_bucket = Field(str, private=True)
 
     def get_bucket(self, attr, guild_id):
         obj = getattr(self, attr)
@@ -235,6 +237,7 @@ class SpamPlugin(Plugin):
         # TODO: unicode emoji too pls
         check_bucket('max_emojis', 'Too Many Emojis', lambda e: len(EMOJI_RE.findall(e.message.content)))
         check_bucket('max_newlines', 'Too Many Newlines', lambda e: e.message.content.count('\n'))
+        check_bucket('max_attachments', 'Too Many Attachments', lambda e: len(e.message.attachments))
 
         if rule.max_duplicates and rule.max_duplicates.interval and rule.max_duplicates.count:
             self.check_duplicate_messages(event, member, rule)
