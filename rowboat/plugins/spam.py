@@ -1,7 +1,6 @@
 import time
 import operator
 
-from datadog import statsd
 from gevent.lock import Semaphore
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -14,6 +13,7 @@ from rowboat.redis import rdb
 from rowboat.plugins.modlog import Actions
 from rowboat.plugins.censor import URL_RE
 from rowboat.util.leakybucket import LeakyBucket
+from rowboat.util.stats import timed
 from rowboat.types.plugin import PluginConfig
 from rowboat.types import SlottedModel, DictField, Field
 from rowboat.models.user import Infraction
@@ -253,8 +253,8 @@ class SpamPlugin(Plugin):
             self.guild_locks[event.guild.id] = Semaphore()
         self.guild_locks[event.guild.id].acquire()
 
-        tags = ['guild_id:{}'.format(event.guild.id), 'channel_id:{}'.format(event.channel.id)]
-        with statsd.timer('rowboat.plugin.spam.duration', tags=tags):
+        tags = {'guild_id': event.guild.id, 'channel_id': event.channel.id}
+        with timed('rowboat.plugin.spam.duration', tags=tags):
             try:
                 member = event.guild.get_member(event.author)
                 level = int(self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author))

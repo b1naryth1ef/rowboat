@@ -2,12 +2,12 @@ import re
 import json
 import urlparse
 
-from datadog import statsd
 from holster.enum import Enum
 from disco.util.functional import cached_property
 from disco.util.sanitize import S
 
 from rowboat.redis import rdb
+from rowboat.util.stats import timed
 from rowboat.util.zalgo import ZALGO_RE
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
@@ -142,8 +142,8 @@ class CensorPlugin(Plugin):
         if not configs:
             return
 
-        tags = ['guild_id:{}'.format(event.guild.id), 'channel_id:{}'.format(event.channel.id)]
-        with statsd.timer('rowboat.plugin.censor.duration', tags=tags):
+        tags = {'guild_id': event.guild.id, 'channel_id': event.channel.id}
+        with timed('rowboat.plugin.censor.duration', tags=tags):
             try:
                 # TODO: perhaps imap here? how to raise exception then?
                 for config in configs:

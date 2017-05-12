@@ -7,7 +7,6 @@ import humanize
 import functools
 import contextlib
 
-from datadog import statsd
 from datetime import datetime, timedelta
 from holster.emitter import Priority
 from disco.bot import Bot
@@ -18,6 +17,7 @@ from disco.util.sanitize import S
 
 from rowboat import ENV
 from rowboat.util import LocalProxy
+from rowboat.util.stats import timed
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import CommandResponse
 from rowboat.sql import init_db
@@ -362,8 +362,7 @@ class CorePlugin(Plugin):
             if not global_admin and event.user_level < level:
                 continue
 
-            tags = ['plugin:{}'.format(command.plugin.name), 'command:{}'.format(command.name)]
-            with statsd.timer('rowboat.command.duration', tags=tags):
+            with timed('rowboat.command.duration', tags={'plugin': command.plugin.name, 'command': command.name}):
                 try:
                     command.plugin.execute(CommandEvent(command, event.message, match))
                 except CommandResponse as e:
