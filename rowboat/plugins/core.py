@@ -7,6 +7,7 @@ import humanize
 import functools
 import contextlib
 
+from datadog import statsd
 from datetime import datetime, timedelta
 from holster.emitter import Priority
 from disco.bot import Bot
@@ -361,13 +362,15 @@ class CorePlugin(Plugin):
             if not global_admin and event.user_level < level:
                 continue
 
-            try:
-                command.plugin.execute(CommandEvent(command, event.message, match))
-            except CommandResponse as e:
-                return event.reply(e.response)
-            except:
-                event.reply('<:{}> something went wrong, perhaps try again later'.format(RED_TICK_EMOJI))
-                self.log.exception('Command error:')
+            tags = ['plugin:{}'.format(command.plugin.name), 'command:{}'.format(command.name)]
+            with statsd.timer('rowboat.command.duration', tags=tags):
+                try:
+                    command.plugin.execute(CommandEvent(command, event.message, match))
+                except CommandResponse as e:
+                    return event.reply(e.response)
+                except:
+                    event.reply('<:{}> something went wrong, perhaps try again later'.format(RED_TICK_EMOJI))
+                    self.log.exception('Command error:')
 
             Message.update(command=command.plugin.name + ':' + command.name).where(
                 (Message.id == event.message.id)

@@ -1,9 +1,12 @@
-from gevent.lock import Semaphore
-from datetime import datetime
+from datadog import initialize, statsd
 from collections import defaultdict
-from influxdb import InfluxDBClient
+from disco.types.user import Status
 
-from rowboat.plugins import BasePlugin as Plugin, raven_client
+from rowboat.plugins import BasePlugin as Plugin
+
+
+def to_tags(obj):
+    return [u'{}:{}'.format(k, v) for k, v in obj.items()]
 
 
 class StatsPlugin(Plugin):
@@ -11,37 +14,7 @@ class StatsPlugin(Plugin):
 
     def load(self, ctx):
         super(StatsPlugin, self).load(ctx)
-        self.influx = InfluxDBClient(database='rowboat')
-        self.influx.create_database('rowboat', )
-        self.points_cache = []
-        self.lock = Semaphore()
-
-    def unload(self, ctx):
-        self.flush_points()
-        super(StatsPlugin, self).unload(ctx)
-
-    @Plugin.schedule(5, init=False)
-    def flush_points(self):
-        if not len(self.points_cache):
-            return
-
-        try:
-            with self.lock:
-                self.influx.write_points(self.points_cache)
-                self.points_cache = []
-        except:
-            self.log.exception('Failed to write influx data: ')
-            raven_client.captureException()
-
-    def write_point(self, measurement, tags, value=1):
-        self.points_cache.append({
-            'measurement': measurement,
-            'tags': tags,
-            'time': datetime.utcnow().replace(microsecond=0),
-            'fields': {
-                'value': value,
-            }
-        })
+        initialize(statsd_host='localhost', statsd_port=8125)
 
     @Plugin.listen('')
     def on_gateway_event(self, event):
@@ -54,21 +27,34 @@ class StatsPlugin(Plugin):
         elif hasattr(event, 'guild') and event.guild:
             metadata['guild_id'] = event.guild.id
 
-        self.write_point('gateway.events.receive', metadata)
+        statsd.increment('gateway.events.received', tags=to_tags(metadata))
 
     @Plugin.schedule(120, init=False)
-    def track_presence(self):
+    def track_state(self):
+        # Track presence across all our guilds
         for guild in self.state.guilds.values():
             member_status = defaultdict(int)
             for member in guild.members.values():
                 if member.user.presence and member.user.presence.status:
                     member_status[member.user.presence.status] += 1
+                else:
+                    member_status[Status.OFFLINE] += 1
 
             for k, v in member_status.items():
-                self.write_point('guild.presence.snapshot', {
-                    'guild_id': guild.id,
-                    'status': str(k).lower()
-                }, v)
+                statsd.gauge('guild.presence.{}'.format(str(k).lower()), v, tags=to_tags({'guild_id': guild.id}))
+
+        # Track some information about discos internal state
+        statsd.gauge('disco.state.dms', len(self.state.dms))
+        statsd.gauge('disco.state.guilds', len(self.state.guilds))
+        statsd.gauge('disco.state.channels', len(self.state.channels))
+        statsd.gauge('disco.state.users', len(self.state.users))
+        statsd.gauge('disco.state.voice_states', len(self.state.voice_states))
+
+    @Plugin.command('wow')
+    def on_wow(self, event):
+        for _ in range(1000):
+            statsd.increment('wow', 1)
+        event.msg.reply('oklol')
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
@@ -80,7 +66,7 @@ class StatsPlugin(Plugin):
         if event.guild:
             tags['guild_id'] = event.guild.id
 
-        self.write_point('guild.message.create', tags)
+        statsd.increment('guild.messages.create', tags=to_tags(tags))
 
     @Plugin.listen('MessageUpdate')
     def on_message_update(self, event):
@@ -92,7 +78,7 @@ class StatsPlugin(Plugin):
         if event.guild:
             tags['guild_id'] = event.guild.id
 
-        self.write_point('guild.message.update', tags)
+        statsd.increment('guild.messages.update', tags=to_tags(tags))
 
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
@@ -100,22 +86,22 @@ class StatsPlugin(Plugin):
             'channel_id': event.channel_id,
         }
 
-        self.write_point('guild.message.delete', tags)
+        statsd.increment('guild.messages.delete', tags=to_tags(tags))
 
     @Plugin.listen('MessageReactionAdd')
     def on_message_reaction_add(self, event):
-        self.write_point('guild.message.reaction.add', {
+        statsd.increment('guild.messages.reactions.add', tags=to_tags({
             'channel_id': event.channel_id,
             'user_id': event.user_id,
             'emoji_id': event.emoji.id,
             'emoji_name': event.emoji.name,
-        })
+        }))
 
     @Plugin.listen('MessageReactionRemove')
     def on_message_reaction_remove(self, event):
-        self.write_point('guild.message.reaction.remove', {
+        statsd.increment('guild.messages.reactions.remove', tags=to_tags({
             'channel_id': event.channel_id,
             'user_id': event.user_id,
             'emoji_id': event.emoji.id,
             'emoji_name': event.emoji.name,
-        })
+        }))

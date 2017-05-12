@@ -1,6 +1,7 @@
 import time
 import operator
 
+from datadog import statsd
 from gevent.lock import Semaphore
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -252,16 +253,18 @@ class SpamPlugin(Plugin):
             self.guild_locks[event.guild.id] = Semaphore()
         self.guild_locks[event.guild.id].acquire()
 
-        try:
-            member = event.guild.get_member(event.author)
-            level = int(self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author))
+        tags = ['guild_id:{}'.format(event.guild.id), 'channel_id:{}'.format(event.channel.id)]
+        with statsd.timer('rowboat.plugin.spam.duration', tags=tags):
+            try:
+                member = event.guild.get_member(event.author)
+                level = int(self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author))
 
-            # TODO: We should linerialize the work required for all rules in one go,
-            #  we repeat all the work in each rule which sucks.
+                # TODO: We should linerialize the work required for all rules in one go,
+                #  we repeat all the work in each rule which sucks.
 
-            for rule in event.config.compute_relevant_rules(member, level):
-                self.check_message_simple(event, member, rule)
-        except Violation as v:
-            self.violate(v)
-        finally:
-            self.guild_locks[event.guild.id].release()
+                for rule in event.config.compute_relevant_rules(member, level):
+                    self.check_message_simple(event, member, rule)
+            except Violation as v:
+                self.violate(v)
+            finally:
+                self.guild_locks[event.guild.id].release()

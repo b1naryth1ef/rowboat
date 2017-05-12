@@ -2,6 +2,7 @@ import re
 import json
 import urlparse
 
+from datadog import statsd
 from holster.enum import Enum
 from disco.util.functional import cached_property
 from disco.util.sanitize import S
@@ -141,28 +142,30 @@ class CensorPlugin(Plugin):
         if not configs:
             return
 
-        try:
-            # TODO: perhaps imap here? how to raise exception then?
-            for config in configs:
-                if config.filter_zalgo:
-                    self.filter_zalgo(event, config)
+        tags = ['guild_id:{}'.format(event.guild.id), 'channel_id:{}'.format(event.channel.id)]
+        with statsd.timer('rowboat.plugin.censor.duration', tags=tags):
+            try:
+                # TODO: perhaps imap here? how to raise exception then?
+                for config in configs:
+                    if config.filter_zalgo:
+                        self.filter_zalgo(event, config)
 
-                if config.filter_invites:
-                    self.filter_invites(event, config)
+                    if config.filter_invites:
+                        self.filter_invites(event, config)
 
-                if config.filter_domains:
-                    self.filter_domains(event, config)
+                    if config.filter_domains:
+                        self.filter_domains(event, config)
 
-                if config.blocked_words:
-                    self.filter_blocked_words(event, config)
-        except Censorship as c:
-            self.bot.plugins.get('ModLogPlugin').log_action_ext(
-                Actions.CENSORED,
-                event,
-                c=c)
+                    if config.blocked_words:
+                        self.filter_blocked_words(event, config)
+            except Censorship as c:
+                self.bot.plugins.get('ModLogPlugin').log_action_ext(
+                    Actions.CENSORED,
+                    event,
+                    c=c)
 
-            self.bot.plugins.get('ModLogPlugin').create_debounce(event, author.id, 'censor')
-            event.delete()
+                self.bot.plugins.get('ModLogPlugin').create_debounce(event, author.id, 'censor')
+                event.delete()
 
     def filter_zalgo(self, event, config):
         s = ZALGO_RE.search(event.content)
