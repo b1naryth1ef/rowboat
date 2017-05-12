@@ -203,6 +203,24 @@ class SQLPlugin(Plugin):
         self.models = {}
         event.msg.reply(':ok_hand: cleared models')
 
+    @Plugin.command('message', '<channel:snowflake> <message:snowflake>', level=-1, group='backfill', global_=True)
+    def command_backfill_message(self, event, channel, message):
+        channel = self.state.channels.get(channel)
+        Message.from_disco_message(channel.get_message(message))
+        return event.msg.reply(':ok_hand: backfilled')
+
+    @Plugin.command('reactions', '<message:snowflake>', level=-1, group='backfill', global_=True)
+    def command_sql_reactions(self, event, message):
+        try:
+            message = Message.get(id=message)
+        except Message.DoesNotExist:
+            return event.msg.reply(':warning: no message found')
+
+        message = self.state.channels.get(message.channel_id).get_message(message.id)
+        for reaction in message.reactions:
+            for users in message.get_reactors(reaction.emoji, bulk=True):
+                Reaction.from_disco_reactors(message.id, reaction, (i.id for i in users))
+
     @Plugin.command('global', '<duration:str> [pool:int]', level=-1, global_=True, context={'mode': 'global'}, group='recover')
     @Plugin.command('here', '<duration:str> [pool:int]', level=-1, global_=True, context={'mode': 'here'}, group='recover')
     def command_recover(self, event, duration, pool=4, mode=None):
@@ -241,9 +259,9 @@ class SQLPlugin(Plugin):
 
         msg.edit('RECOVERY COMPLETED')
 
-    @Plugin.command('backfill channel', '[channel:channel] [mode:str] [direction:str]', level=-1, global_=True)
+    @Plugin.command('backfill channel', '[channel:snowflake] [mode:str] [direction:str]', level=-1, global_=True)
     def command_backfill_channel(self, event, channel=None, mode=None, direction=None):
-        channel = channel or event.channel
+        channel = self.state.channels.get(channel) if channel else event.channel
         mode = Backfill.Mode.get(mode) if mode else Backfill.Mode.SPARSE
         direction = Backfill.Direction.get(direction) if direction else Backfill.Direction.UP
 

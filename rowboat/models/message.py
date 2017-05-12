@@ -147,6 +147,17 @@ class Reaction(BaseModel):
         db_table = 'reactions'
 
     @classmethod
+    def from_disco_reactors(cls, message_id, reaction, user_ids):
+        cls.insert_many([
+            {
+                'message_id': message_id,
+                'user_id': i,
+                'emoji_id': reaction.emoji.id or None,
+                'emoji_name': reaction.emoji.name or None
+            } for i in user_ids
+        ]).on_conflict('DO NOTHING').execute()
+
+    @classmethod
     def from_disco_reaction(cls, obj):
         return cls.create(
             message_id=obj.message_id,
