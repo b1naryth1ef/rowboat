@@ -146,6 +146,12 @@ class Reaction(BaseModel):
     class Meta:
         db_table = 'reactions'
 
+        indexes = (
+            (('message_id', 'user_id', 'emoji_id', 'emoji_name'), True),
+            (('user_id', ), False),
+            (('emoji_name', 'emoji_id', ), False),
+        )
+
     @classmethod
     def from_disco_reactors(cls, message_id, reaction, user_ids):
         cls.insert_many([
