@@ -7,7 +7,6 @@ import operator
 from six import BytesIO
 from PIL import Image
 from peewee import fn
-from pyquery import PyQuery
 from gevent.pool import Pool
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -364,16 +363,39 @@ class UtilitiesPlugin(Plugin):
                 ))
 
         try:
-            msg = Message.select().where(
-                (Message.author_id == user.id)
+            newest_msg = Message.select(Message.timestamp).where(
+                (Message.author_id == user.id) &
+                (Message.guild_id == event.guild.id)
             ).order_by(Message.timestamp.desc()).get()
+
+            oldest_msg = Message.select(Message.timestamp).where(
+                (Message.author_id == user.id) &
+                (Message.guild_id == event.guild.id)
+            ).order_by(Message.timestamp.asc()).get()
             content.append(u'\n **\u276F Activity**')
             content.append('Last Message: {} ago ({})'.format(
-                humanize.naturaldelta(datetime.utcnow() - msg.timestamp),
-                msg.timestamp.isoformat(),
+                humanize.naturaldelta(datetime.utcnow() - newest_msg.timestamp),
+                newest_msg.timestamp.isoformat(),
+            ))
+            content.append('First Message: {} ago ({})'.format(
+                humanize.naturaldelta(datetime.utcnow() - oldest_msg.timestamp),
+                oldest_msg.timestamp.isoformat(),
             ))
         except Message.DoesNotExist:
             pass
+
+        infractions = list(Infraction.select(
+            Infraction.guild_id,
+            fn.COUNT('*')
+        ).where(
+            (Infraction.user_id == user.id)
+        ).group_by(Infraction.guild_id).tuples())
+
+        if infractions:
+            total = sum(i[1] for i in infractions)
+            content.append(u'\n**\u276F Infractions**')
+            content.append('Total Infractions: {}'.format(total))
+            content.append('Unique Servers: {}'.format(len(infractions)))
 
         embed = MessageEmbed()
 
@@ -389,19 +411,6 @@ class UtilitiesPlugin(Plugin):
         ), icon_url=avatar)
 
         embed.set_thumbnail(url=avatar)
-
-        infractions = list(Infraction.select(
-            Infraction.guild_id,
-            fn.COUNT('*')
-        ).where(
-            (Infraction.user_id == user.id)
-        ).group_by(Infraction.guild_id).tuples())
-
-        if infractions:
-            total = sum(i[1] for i in infractions)
-            content.append(u'\n**\u276F Infractions**')
-            content.append('Total Infractions: {}'.format(total))
-            content.append('Unique Servers: {}'.format(len(infractions)))
 
         embed.description = '\n'.join(content)
         embed.color = get_dominant_colors_user(user, avatar)
