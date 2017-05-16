@@ -32,4 +32,4 @@ def parse_duration(raw, source=None, negative=False):
     if negative:
         value = value * -1
 
-    return (source or datetime.utcnow()) + timedelta(seconds=value)
+    return (source or datetime.utcnow()) + timedelta(seconds=value + 1)
