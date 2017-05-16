@@ -50,7 +50,7 @@ class SubConfig(SlottedModel):
     punishment_duration = Field(int, default=300)
 
     clean = Field(bool, default=False)
-    clean_duration = Field(int, default=300)
+    clean_count = Field(int, default=100)
 
     _cached_max_messages_bucket = Field(str, private=True)
     _cached_max_mentions_bucket = Field(str, private=True)
@@ -170,9 +170,8 @@ class SpamPlugin(Plugin):
                     Message.channel_id
                 ).where(
                     (Message.guild_id == violation.event.guild.id) &
-                    (Message.author_id == violation.member.id) &
-                    (Message.timestamp >= datetime.utcnow() - timedelta(minutes=violation.rule.clean_duration))
-                ).tuples()
+                    (Message.author_id == violation.member.id)
+                ).limit(violation.rule.clean_count).tuples()
 
                 channels = defaultdict(list)
                 for mid, chan in msgs:
