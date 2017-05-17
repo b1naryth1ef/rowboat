@@ -20,6 +20,7 @@ from rowboat.plugins import RowboatPlugin as Plugin, CommandFail
 from rowboat.util.timing import Eventual
 from rowboat.util.input import parse_duration
 from rowboat.types.plugin import PluginConfig
+from rowboat.models.guild import GuildVoiceSession
 from rowboat.models.user import User, Infraction
 from rowboat.models.message import Message, Reminder
 from rowboat.util.images import get_dominant_colors_user, get_dominant_colors_guild
@@ -396,6 +397,22 @@ class UtilitiesPlugin(Plugin):
             content.append(u'\n**\u276F Infractions**')
             content.append('Total Infractions: {}'.format(total))
             content.append('Unique Servers: {}'.format(len(infractions)))
+
+        voice = list(GuildVoiceSession.select(
+            GuildVoiceSession.user_id,
+            fn.COUNT('*'),
+            fn.SUM(GuildVoiceSession.ended_at - GuildVoiceSession.started_at)
+        ).where(
+            (GuildVoiceSession.user_id == user.id) &
+            (~(GuildVoiceSession.ended_at >> None))
+        ).group_by(GuildVoiceSession.user_id).tuples())
+
+        if voice:
+            content.append(u'\n**\u276F Voice**')
+            content.append(u'Sessions: {}'.format(voice[0][1]))
+            content.append(u'Time: {}'.format(humanize.naturaldelta(
+                voice[0][2]
+            )))
 
         embed = MessageEmbed()
 

@@ -243,3 +243,47 @@ class GuildMemberBackup(BaseModel):
             mute=member.mute,
             deaf=member.deaf,
         )
+
+
+@BaseModel.register
+class GuildVoiceSession(BaseModel):
+    session_id = TextField()
+    user_id = BigIntegerField()
+    guild_id = BigIntegerField()
+    channel_id = BigIntegerField()
+
+    started_at = DateTimeField()
+    ended_at = DateTimeField(default=None, null=True)
+
+    class Meta:
+        db_table = 'guild_voice_sessions'
+
+        indexes = (
+            # Used for conflicts
+            (('session_id', 'user_id', 'guild_id', 'channel_id', 'ended_at', ), True),
+
+            (('started_at', 'ended_at', ), False),
+        )
+
+    @classmethod
+    def create_or_update(cls, before, after):
+        # If we have a previous voice state, we need to close it out
+        if before and before.channel_id:
+            GuildVoiceSession.update(
+                ended_at=datetime.utcnow()
+            ).where(
+                (GuildVoiceSession.user_id == after.user_id) &
+                (GuildVoiceSession.session_id == after.session_id) &
+                (GuildVoiceSession.guild_id == after.guild_id) &
+                (GuildVoiceSession.channel_id == before.channel_id) &
+                (GuildVoiceSession.ended_at >> None)
+            ).execute()
+
+        if after.channel_id:
+            GuildVoiceSession.insert(
+                session_id=after.session_id,
+                guild_id=after.guild_id,
+                channel_id=after.channel_id,
+                user_id=after.user_id,
+                started_at=datetime.utcnow(),
+            ).returning(GuildVoiceSession.id).on_conflict('DO NOTHING').execute()

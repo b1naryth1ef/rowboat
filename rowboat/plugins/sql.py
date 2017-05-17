@@ -18,7 +18,7 @@ from disco.util.snowflake import to_datetime, from_datetime
 from rowboat.plugins import BasePlugin as Plugin
 from rowboat.sql import database
 from rowboat.models.user import User
-from rowboat.models.guild import GuildEmoji
+from rowboat.models.guild import GuildEmoji, GuildVoiceSession
 from rowboat.models.channel import Channel
 from rowboat.models.message import Message, Reaction
 from rowboat.util.input import parse_duration
@@ -35,6 +35,11 @@ class SQLPlugin(Plugin):
     def unload(self, ctx):
         ctx['models'] = self.models
         super(SQLPlugin, self).unload(ctx)
+
+    @Plugin.listen('VoiceStateUpdate', priority=Priority.BEFORE)
+    def on_voice_state_update(self, event):
+        pre_state = self.state.voice_states.get(event.session_id)
+        GuildVoiceSession.create_or_update(pre_state, event.state)
 
     @Plugin.listen('PresenceUpdate')
     def on_presence_update(self, event):

@@ -26,7 +26,7 @@ from rowboat.types import Field, ListField, snowflake, SlottedModel
 from rowboat.types.plugin import PluginConfig
 from rowboat.plugins.modlog import Actions
 from rowboat.models.user import User, Infraction
-from rowboat.models.guild import GuildMemberBackup, GuildBan, GuildEmoji
+from rowboat.models.guild import GuildMemberBackup, GuildBan, GuildEmoji, GuildVoiceSession
 from rowboat.models.message import Message, Reaction, MessageArchive
 
 EMOJI_RE = re.compile(r'<:[a-zA-Z0-9_]+:([0-9]+)>')
@@ -907,3 +907,31 @@ class AdminPlugin(Plugin):
             ))
         finally:
             lock.release()
+
+    @Plugin.command('log', '<user:user|snowflake>', group='voice', level=CommandLevels.MOD)
+    def voice_log(self, event, user):
+        if isinstance(user, DiscoUser):
+            user = user.id
+
+        sessions = GuildVoiceSession.select(
+            GuildVoiceSession.user_id,
+            GuildVoiceSession.channel_id,
+            GuildVoiceSession.started_at,
+            GuildVoiceSession.ended_at
+        ).where(
+            (GuildVoiceSession.user_id == user) &
+            (GuildVoiceSession.guild_id == event.guild.id)
+        ).order_by(GuildVoiceSession.started_at.desc()).limit(10)
+
+        tbl = MessageTable()
+        tbl.set_header('Channel', 'Joined At', 'Duration')
+
+        for session in sessions:
+            tbl.add(
+                unicode(self.state.channels.get(session.channel_id) or 'UNKNOWN'),
+                '{} ({} ago)'.format(
+                    session.started_at.isoformat(),
+                    humanize.naturaldelta(datetime.utcnow() - session.started_at)),
+                humanize.naturaldelta(session.ended_at - session.started_at) if session.ended_at else 'Active')
+
+        event.msg.reply(tbl.compile())
