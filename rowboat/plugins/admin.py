@@ -325,7 +325,7 @@ class AdminPlugin(Plugin):
         ).switch(Infraction).join(
             actor,
             on=((Infraction.actor_id == actor.user_id).alias('actor'))
-        ).where(q).order_by(Infraction.created_at.desc()).limit(10)
+        ).where(q).order_by(Infraction.created_at.desc()).limit(6)
 
         tbl = MessageTable()
 
