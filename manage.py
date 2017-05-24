@@ -81,5 +81,13 @@ def bot(env):
     supervisor.run_forever()
 
 
+@cli.command('add-global-admin')
+@click.argument('user-id')
+def add_global_admin(user_id):
+    from rowboat.redis import rdb
+    rdb.sadd('global_admins', user_id)
+    print 'Ok, added {} as a global admin'.format(user_id)
+
+
 if __name__ == '__main__':
     cli()

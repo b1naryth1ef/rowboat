@@ -4,11 +4,9 @@ import functools
 
 from flask import Blueprint, render_template, request, g, jsonify
 
-from rowboat.sql import stats_database
 from rowboat.util.decos import authed
 from rowboat.models.guild import Guild, GuildConfigChange
 from rowboat.models.user import User, Infraction
-from rowboat.models.channel import Channel
 
 guilds = Blueprint('guilds', __name__)
 
@@ -201,48 +199,3 @@ def guild_config_update(guild):
 @with_guild
 def guild_config_raw(guild):
     return str(guild.config_raw) if guild.config_raw else yaml.safe_dump(guild.config)
-
-
-@guilds.route('/api/guilds/<gid>/stats/messages')
-@with_guild
-def guild_stats_messages_new(guild):
-    mode = {
-        '15m': ('minute', '15 minutes'),
-        '1h': ('minute', '1 hour'),
-        '24h': ('hour', '24 hours'),
-        '7d': ('hour', '7 days'),
-        '30d': ('day', '30 days'),
-    }.get(request.values.get('mode', '15m'))
-
-    if not mode:
-        return 'Invalid Mode', 400
-
-    # TODO: control time frame
-    # TODO: caching
-
-    channels = [i[0] for i in Channel.select(Channel.channel_id).where(
-        (Channel.guild_id == guild.guild_id) &
-        (Channel.deleted == 0)
-    ).tuples()]
-
-    with stats_database.cursor() as c:
-        c.execute('''
-            SELECT extract(epoch from date_trunc('{}', time)),
-                sum(created) as Created,
-                sum(updated) as Updated,
-                sum(deleted) as Deleted,
-                sum(mentions) as Mentions
-            FROM channel_messages_snapshot
-            WHERE channel_id IN %s AND time > (NOW() AT TIME ZONE 'UTC') - INTERVAL '{}'
-            GROUP BY 1
-            ORDER BY 1 ASC
-        '''.format(mode[0], mode[1]), (tuple(channels), ))
-
-        data = c.fetchall()
-        cols = [[desc[0]] for desc in c.description]
-
-    for row in data:
-        for a, b in enumerate(row):
-            cols[a].append(b)
-
-    return jsonify({'data': cols[1:]})

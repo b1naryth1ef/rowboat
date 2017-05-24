@@ -1,0 +1,33 @@
+version: '2'
+services:
+  db:
+    build: ./docker/database/
+  redis:
+    image: redis:3.2
+  statsd:
+    image: python:2.7.13
+    volumes:
+      - .:/opt/rowboat
+    command: python /opt/rowboat/docker/nulld.py
+    ports:
+      - "8125:8125"
+  web:
+    build: .
+    command: python manage.py serve -r
+    volumes:
+      - .:/opt/rowboat
+    ports:
+      - "8686:8686"
+    depends_on:
+      - db
+      - redis
+      - statsd
+  bot:
+    build: .
+    command: python manage.py bot -e docker
+    volumes:
+      - .:/opt/rowboat
+    ports:
+      - "7171:7171"
+    depends_on:
+      - web

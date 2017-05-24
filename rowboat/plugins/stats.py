@@ -2,6 +2,7 @@ from datadog import initialize, statsd
 from collections import defaultdict
 from disco.types.user import Status
 
+from rowboat import ENV
 from rowboat.plugins import BasePlugin as Plugin
 
 
@@ -14,7 +15,10 @@ class StatsPlugin(Plugin):
 
     def load(self, ctx):
         super(StatsPlugin, self).load(ctx)
-        initialize(statsd_host='localhost', statsd_port=8125)
+        if ENV == 'docker':
+            initialize(statsd_host='statsd', statsd_port=8125)
+        else:
+            initialize(statsd_host='localhost', statsd_port=8125)
 
     @Plugin.listen('')
     def on_gateway_event(self, event):

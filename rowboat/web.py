@@ -5,6 +5,7 @@ import logging
 from flask import Flask, g, session
 from holster.flask_ext import Holster
 
+from rowboat import ENV
 from rowboat.sql import init_db
 from rowboat.models.user import User
 
@@ -16,7 +17,7 @@ logging.getLogger('peewee').setLevel(logging.DEBUG)
 
 @rowboat.app.before_first_request
 def before_first_request():
-    init_db()
+    init_db(ENV)
 
     with open('config.yaml', 'r') as f:
         data = load(f)
