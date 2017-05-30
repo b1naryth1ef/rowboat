@@ -220,6 +220,9 @@ class ModLogPlugin(Plugin):
         return self.log_action_raw(action, event, event.guild, event.config, **details)
 
     def log_action_raw(self, action, event, guild, config, **details):
+        if not config:
+            return
+
         if not config.resolved:
             self.resolve_channels(guild, config)
 
