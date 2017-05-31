@@ -440,10 +440,15 @@ class AdminPlugin(Plugin):
         else:
             raise CommandFail('I couldn\t find any member backups for that user')
 
+    def can_act_on(self, event, victim):
+        if self.bot.plugins.get('CorePlugin').get_level(event.guild, victim) >= event.level:
+            raise CommandFail('Invalid Permissions')
+
     @Plugin.command('mute', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
     def mute(self, event, user, reason=None):
         member = event.guild.get_member(user)
         if member:
+            self.can_act_on(event, member)
             if not event.config.mute_role:
                 raise CommandFail('mute is not setup on this server')
 
@@ -465,6 +470,7 @@ class AdminPlugin(Plugin):
     def tempmute(self, event, user, duration, reason=None):
         member = event.guild.get_member(user)
         if member:
+            self.can_act_on(event, member)
             if not event.config.temp_mute_role and not event.config.mute_role:
                 raise CommandFail('mute is not setup on this server')
 
@@ -496,6 +502,7 @@ class AdminPlugin(Plugin):
         member = event.guild.get_member(user)
 
         if member:
+            self.can_act_on(event, member)
             if not event.config.temp_mute_role and not event.config.mute_role:
                 raise CommandFail('mute is not setup on this server')
 
@@ -526,6 +533,7 @@ class AdminPlugin(Plugin):
     def kick(self, event, user, reason=None):
         member = event.guild.get_member(user)
         if member:
+            self.can_act_on(event, member)
             Infraction.kick(self, event, member, reason)
             if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
@@ -543,10 +551,12 @@ class AdminPlugin(Plugin):
         member = None
 
         if isinstance(user, (int, long)):
+            self.can_act_on(event, user)
             Infraction.ban(self, event, user, reason, guild=event.guild)
         else:
             member = event.guild.get_member(user)
             if member:
+                self.can_act_on(event, member)
                 Infraction.ban(self, event, member, reason, guild=event.guild)
             else:
                 raise CommandFail('invalid user')
@@ -566,6 +576,7 @@ class AdminPlugin(Plugin):
         """
         member = event.guild.get_member(user)
         if member:
+            self.can_act_on(event, member)
             Infraction.softban(self, event, member, reason)
             if event.config.confirm_actions:
                 event.msg.reply(maybe_string(
@@ -581,6 +592,7 @@ class AdminPlugin(Plugin):
     def tempban(self, event, duration, user, reason=None):
         member = event.guild.get_member(user)
         if member:
+            self.can_act_on(event, member)
             expires_dt = parse_duration(duration)
             self.inf_task.set_next_schedule(expires_dt)
             Infraction.tempban(self, event, member, reason, expires_dt)
@@ -684,6 +696,8 @@ class AdminPlugin(Plugin):
         member = event.guild.get_member(user)
         if not member:
             raise CommandFail('invalid member')
+
+        self.can_act_on(event, member)
 
         if mode == 'add' and role_obj.id in member.roles:
             raise CommandFail(u'{} already has the {} role'.format(member, role_obj.name))

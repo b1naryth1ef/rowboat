@@ -273,7 +273,7 @@ class CorePlugin(Plugin):
 
         user_level = 0
         if config:
-            member = guild.get_member(user.id)
+            member = guild.get_member(user)
             if not member:
                 return user_level
 
@@ -282,8 +282,8 @@ class CorePlugin(Plugin):
                     user_level = config.levels[oid]
 
             # User ID overrides should override all others
-            if user.id in config.levels:
-                user_level = config.levels[user.id]
+            if member.id in config.levels:
+                user_level = config.levels[member.id]
 
         return user_level
 
