@@ -441,7 +441,11 @@ class AdminPlugin(Plugin):
             raise CommandFail('I couldn\t find any member backups for that user')
 
     def can_act_on(self, event, victim):
-        if self.bot.plugins.get('CorePlugin').get_level(event.guild, victim) >= event.level:
+        actor_level = self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author)
+        victim_level = self.bot.plugins.get('CorePlugin').get_level(event.guild, victim)
+
+        print actor_level, victim_level
+        if actor_level <= victim_level:
             raise CommandFail('Invalid Permissions')
 
     @Plugin.command('mute', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
