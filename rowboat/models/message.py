@@ -50,14 +50,13 @@ class Message(BaseModel):
             # These indexes are mostly just general use
             (('channel_id', ), False),
             (('guild_id', ), False),
-            (('author_id', ), False),
             (('deleted', ), False),
 
             # Timestamp is regularly sorted on
             (('timestamp', ), False),
 
             # Some queries want to get history in a guild or channel
-            (('author_id', 'guild_id', 'channel_id'), False),
+            (('author', 'guild_id', 'channel_id'), False),
         )
 
     @classmethod

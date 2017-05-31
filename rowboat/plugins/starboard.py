@@ -205,7 +205,9 @@ class StarboardPlugin(Plugin):
             return
 
         self.queue_update(event.guild.id, event.config)
-        event.msg.reply(u'Message {} has been hidden from the starboard')
+        event.msg.reply(u'Message {} has been hidden from the starboard'.format(
+            mid,
+        ))
 
     @Plugin.command('update', group='stars', level=CommandLevels.ADMIN)
     def force_update_stars(self, event):

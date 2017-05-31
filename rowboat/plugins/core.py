@@ -22,6 +22,8 @@ from rowboat.plugins import BasePlugin as Plugin
 from rowboat.plugins import CommandResponse
 from rowboat.sql import init_db
 from rowboat.redis import rdb
+
+import rowboat.models
 from rowboat.models.user import Infraction
 from rowboat.models.guild import Guild, GuildBan
 from rowboat.models.message import Message
@@ -40,7 +42,7 @@ RED_TICK_EMOJI = 'red_tick:305231335512080385'
 
 class CorePlugin(Plugin):
     def load(self, ctx):
-        init_db()
+        init_db(ENV)
 
         self.startup = ctx.get('startup', datetime.utcnow())
         self.guilds = ctx.get('guilds', {})
@@ -50,7 +52,7 @@ class CorePlugin(Plugin):
         # Overwrite the main bot instances plugin loader so we can magicfy events
         self.bot.add_plugin = self.our_add_plugin
 
-        if ENV == 'local':
+        if ENV != 'prod':
             self.spawn(self.wait_for_plugin_changes)
 
         self.spawn(self.wait_for_actions)
