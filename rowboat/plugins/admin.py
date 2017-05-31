@@ -444,7 +444,6 @@ class AdminPlugin(Plugin):
         actor_level = self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author)
         victim_level = self.bot.plugins.get('CorePlugin').get_level(event.guild, victim)
 
-        print actor_level, victim_level
         if actor_level <= victim_level:
             raise CommandFail('Invalid Permissions')
 
