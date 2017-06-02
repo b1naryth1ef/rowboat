@@ -134,11 +134,35 @@ class StarboardPlugin(Plugin):
 
     @Plugin.command('check', '<mid:snowflake>', group='stars', level=CommandLevels.ADMIN)
     def stars_update(self, event, mid):
-        StarboardEntry.update(
-            dirty=True
-        ).where(
-            (StarboardEntry.message_id == mid)
-        ).execute()
+        try:
+            entry = StarboardEntry.select(StarboardEntry, Message).join(
+                Message
+            ).where(
+                (Message.guild_id == event.guild.id) &
+                (StarboardEntry.message_id == mid)
+            ).get()
+        except StarboardEntry.DoesNotExist:
+            return event.msg.reply(':warning: no starboard entry exists with that message id')
+
+        msg = self.client.api.channels_messages.get(
+            entry.message.channel_id,
+            entry.message_id)
+
+        users = [i.id for i in msg.get_reactors(STAR_EMOJI)]
+
+        if set(users) != set(entry.stars):
+            StarboardEntry.update(
+                stars=users,
+                dirty=True
+            ).where(
+                (StarboardEntry.message_id == entry.message_id)
+            ).execute()
+        else:
+            StarboardEntry.update(
+                dirty=True
+            ).where(
+                (StarboardEntry.message_id == mid)
+            ).execute()
 
         self.queue_update(event.guild.id, event.config)
         event.msg.reply(u'Forcing an update on message {}'.format(mid))
@@ -231,7 +255,9 @@ class StarboardPlugin(Plugin):
     @Plugin.command('update', group='stars', level=CommandLevels.ADMIN)
     def force_update_stars(self, event):
         # First, iterate over stars and repull their reaction count
-        stars = StarboardEntry.select().join(Message).where(
+        stars = StarboardEntry.select(StarboardEntry, Message).join(
+            Message
+        ).where(
             (Message.guild_id == event.guild.id) &
             (~ (StarboardEntry.star_message_id >> None))
         ).order_by(Message.timestamp.desc()).limit(100)
@@ -246,10 +272,10 @@ class StarboardPlugin(Plugin):
             users = [i.id for i in msg.get_reactors(STAR_EMOJI)]
 
             if set(users) != set(star.stars):
-                self.log.warning('star %s had outdated reactors list %s vs %s',
+                self.log.warning('star %s had outdated reactors list (%s vs %s)',
                     star.message_id,
-                    users,
-                    star.stars)
+                    len(users),
+                    len(star.stars))
 
                 StarboardEntry.update(
                     stars=users,
@@ -258,8 +284,9 @@ class StarboardPlugin(Plugin):
                     (StarboardEntry.message_id == star.message_id)
                 ).execute()
 
-        info_msg.edit('Starboard updated!')
         self.queue_update(event.guild.id, event.config)
+        info_msg.delete()
+        event.msg.reply(':ballot_box_with_check: Starboard Updated!')
 
     @Plugin.command('lock', group='stars', level=CommandLevels.ADMIN)
     def lock_stars(self, event):
