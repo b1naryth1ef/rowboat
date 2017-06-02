@@ -144,7 +144,7 @@ class StarboardPlugin(Plugin):
         except StarboardEntry.DoesNotExist:
             return event.msg.reply(':warning: no starboard entry exists with that message id')
 
-        msg = self.client.api.channels_messages.get(
+        msg = self.client.api.channels_messages_get(
             entry.message.channel_id,
             entry.message_id)
 
