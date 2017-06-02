@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from disco.bot import CommandLevels
 from disco.types.user import User as DiscoUser
 from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
+from disco.util.functional import chunks
 from disco.util.sanitize import S
 
 from rowboat.plugins import RowboatPlugin as Plugin, CommandFail, CommandSuccess
@@ -91,6 +92,7 @@ class AdminPlugin(Plugin):
     def load(self, ctx):
         super(AdminPlugin, self).load(ctx)
 
+        self.cleans = {}
         self.inf_task = Eventual(self.clear_infractions)
         self.spawn(self.queue_infractions)
 
@@ -633,6 +635,14 @@ class AdminPlugin(Plugin):
         archive = MessageArchive.create_from_message_ids([i.id for i in q])
         event.msg.reply('OK, archived {} messages at {}'.format(len(archive.message_ids), archive.url))
 
+    @Plugin.command('clean cancel', level=CommandLevels.MOD)
+    def clean_cacnel(self, event):
+        if event.channel.id not in self.cleans:
+            raise CommandFail('no clean is running in this channel')
+
+        self.cleans[event.channel.id].kill()
+        event.msg.reply('Ok, the running clean was cancelled')
+
     @Plugin.command('clean all', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
     @Plugin.command('clean bots', '[size:int]', level=CommandLevels.MOD, context={'mode': 'bots'})
     @Plugin.command('clean user', '<user:user> [size:int]', level=CommandLevels.MOD, context={'mode': 'user'})
@@ -643,27 +653,56 @@ class AdminPlugin(Plugin):
         if 0 > size >= 10000:
             raise CommandFail('too many messages must be between 1-10000')
 
-        lock = rdb.lock('clean-{}'.format(event.channel.id))
-        if not lock.acquire(blocking=False):
-            raise CommandFail('already running a clean on this channel')
+        if event.channel.id in self.cleans:
+            raise CommandFail('a clean is already running on this channel')
 
-        try:
-            query = Message.select().where(
-                (Message.deleted >> False) &
-                (Message.channel_id == event.channel.id) &
-                (Message.timestamp > (datetime.utcnow() - timedelta(days=13)))
-            ).join(User).order_by(Message.timestamp.desc()).limit(size)
+        query = Message.select(Message.id).where(
+            (Message.deleted >> False) &
+            (Message.channel_id == event.channel.id) &
+            (Message.timestamp > (datetime.utcnow() - timedelta(days=13)))
+        ).join(User).order_by(Message.timestamp.desc()).limit(size)
 
-            if mode == 'bots':
-                query = query.where((User.bot >> True))
-            elif mode == 'user':
-                query = query.where((User.user_id == user.id))
+        if mode == 'bots':
+            query = query.where((User.bot >> True))
+        elif mode == 'user':
+            query = query.where((User.user_id == user.id))
 
-            msgs = list(reversed(query))
-            event.channel.delete_messages(msgs)
-            event.msg.reply(':wastebasket: Ok, deleted {} messages'.format(len(msgs))).after(5).delete()
-        finally:
-            lock.release()
+        messages = [i[0] for i in query.tuples()]
+
+        if len(messages) > 100:
+            msg = event.msg.reply('Woah there, that will delete a total of {} messages, please confirm.'.format(
+                len(messages)
+            ))
+
+            msg.chain(False).\
+                add_reaction(GREEN_TICK_EMOJI).\
+                add_reaction(RED_TICK_EMOJI)
+
+            try:
+                event = self.wait_for_event(
+                    'MessageReactionAdd',
+                    message_id=msg.id,
+                    conditional=lambda e: (
+                        e.emoji.id in (GREEN_TICK_EMOJI_ID, RED_TICK_EMOJI_ID) and
+                        e.user_id == event.author.id
+                    )).get(timeout=10)
+            except gevent.Timeout:
+                return
+            finally:
+                msg.delete()
+
+            if event.emoji.id != GREEN_TICK_EMOJI_ID:
+                return
+
+            event.msg.reply(':wastebasket: Ok please hold on while I delete those messages...').after(5).delete()
+
+        def run_clean():
+            for chunk in chunks(messages, 100):
+                self.client.api.channels_messages_delete_bulk(event.channel.id, chunk)
+
+        self.cleans[event.channel.id] = gevent.spawn(run_clean)
+        self.cleans[event.channel.id].join()
+        del self.cleans[event.channel.id]
 
     @Plugin.command('add', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'add'}, group='role')
     @Plugin.command('rmv', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'remove'}, group='role')
@@ -846,7 +885,7 @@ class AdminPlugin(Plugin):
                 message_id=msg.id,
                 conditional=lambda e: (
                     e.emoji.id in (GREEN_TICK_EMOJI_ID, RED_TICK_EMOJI_ID) and
-                    e.user_id != self.state.me.id
+                    e.user_id == event.author.id
                 )).get(timeout=10)
         except gevent.Timeout:
             msg.reply('Not executing invite prune')

@@ -18,7 +18,7 @@ Maybe. Feel free to submit PRs, but unless they are explicitly bug fixes that ha
 
 ### How Do I Contribute?
 
-To get a local version of rowboat running, you will need [docker-compose](https://docs.docker.com/compose/) setup locally. Once installed, you can simply run `docker-compose up` and in theory all your dependencies should be setup. You may have rerun the command after your first setup because of the way Postgres tables are created. To give yourself global administrator, run `docker-compose exec web ./manage.py add-global-admin USER_ID_HERE`. Finally, you must make sure to copy the example configuration and properly replace the values within.
+To get a local version of rowboat running, you will need [docker-compose](https://docs.docker.com/compose/) setup locally. Once installed, you can simply run `docker-compose up` and in theory all your dependencies should be setup. You may have to rerun the command after your first setup because of the way Postgres tables are created. To give yourself global administrator, run `docker-compose exec web ./manage.py add-global-admin USER_ID_HERE`. Finally, you must make sure to copy the example configuration and properly replace the values within.
 
 
 ## Can You Add Rowboat To My Server?
