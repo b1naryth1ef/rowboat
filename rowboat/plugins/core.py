@@ -366,7 +366,9 @@ class CorePlugin(Plugin):
 
             with timed('rowboat.command.duration', tags={'plugin': command.plugin.name, 'command': command.name}):
                 try:
-                    command.plugin.execute(CommandEvent(command, event.message, match))
+                    command_event = CommandEvent(command, event.message, match)
+                    command_event.user_level = event.user_level
+                    command.plugin.execute(command_event)
                 except CommandResponse as e:
                     event.reply(e.response)
                 except:
