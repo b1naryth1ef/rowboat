@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 from flask import Blueprint, render_template, request, g, make_response
 from datetime import datetime
@@ -8,6 +9,7 @@ from rowboat.models.message import Message, MessageArchive
 from rowboat.models.guild import Guild
 from rowboat.models.user import User
 from rowboat.models.channel import Channel
+from rowboat.util.decos import authed
 
 dashboard = Blueprint('dash', __name__)
 
@@ -70,31 +72,6 @@ def dash_index():
     return render_template('login.html')
 
 
-# @dashboard.route('/notification/ack/<id>', methods=['POST'])
-# @authed
-# def notification_ack(id):
-#     Notification.update(read=True).where(
-#         Notification.id == id
-#     ).execute()
-#     return jsonify({})
-#
-#
-# @dashboard.route("/notifications/realtime")
-# @authed
-# def subscribe():
-#     def thread():
-#         sub = rdb.pubsub()
-#         sub.subscribe('notifications')
-#
-#         for item in sub.listen():
-#             if item['type'] != 'message':
-#                 continue
-#
-#             yield ServerSentEvent(item['data']).encode()
-#
-#     return Response(thread(), mimetype="text/event-stream")
-#
-
 @dashboard.route('/archive/<aid>.<fmt>')
 def archive(aid, fmt):
     try:
@@ -116,3 +93,16 @@ def archive(aid, fmt):
     res = make_response(archive.encode(fmt))
     res.headers['Content-Type'] = mime_type
     return res
+
+
+@dashboard.route('/api/deploy', methods=['POST'])
+@authed
+def deploy():
+    if not g.user.admin:
+        return '', 401
+
+    subprocess.Popen(['git', 'pull', 'origin', 'master']).wait()
+    rdb.publish('actions', json.dumps({
+        'type': 'RESTART',
+    }))
+    return '', 200
