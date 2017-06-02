@@ -34,6 +34,8 @@ class CheckConfig(SlottedModel):
     count = Field(int)
     interval = Field(int)
     meta = Field(dict, default=None)
+    punishment = Field(PunishmentType, default=None)
+    punishment_duration = Field(int, default=None)
 
 
 class SubConfig(SlottedModel):
@@ -62,14 +64,14 @@ class SubConfig(SlottedModel):
     def get_bucket(self, attr, guild_id):
         obj = getattr(self, attr)
         if not obj or not obj.count or not obj.interval:
-            return None
+            return (None, None)
 
         bucket = getattr(self, '_cached_{}_bucket'.format(attr), None)
         if not bucket:
             bucket = LeakyBucket(rdb, 'spam:{}:{}:{}'.format(attr, guild_id, '{}'), obj.count, obj.interval * 1000)
             setattr(self, '_cached_{}_bucket'.format(attr), bucket)
 
-        return bucket
+        return obj, bucket
 
 
 class SpamConfig(PluginConfig):
@@ -95,8 +97,9 @@ class SpamConfig(PluginConfig):
 
 
 class Violation(Exception):
-    def __init__(self, rule, event, member, label, msg, **info):
+    def __init__(self, rule, check, event, member, label, msg, **info):
         self.rule = rule
+        self.check = check
         self.event = event
         self.member = member
         self.label = label
@@ -129,33 +132,36 @@ class SpamPlugin(Plugin):
                 embed.add_field(name='User ID', value=violation.event.member.id, inline=True)
                 embed.add_field(name=ZERO_WIDTH_SPACE, value=ZERO_WIDTH_SPACE, inline=True)
 
-            if violation.rule.punishment == PunishmentType.MUTE:
+            punishment = violation.check.punishment or violation.rule.punishment
+            punishment_duration = violation.check.punishment_duration or violation.rule.punishment_duration
+
+            if punishment == PunishmentType.MUTE:
                 Infraction.mute(
                     self,
                     violation.event,
                     violation.member,
                     'Spam Detected')
-            elif violation.rule.punishment == PunishmentType.TEMPMUTE:
+            elif punishment == PunishmentType.TEMPMUTE:
                 Infraction.tempmute(
                     self,
                     violation.event,
                     violation.member,
                     'Spam Detected',
-                    datetime.utcnow() + timedelta(seconds=violation.rule.punishment_duration))
-            elif violation.rule.punishment == PunishmentType.KICK:
+                    datetime.utcnow() + timedelta(seconds=punishment_duration))
+            elif punishment == PunishmentType.KICK:
                 Infraction.kick(
                     self,
                     violation.event,
                     violation.member,
                     'Spam Detected')
-            elif violation.rule.punishment == PunishmentType.TEMPBAN:
+            elif punishment == PunishmentType.TEMPBAN:
                 Infraction.tempban(
                     self,
                     violation.event,
                     violation.member,
                     'Spam Detected',
-                    datetime.utcnow() + timedelta(seconds=violation.rule.punishment_duration))
-            elif violation.rule.punishment == PunishmentType.BAN:
+                    datetime.utcnow() + timedelta(seconds=punishment_duration))
+            elif punishment == PunishmentType.BAN:
                 Infraction.ban(
                     self,
                     violation.event,
@@ -164,7 +170,7 @@ class SpamPlugin(Plugin):
                     violation.event.guild)
 
             # Clean messages if requested
-            if violation.rule.punishment != PunishmentType.NONE and violation.rule.clean:
+            if punishment != PunishmentType.NONE and violation.rule.clean:
                 msgs = Message.select(
                     Message.id,
                     Message.channel_id
@@ -213,6 +219,7 @@ class SpamPlugin(Plugin):
         if dupes:
             raise Violation(
                 rule,
+                rule.max_duplicates,
                 event,
                 member,
                 'MAX_DUPLICATES',
@@ -222,12 +229,12 @@ class SpamPlugin(Plugin):
 
     def check_message_simple(self, event, member, rule):
         def check_bucket(name, base_text, func):
-            bucket = rule.get_bucket(name, event.guild.id)
+            check, bucket = rule.get_bucket(name, event.guild.id)
             if not bucket:
                 return
 
             if not bucket.check(event.author.id, func(event) if callable(func) else func):
-                raise Violation(rule, event, member,
+                raise Violation(rule, check, event, member,
                     name.upper(),
                     base_text + ' ({} / {}s)'.format(bucket.count(event.author.id), bucket.size(event.author.id)))
 
