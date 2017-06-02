@@ -2,7 +2,7 @@ version: 2
 
 notify:
   webhooks:
-    - url: https://rowboat.party/webhooks/circle_ci
+    - url: https://dashboard.rowboat.party/webhooks/circle_ci
 
 jobs:
   build:
