@@ -2,6 +2,7 @@ import re
 import six
 import json
 import uuid
+import traceback
 
 from peewee import (
     BigIntegerField, ForeignKeyField, TextField, DateTimeField,
@@ -11,6 +12,7 @@ from datetime import datetime, timedelta
 from playhouse.postgres_ext import BinaryJSONField, ArrayField
 from disco.types.base import UNSET
 
+from rowboat import REV
 from rowboat.util import default_json
 from rowboat.models.user import User
 from rowboat.sql import BaseModel
@@ -389,3 +391,33 @@ class Reminder(BaseModel):
                 Message.author_id == user_id
             ))
         ).execute()
+
+
+@BaseModel.register
+class Command(BaseModel):
+    message_id = BigIntegerField(primary_key=True)
+
+    plugin = TextField()
+    command = TextField()
+    version = TextField()
+    success = BooleanField()
+    traceback = TextField()
+
+    class Meta:
+        db_table = 'commands'
+
+        indexes = (
+            (('success', ), False),
+            (('plugin', 'command'), False),
+        )
+
+    @classmethod
+    def track(cls, event, command, exception=False):
+        cls.create(
+            message_id=event.message.id,
+            plugin=command.plugin.name,
+            command=command.name,
+            version=REV,
+            success=not exception,
+            traceback=traceback.format_exc(),
+        )

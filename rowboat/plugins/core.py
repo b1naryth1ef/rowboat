@@ -26,7 +26,7 @@ from rowboat.redis import rdb
 import rowboat.models
 from rowboat.models.user import Infraction
 from rowboat.models.guild import Guild, GuildBan
-from rowboat.models.message import Message
+from rowboat.models.message import Command
 from rowboat.models.notification import Notification
 from rowboat.plugins.modlog import Actions
 
@@ -368,14 +368,13 @@ class CorePlugin(Plugin):
                 try:
                     command.plugin.execute(CommandEvent(command, event.message, match))
                 except CommandResponse as e:
-                    return event.reply(e.response)
+                    event.reply(e.response)
                 except:
-                    event.reply('<:{}> something went wrong, perhaps try again later'.format(RED_TICK_EMOJI))
+                    Command.track(event, command, exception=True)
                     self.log.exception('Command error:')
+                    return event.reply('<:{}> something went wrong, perhaps try again later'.format(RED_TICK_EMOJI))
 
-            Message.update(command=command.plugin.name + ':' + command.name).where(
-                (Message.id == event.message.id)
-            ).execute()
+            Command.track(event, command)
 
             # Dispatch the command used modlog event
             if config:

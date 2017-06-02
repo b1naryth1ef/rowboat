@@ -81,6 +81,8 @@ class AdminConfig(PluginConfig):
     mute_role = Field(snowflake, default=None)
     temp_mute_role = Field(snowflake, default=None)
 
+    reason_edit_level = Field(int, default=int(CommandLevels.ADMIN))
+
     DONT_MENTION_B1NZY = Field(bool, default=False)
 
 
@@ -401,8 +403,8 @@ class AdminPlugin(Plugin):
         if not inf.actor_id:
             inf.actor_id = event.author.id
 
-        if inf.actor_id != event.author.id and event.user_level < CommandLevels.ADMIN:
-            raise CommandFail('only administrators cannot modify other users infractions')
+        if inf.actor_id != event.author.id and event.user_level < event.config.reason_edit_level:
+            raise CommandFail('you do not have the permissions required to edit other moderators infractions')
 
         inf.reason = reason
         inf.save()
