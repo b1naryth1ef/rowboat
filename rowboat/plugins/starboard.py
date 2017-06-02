@@ -191,6 +191,25 @@ class StarboardPlugin(Plugin):
             user,
         ))
 
+    @Plugin.command('unhide', '<mid:snowflake>', group='stars', level=CommandLevels.MOD)
+    def stars_unhide(self, event, mid):
+        count = StarboardEntry.update(
+            blocked=False,
+            dirty=True,
+        ).where(
+            (StarboardEntry.message_id == mid) &
+            (StarboardEntry.blocked == 1)
+        ).execute()
+
+        if not count:
+            event.msg.reply(u'No hidden starboard message with that ID')
+            return
+
+        self.queue_update(event.guild.id, event.config)
+        event.msg.reply(u'Message {} has been unhidden from the starboard'.format(
+            mid,
+        ))
+
     @Plugin.command('hide', '<mid:snowflake>', group='stars', level=CommandLevels.MOD)
     def stars_hide(self, event, mid):
         count = StarboardEntry.update(
@@ -217,10 +236,10 @@ class StarboardPlugin(Plugin):
             (~ (StarboardEntry.star_message_id >> None))
         ).order_by(Message.timestamp.desc()).limit(100)
 
-        msg = event.msg.reply('Updating starboard...')
+        info_msg = event.msg.reply('Updating starboard...')
 
         for star in stars:
-            info_msg = self.client.api.channels_messages_get(
+            msg = self.client.api.channels_messages_get(
                 star.message.channel_id,
                 star.message_id)
 
