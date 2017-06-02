@@ -379,6 +379,9 @@ class CorePlugin(Plugin):
 
             # Dispatch the command used modlog event
             if config:
+                if not hasattr(event, 'config'):
+                    event.config = LocalProxy()
+
                 event.config.set(getattr(config.plugins, 'modlog', None))
                 if not event.config:
                     return
