@@ -554,7 +554,8 @@ class ModLogPlugin(Plugin):
                 author_id=msg.author.id,
                 channel=channel,
                 msg=filter_urls(msg.content),
-                attachments='' if not msg.attachments else u'({} attachments)'.format(len(msg.attachments)))
+                attachments='' if not msg.attachments else u'({})'.format(
+                    ', '.join(u'<{}>'.format(i) for i in msg.attachments)))
 
     @Plugin.listen('MessageDeleteBulk')
     def on_message_delete_bulk(self, event):
