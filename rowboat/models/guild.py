@@ -277,10 +277,6 @@ class GuildVoiceSession(BaseModel):
 
     @classmethod
     def create_or_update(cls, before, after):
-        print '--BEGIN--'
-        if before: print before.to_dict()
-        print after.to_dict()
-        print '--END--'
         # If we have a previous voice state, we need to close it out
         if before and before.channel_id:
             GuildVoiceSession.update(
