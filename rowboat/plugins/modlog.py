@@ -252,9 +252,9 @@ class ModLogPlugin(Plugin):
         def generate_simple(config):
             info = self.action_simple.get(action)
 
-            if event.config._custom:
-                if action in event.config._custom:
-                    info = event.config._custom[action]
+            if config._custom:
+                if action in config._custom:
+                    info = config._custom[action]
 
             contents = self.fmt.format(six.text_type(info['format']), e=event, **details)
 
