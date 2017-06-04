@@ -94,5 +94,53 @@ def add_global_admin(user_id):
     print 'Ok, added {} as a global admin'.format(user_id)
 
 
+@cli.command('wh-add')
+@click.argument('guild-id')
+@click.argument('flag')
+def add_whitelist(guild_id, flag):
+    from rowboat.models.guild import Guild
+    init_db(ENV)
+
+    flag = Guild.WhitelistFlags.get(flag)
+    if not flag:
+        print 'Invalid flag'
+        return
+
+    try:
+        guild = Guild.get(guild_id=guild_id)
+    except Guild.DoesNotExist:
+        print 'No guild exists with that id'
+        return
+
+    guild.whitelist.append(int(flag))
+    guild.save()
+    guild.emit_update()
+    print 'added flag'
+
+
+@cli.command('wh-rmv')
+@click.argument('guild-id')
+@click.argument('flag')
+def rmv_whitelist(guild_id, flag):
+    from rowboat.models.guild import Guild
+    init_db(ENV)
+
+    flag = Guild.WhitelistFlags.get(flag)
+    if not flag:
+        print 'Invalid flag'
+        return
+
+    try:
+        guild = Guild.get(guild_id=guild_id)
+    except Guild.DoesNotExist:
+        print 'No guild exists with that id'
+        return
+
+    guild.whitelist.remove(int(flag))
+    guild.save()
+    guild.emit_update()
+    print 'removed flag'
+
+
 if __name__ == '__main__':
     cli()

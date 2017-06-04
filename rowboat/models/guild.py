@@ -5,6 +5,7 @@ import logging
 from peewee import (
     BigIntegerField, CharField, TextField, BooleanField, DateTimeField, CompositeKey, BlobField
 )
+from holster.enum import Enum
 from datetime import datetime
 from playhouse.postgres_ext import BinaryJSONField, ArrayField
 
@@ -17,6 +18,11 @@ log = logging.getLogger(__name__)
 
 @BaseModel.register
 class Guild(BaseModel):
+    WhitelistFlags = Enum(
+        'MUSIC',
+        bitmask=False
+    )
+
     guild_id = BigIntegerField(primary_key=True)
     owner_id = BigIntegerField(null=True)
     name = TextField(null=True)

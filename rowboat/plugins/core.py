@@ -102,11 +102,17 @@ class CorePlugin(Plugin):
                         self.guilds[data['id']].name
                     )
 
-                self.log.info(u'Reloading config for guild %s', self.guilds[data['id']].name)
+                self.log.info(u'Reloading guild %s', self.guilds[data['id']].name)
+
+                # Refresh config, mostly to validate
                 try:
                     self.guilds[data['id']].get_config(refresh=True)
                 except:
                     self.log.exception(u'Failed to reload config for guild %s', self.guilds[data['id']].name)
+                    return
+
+                # Reload the guild entirely
+                self.guilds[data['id']] = Guild.with_id(data['id'])
             elif data['type'] == 'RESTART':
                 self.log.info('Restart requested, signaling parent')
                 os.kill(os.getppid(), signal.SIGUSR1)
@@ -138,6 +144,10 @@ class CorePlugin(Plugin):
                     return event
 
             return
+
+        if hasattr(plugin, 'WHITELIST_FLAG'):
+            if not int(plugin.WHITELIST_FLAG) in self.guilds[guild_id].whitelist:
+                return
 
         event.base_config = self.guilds[guild_id].get_config()
 
@@ -386,7 +396,11 @@ class CorePlugin(Plugin):
                 if not hasattr(event, 'config'):
                     event.config = LocalProxy()
 
-                event.config.set(getattr(config.plugins, 'modlog', None))
+                modlog_config = getattr(config.plugins, 'modlog', None)
+                if not modlog_config:
+                    return
+
+                event.config.set(modlog_config)
                 if not event.config:
                     return
 
