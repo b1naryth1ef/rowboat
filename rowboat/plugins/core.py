@@ -155,11 +155,19 @@ class CorePlugin(Plugin):
         if not getattr(event.base_config.plugins, plugin_name, None):
             return
 
+        self._attach_local_event_data(event, plugin_name, guild_id)
+
+        return event
+
+    def _attach_local_event_data(self, event, plugin_name, guild_id):
         if not hasattr(event, 'config'):
             event.config = LocalProxy()
 
+        if not hasattr(event, 'rowboat_guild'):
+            event.rowboat_guild = LocalProxy()
+
         event.config.set(getattr(event.base_config.plugins, plugin_name))
-        return event
+        event.rowboat_guild.set(self.guilds[guild_id])
 
     @Plugin.schedule(290, init=False)
     def update_guild_bans(self):
@@ -400,9 +408,7 @@ class CorePlugin(Plugin):
                 if not modlog_config:
                     return
 
-                event.config.set(modlog_config)
-                if not event.config:
-                    return
+                self._attach_local_event_data(event, 'modlog', event.guild.id)
 
                 plugin = self.bot.plugins.get('ModLogPlugin')
                 if plugin:

@@ -25,6 +25,7 @@ from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.message import Message, MessageArchive
+from rowboat.models.guild import Guild
 from rowboat.util import ordered_load, MetaException
 
 
@@ -118,15 +119,22 @@ class ChannelConfig(SlottedModel):
         return include - exclude
 
 
+class CustomFormat(SlottedModel):
+    emoji = Field(str, default=None)
+    format = Field(str, default=None)
+
+
 class ModLogConfig(PluginConfig):
     resolved = Field(bool, default=False, private=True)
 
     ignored_users = ListField(snowflake)
     ignored_channels = ListField(snowflake)
+    custom = DictField(str, CustomFormat)
 
     channels = DictField(ChannelField, ChannelConfig)
     new_member_threshold = Field(int, default=(15 * 60))
 
+    _custom = DictField(dict, private=True)
     _channels = DictField(ChannelConfig, private=True)
 
     @cached_property
@@ -139,7 +147,6 @@ class Formatter(string.Formatter):
         if conversion == 'z':
             return S(unicode(value), escape_mentions=False, escape_codeblocks=True)
         return unicode(value)
-        # return super(Formatter, self).convert_field(value, conversion)
 
 
 @Plugin.with_config(ModLogConfig)
@@ -160,7 +167,6 @@ class ModLogPlugin(Plugin):
 
         self.debounce = ctx.get('debounce', defaultdict(lambda: defaultdict(dict)))
         self.hushed = {}
-
         self.pumps = {}
 
         super(ModLogPlugin, self).load(ctx)
@@ -190,22 +196,36 @@ class ModLogPlugin(Plugin):
         if typ in self.debounce[guild_id][user_id]:
             del self.debounce[guild_id][user_id][typ]
 
-    def resolve_channels(self, guild, config):
+    def resolve_channels(self, event, config):
         channels = {}
         for key, channel in config.channels.items():
             if isinstance(key, int):
-                chan = guild.channels.select_one(id=key)
+                chan = event.guild.channels.select_one(id=key)
             else:
-                chan = guild.channels.select_one(name=key)
+                chan = event.guild.channels.select_one(name=key)
 
             if not chan:
                 raise MetaException('Failed to ModLog.resolve_channels', {
                     'config_channels': list(config.channels.keys()),
-                    'guild_channels': list(guild.channels.keys()),
+                    'guild_channels': list(event.guild.channels.keys()),
                 })
             channels[chan.id] = channel
-
         config._channels = channels
+
+        config._custom = None
+        if config.custom and event.rowboat_guild.is_whitelisted(Guild.WhitelistFlags.MODLOG_CUSTOM_FORMAT):
+            custom = {}
+            for action, override in config.custom.items():
+                action = Actions.get(action)
+                if not action:
+                    continue
+
+                custom[action] = override.to_dict()
+                if not custom[action].get('emoji'):
+                    custom[action]['emoji'] = self.action_simple[action]['emoji']
+
+            config._custom = custom
+
         config.resolved = True
 
     def register_action(self, name, simple):
@@ -217,20 +237,24 @@ class ModLogPlugin(Plugin):
         return self.log_action_raw(action, event, event.guild, getattr(event.base_config.plugins, 'modlog'), **details)
 
     def log_action(self, action, event, **details):
-        return self.log_action_raw(action, event, event.guild, event.config, **details)
+        return self.log_action_raw(action, event, event.guild, event.config.get(), **details)
 
     def log_action_raw(self, action, event, guild, config, **details):
         if not config:
             return
 
         if not config.resolved:
-            self.resolve_channels(guild, config)
+            self.resolve_channels(event, config)
 
         if not {action} & config.subscribed:
             return
 
         def generate_simple(config):
             info = self.action_simple.get(action)
+
+            if event.config._custom:
+                if action in event.config._custom:
+                    info = event.config._custom[action]
 
             contents = self.fmt.format(six.text_type(info['format']), e=event, **details)
 

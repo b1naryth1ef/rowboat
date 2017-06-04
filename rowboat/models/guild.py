@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 class Guild(BaseModel):
     WhitelistFlags = Enum(
         'MUSIC',
+        'MODLOG_CUSTOM_FORMAT',
         bitmask=False
     )
 
@@ -59,6 +60,9 @@ class Guild(BaseModel):
             region=guild.region,
             config={'web': {str(guild.owner_id): 'admin'}},
             config_raw='')
+
+    def is_whitelisted(self, flag):
+        return int(flag) in self.whitelist
 
     def update_config(self, actor_id, raw):
         from rowboat.types.guild import GuildConfig
