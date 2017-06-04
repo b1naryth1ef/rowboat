@@ -80,7 +80,6 @@ class AdminConfig(PluginConfig):
 
     # The mute role
     mute_role = Field(snowflake, default=None)
-    temp_mute_role = Field(snowflake, default=None)
 
     reason_edit_level = Field(int, default=int(CommandLevels.ADMIN))
 
@@ -204,16 +203,26 @@ class AdminPlugin(Plugin):
 
         self.restore_user(event, event.member)
 
+    @Plugin.listen('GuildMemberUpdate', priority=Priority.BEFORE)
+    def on_guild_member_update(self, event):
+        pre_member = event.guild.members.get(event.id)
+        if not pre_member:
+            return
+
+        pre_roles = set(pre_member.roles)
+        post_roles = set(event.roles)
+        if pre_roles == post_roles:
+            return
+
+        removed = pre_roles - post_roles
+
+        # If the user was unmuted, mark any temp-mutes as inactive
+        if event.config.mute_role in removed:
+            Infraction.clear_active(event, event.user.id, [Infraction.Types.TEMPMUTE])
+
     @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):
-        Infraction.update(
-            active=False
-        ).where(
-            (Infraction.guild_id == event.guild.id) &
-            (Infraction.user_id == event.user.id) &
-            (Infraction.type_ == Infraction.Types.TEMPBAN) &
-            (Infraction.active == 1)
-        ).execute()
+        Infraction.clear_active(event, event.user.id, [Infraction.Types.BAN, Infraction.Types.TEMPBAN])
 
     @Plugin.command('unban', '<user:snowflake> [reason:str...]', level=CommandLevels.MOD)
     def unban(self, event, user, reason=None):
@@ -461,15 +470,24 @@ class AdminPlugin(Plugin):
             if not event.config.mute_role:
                 raise CommandFail('mute is not setup on this server')
 
-            if len({event.config.temp_mute_role, event.config.mute_role} & set(member.roles)):
-                raise CommandFail('{} is already muted'.format(member.user))
+            existed = False
+            # If the user is already muted check if we can take this from a temp
+            #  to perma mute.
+            if event.config.mute_role in member.roles:
+                existed = Infraction.clear_active(event, member.id, [Infraction.Types.TEMPMUTE])
+
+                # The user is 100% muted and not tempmuted at this point, so lets bail
+                if not existed:
+                    raise CommandFail(u'{} is already muted'.format(member.user))
 
             Infraction.mute(self, event, member, reason)
+
             if event.config.confirm_actions:
+                existed = u' [was temp-muted]' if existed else ''
                 event.msg.reply(maybe_string(
                     reason,
-                    u':ok_hand: {u} is now muted (`{o}`)',
-                    u':ok_hand: {u} is now muted',
+                    u':ok_hand: {u} is now muted (`{o}`)' + existed,
+                    u':ok_hand: {u} is now muted' + existed,
                     u=member.user,
                 ))
         else:
@@ -480,11 +498,11 @@ class AdminPlugin(Plugin):
         member = event.guild.get_member(user)
         if member:
             self.can_act_on(event, member)
-            if not event.config.temp_mute_role and not event.config.mute_role:
+            if not event.config.mute_role:
                 raise CommandFail('mute is not setup on this server')
 
-            if len({event.config.temp_mute_role, event.config.mute_role} & set(member.roles)):
-                raise CommandFail('{} is already muted'.format(member.user))
+            if event.config.mute_role in member.roles:
+                raise CommandFail(u'{} is already muted'.format(member.user))
 
             expire_dt = parse_duration(duration)
 
@@ -512,26 +530,19 @@ class AdminPlugin(Plugin):
 
         if member:
             self.can_act_on(event, member)
-            if not event.config.temp_mute_role and not event.config.mute_role:
+            if not event.config.mute_role:
                 raise CommandFail('mute is not setup on this server')
 
-            roles = {event.config.temp_mute_role, event.config.mute_role} & set(member.roles)
-            if not len(roles):
-                raise CommandFail('{} is not muted'.format(member.user))
+            if event.config.mute_role not in member.roles:
+                raise CommandFail(u'{} is not muted'.format(member.user))
 
-            Infraction.update(
-                active=False
-            ).where(
-                (Infraction.guild_id == event.guild.id) &
-                (Infraction.user_id == member.user.id) &
-                (Infraction.type_ == Infraction.Types.TEMPMUTE) &
-                (Infraction.active == 1)
-            ).execute()
+            Infraction.clear_active(event, member.id, [Infraction.Types.MUTE, Infraction.Types.TEMPMUTE])
 
-            self.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user.id, 'unmuted', actor=unicode(event.author), roles=roles)
+            self.bot.plugins.get('ModLogPlugin').create_debounce(
+                    event, member.user.id, 'unmuted', actor=unicode(event.author),
+                    roles=[event.config.mute_role])
 
-            for role in roles:
-                member.remove_role(role)
+            member.remove_role(event.config.mute_role)
 
             if event.config.confirm_actions:
                 event.msg.reply(u':ok_hand: {} is now unmuted'.format(member.user))

@@ -82,7 +82,10 @@ class CorePlugin(Plugin):
                 plugin_name = '{}Plugin'.format(event.name.split('.', 1)[0].title())
                 if plugin_name in self.bot.plugins:
                     self.log.info('Detected change in %s, reloading...', plugin_name)
-                    self.bot.plugins[plugin_name].reload()
+                    try:
+                        self.bot.plugins[plugin_name].reload()
+                    except Exception:
+                        self.log.exception('Failed to reload: ')
 
     def wait_for_actions(self):
         ps = rdb.pubsub()

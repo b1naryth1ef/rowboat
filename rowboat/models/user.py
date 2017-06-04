@@ -231,12 +231,9 @@ class Infraction(BaseModel):
             reason=reason,
             expires_at=expires_at,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
-            role=(
-                admin_config.temp_mute_role or admin_config.mute_role
-            ))
+            role=admin_config.mute_role)
 
-        role = (admin_config.temp_mute_role or admin_config.mute_role)
-        member.add_role(role)
+        member.add_role(admin_config.mute_role)
 
         cls.create(
             guild_id=event.guild.id,
@@ -245,7 +242,22 @@ class Infraction(BaseModel):
             type_=cls.Types.TEMPMUTE,
             reason=reason,
             expires_at=expires_at,
-            metadata={'role': role})
+            metadata={'role': admin_config.mute_role})
+
+    @classmethod
+    def clear_active(cls, event, user_id, types):
+        """
+        Marks a previously active tempmute as inactive for the given event/user.
+        This should be used in all locations where we either think this is no
+        longer active (e.g. the mute role was removed) _or_ when we don't want to
+        unmute the user any longer, e.g. they've been remuted by another command.
+        """
+        return cls.update(active=False).where(
+            (cls.guild_id == event.guild.id) &
+            (cls.user_id == user_id) &
+            (cls.type_ << types) &
+            (cls.active == 1)
+        ).execute() >= 1
 
 
 @BaseModel.register
