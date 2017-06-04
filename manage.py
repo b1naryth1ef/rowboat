@@ -3,7 +3,9 @@ from gevent import monkey; monkey.patch_all()
 
 from werkzeug.serving import run_with_reloader
 from gevent import wsgi
+from rowboat import ENV
 from rowboat.web import rowboat
+from rowboat.sql import init_db
 from yaml import load
 
 import os
@@ -85,7 +87,10 @@ def bot(env):
 @click.argument('user-id')
 def add_global_admin(user_id):
     from rowboat.redis import rdb
+    from rowboat.models.user import User
+    init_db(ENV)
     rdb.sadd('global_admins', user_id)
+    User.update(admin=True).where(User.user_id == user_id).execute()
     print 'Ok, added {} as a global admin'.format(user_id)
 
 

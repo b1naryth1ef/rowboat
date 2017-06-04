@@ -11,6 +11,7 @@ services:
     command: python /opt/rowboat/docker/nulld.py
     ports:
       - "8125:8125"
+    stop_signal: SIGKILL
   web:
     build: .
     command: python manage.py serve -r
