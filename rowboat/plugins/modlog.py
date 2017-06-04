@@ -249,7 +249,7 @@ class ModLogPlugin(Plugin):
         if not {action} & config.subscribed:
             return
 
-        def generate_simple(config):
+        def generate_simple(chan_config):
             info = self.action_simple.get(action)
 
             if config._custom:
@@ -263,8 +263,8 @@ class ModLogPlugin(Plugin):
                 S(contents),
             )
 
-            if config.timestamps:
-                ts = pytz.utc.localize(datetime.utcnow()).astimezone(config.tz)
+            if chan_config.timestamps:
+                ts = pytz.utc.localize(datetime.utcnow()).astimezone(chan_config.tz)
                 msg = '`[{}]` '.format(ts.strftime('%H:%M:%S')) + msg
 
             if len(msg) > 2000:
@@ -272,11 +272,11 @@ class ModLogPlugin(Plugin):
 
             return msg
 
-        for channel_id, config in config._channels.items():
-            if not {action} & config.subscribed:
+        for channel_id, chan_config in config._channels.items():
+            if not {action} & chan_config.subscribed:
                 continue
 
-            msg = generate_simple(config)
+            msg = generate_simple(chan_config)
 
             if channel_id not in self.pumps:
                 self.pumps[channel_id] = ModLogPump(
