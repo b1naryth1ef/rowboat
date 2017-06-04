@@ -3,3 +3,4 @@ config.yaml
 *.pyc
 .venv/
 rowboat.log
+.data

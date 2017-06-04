@@ -4,6 +4,9 @@ services:
     build: ./docker/database/
   redis:
     image: redis:3.2
+    command: redis-server --appendonly yes
+    volumes:
+      - ./.data:/data
   statsd:
     image: python:2.7.13
     volumes:
