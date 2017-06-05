@@ -4,6 +4,7 @@ from peewee import fn, JOIN
 from datetime import datetime, timedelta
 
 from disco.bot import CommandLevels
+from disco.api.http import APIException
 from disco.types.message import MessageEmbed
 
 from rowboat.plugins import RowboatPlugin as Plugin
@@ -15,6 +16,7 @@ from rowboat.util.timing import Debounce
 
 
 STAR_EMOJI = u'\U00002B50'
+UNKNOWN_MESSAGE = 10008
 
 
 def is_star_event(e):
@@ -397,11 +399,20 @@ class StarboardPlugin(Plugin):
                 self.log.exception('Failed to post starboard message: ')
                 return
         else:
-            msg = self.client.api.channels_messages_modify(
-                star.star_channel_id,
-                star.star_message_id,
-                content,
-                embed=embed)
+            try:
+                msg = self.client.api.channels_messages_modify(
+                    star.star_channel_id,
+                    star.star_message_id,
+                    content,
+                    embed=embed)
+            except APIException as e:
+                # If we get a 10008, assume this message was deleted
+                if e.code == UNKNOWN_MESSAGE:
+                    star.star_message_id = None
+                    star.star_channel_id = None
+
+                    # Recurse so we repost
+                    return self.post_star(star, source_msg, starboard_id, config)
 
         # Update our starboard entry
         StarboardEntry.update(
