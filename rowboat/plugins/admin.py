@@ -441,7 +441,7 @@ class AdminPlugin(Plugin):
         else:
             raise CommandFail('invalid user')
 
-    @Plugin.command('clear', '<user:snowflake>', level=CommandLevels.MOD, group='backups')
+    @Plugin.command('clear', '<user_id:snowflake>', level=CommandLevels.MOD, group='backups')
     def backups_clear(self, event, user_id):
         deleted = bool(GuildMemberBackup.delete().where(
             (GuildMemberBackup.user_id == user_id) &
