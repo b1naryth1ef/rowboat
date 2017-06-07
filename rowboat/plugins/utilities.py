@@ -444,6 +444,7 @@ class UtilitiesPlugin(Plugin):
             if not channel:
                 self.log.warning('Not triggering reminder, channel %s was not found!',
                     message.channel_id)
+                reminder.delete_instance()
                 continue
 
             channel.send_message(u'<@{}> you asked me at {} ({} ago) to remind you about: {}'.format(
