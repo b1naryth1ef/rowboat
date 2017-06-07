@@ -32,21 +32,21 @@ class CensorSubConfig(SlottedModel):
 
     filter_invites = Field(bool, default=True)
     invites_guild_whitelist = ListField(snowflake, default=[])
-    invites_whitelist = ListField(str, default=[])
-    invites_blacklist = ListField(str, default=[])
+    invites_whitelist = ListField(unicode, default=[])
+    invites_blacklist = ListField(unicode, default=[])
 
     filter_domains = Field(bool, default=True)
-    domains_whitelist = ListField(str, default=[])
-    domains_blacklist = ListField(str, default=[])
+    domains_whitelist = ListField(unicode, default=[])
+    domains_blacklist = ListField(unicode, default=[])
 
-    blocked_words = ListField(str, default=[])
-    blocked_tokens = ListField(str, default=[])
+    blocked_words = ListField(unicode, default=[])
+    blocked_tokens = ListField(unicode, default=[])
 
     @cached_property
     def blocked_words_re(self):
-        return re.compile('({})'.format('|'.join(
+        return re.compile(u'({})'.format(u'|'.join(
             map(re.escape, self.blocked_tokens) +
-            map(lambda k: r'\b{}\b'.format(re.escape(k)), self.blocked_words)
+            map(lambda k: u'\\b{}\\b'.format(re.escape(k)), self.blocked_words)
         )), re.I)
 
 
@@ -77,7 +77,7 @@ class Censorship(Exception):
                 return u'domain `{}` is in blacklist'.format(S(self.ctx['domain'], escape_codeblocks=True))
         elif self.reason is CensorReason.WORD:
             return u'found blacklisted words `{}`'.format(
-                ', '.join([S(i, escape_codeblocks=True) for i in self.ctx['words']]))
+                u', '.join([S(i, escape_codeblocks=True) for i in self.ctx['words']]))
         elif self.reason is CensorReason.ZALGO:
             return u'found zalgo at position `{}` in text'.format(
                 self.ctx['position']
