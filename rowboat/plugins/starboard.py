@@ -479,7 +479,10 @@ class StarboardPlugin(Plugin):
             return
 
         # Check if the board prevents self stars
-        _, board = event.config.get_board(event.channel_id)
+        sb_id, board = event.config.get_board(event.channel_id)
+        if not sb_id:
+            return
+
         if board.prevent_self_star and msg.author_id == event.user_id:
             event.delete()
             return
