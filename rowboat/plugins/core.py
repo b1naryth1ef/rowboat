@@ -112,7 +112,7 @@ class CorePlugin(Plugin):
                     self.guilds[data['id']] = Guild.with_id(data['id'])
                 except:
                     self.log.exception(u'Failed to reload config for guild %s', self.guilds[data['id']].name)
-                    return
+                    continue
             elif data['type'] == 'RESTART':
                 self.log.info('Restart requested, signaling parent')
                 os.kill(os.getppid(), signal.SIGUSR1)
