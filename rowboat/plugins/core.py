@@ -55,7 +55,7 @@ class CorePlugin(Plugin):
         if ENV != 'prod':
             self.spawn(self.wait_for_plugin_changes)
 
-        self.spawn(self.wait_for_actions)
+        self._wait_for_actions_greenlet = self.spawn(self.wait_for_actions)
 
     def our_add_plugin(self, cls, *args, **kwargs):
         if getattr(cls, 'global_plugin', False):
@@ -107,12 +107,12 @@ class CorePlugin(Plugin):
                 # Refresh config, mostly to validate
                 try:
                     self.guilds[data['id']].get_config(refresh=True)
+
+                    # Reload the guild entirely
+                    self.guilds[data['id']] = Guild.with_id(data['id'])
                 except:
                     self.log.exception(u'Failed to reload config for guild %s', self.guilds[data['id']].name)
                     return
-
-                # Reload the guild entirely
-                self.guilds[data['id']] = Guild.with_id(data['id'])
             elif data['type'] == 'RESTART':
                 self.log.info('Restart requested, signaling parent')
                 os.kill(os.getppid(), signal.SIGUSR1)

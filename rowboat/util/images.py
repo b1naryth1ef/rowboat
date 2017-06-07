@@ -20,13 +20,16 @@ def rtoh(rgb):
 
 
 def get_dominant_colors(img, n=3):
-    img.thumbnail((1024, 1024))
-    w, h = img.size
+    try:
+        img.thumbnail((1024, 1024))
+        w, h = img.size
 
-    points = get_points(img)
-    clusters = kmeans(points, n, 1)
-    rgbs = [map(int, c.center.coords) for c in clusters]
-    return map(rtoh, rgbs)
+        points = get_points(img)
+        clusters = kmeans(points, n, 1)
+        rgbs = [map(int, c.center.coords) for c in clusters]
+        return map(rtoh, rgbs)
+    except:
+        return 0x00000
 
 
 def get_dominant_colors_user(user, url=None):

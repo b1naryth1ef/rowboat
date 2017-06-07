@@ -221,6 +221,10 @@ class ModLogPlugin(Plugin):
             event.guild.id,
             event.guild.name,
             channels)
+
+        if config._channels:
+            self.log.warning('Overwriting previously resolved channels %s / %s', config._channels, channels)
+
         config._channels = channels
 
         config._custom = None
@@ -284,6 +288,12 @@ class ModLogPlugin(Plugin):
             return msg
 
         for channel_id, chan_config in config._channels.items():
+            if channel_id not in guild.channels:
+                self.log.error('guild %s has outdated modlog channels (%s)', guild.id, channel_id)
+                config._channels = []
+                config.resolved = False
+                return
+
             if not {action} & chan_config.subscribed:
                 continue
 
