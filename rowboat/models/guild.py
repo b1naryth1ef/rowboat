@@ -42,6 +42,13 @@ class Guild(BaseModel):
 
     added_at = DateTimeField(default=datetime.utcnow)
 
+    SQL = '''
+        CREATE OR REPLACE FUNCTION shard (int, bigint)
+        RETURNS bigint AS $$
+          SELECT ($2 >> 22) % $1
+        $$ LANGUAGE SQL;
+    '''
+
     class Meta:
         db_table = 'guilds'
 
