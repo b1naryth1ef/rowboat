@@ -402,7 +402,7 @@ class Command(BaseModel):
     command = TextField()
     version = TextField()
     success = BooleanField()
-    traceback = TextField()
+    traceback = TextField(null=True)
 
     class Meta:
         db_table = 'commands'
