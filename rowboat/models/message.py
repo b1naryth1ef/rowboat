@@ -420,5 +420,5 @@ class Command(BaseModel):
             command=command.name,
             version=REV,
             success=not exception,
-            traceback=traceback.format_exc(),
+            traceback=traceback.format_exc() if exception else None,
         )
