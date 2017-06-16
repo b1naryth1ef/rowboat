@@ -435,7 +435,7 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('restore', '<user:user>', level=CommandLevels.MOD, group='backups')
     def restore(self, event, user):
-        member = self.guild.get_member(user)
+        member = event.guild.get_member(user)
         if member:
             self.restore_user(event, member)
         else:
