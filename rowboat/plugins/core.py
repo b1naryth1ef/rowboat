@@ -24,7 +24,6 @@ from rowboat.sql import init_db
 from rowboat.redis import rdb
 
 import rowboat.models
-from rowboat.models.user import Infraction
 from rowboat.models.guild import Guild, GuildBan
 from rowboat.models.message import Command
 from rowboat.models.notification import Notification
@@ -437,42 +436,6 @@ class CorePlugin(Plugin):
         guild = Guild.setup(event.guild)
         self.guilds[event.guild.id] = guild
         event.msg.reply(':ok_hand: successfully loaded configuration')
-
-    @Plugin.command('nuke', '<user:snowflake> <reason:str...>', level=-1)
-    def nuke(self, event, user, reason):
-        contents = []
-
-        for gid, guild in self.guilds.items():
-            guild = self.state.guilds[gid]
-            perms = guild.get_permissions(self.state.me)
-
-            if not perms.ban_members and not perms.administrator:
-                contents.append(u':x: {} (`{}`) - No Permissions'.format(
-                    guild.name,
-                    gid
-                ))
-                continue
-
-            try:
-                Infraction.ban(
-                    self,
-                    event,
-                    user,
-                    reason,
-                    guild=guild)
-            except:
-                contents.append(u':x: {} (`{}`) - Unknown Error'.format(
-                    guild.name,
-                    gid
-                ))
-                self.log.exception('Failed to force ban %s in %s', user, gid)
-
-            contents.append(u':white_check_mark: {} (`{}`) - :regional_indicator_f:'.format(
-                guild.name,
-                gid
-            ))
-
-        event.msg.reply('Results:\n' + '\n'.join(contents))
 
     @Plugin.command('about')
     def command_about(self, event):
