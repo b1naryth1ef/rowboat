@@ -53,6 +53,7 @@ class SubConfig(SlottedModel):
 
     clean = Field(bool, default=False)
     clean_count = Field(int, default=100)
+    clean_duration = Field(int, default=900)
 
     _cached_max_messages_bucket = Field(str, private=True)
     _cached_max_mentions_bucket = Field(str, private=True)
@@ -60,6 +61,13 @@ class SubConfig(SlottedModel):
     _cached_max_emojis_bucket = Field(str, private=True)
     _cached_max_newlines_bucket = Field(str, private=True)
     _cached_max_attachments_bucket = Field(str, private=True)
+
+    def validate(self):
+        if self.clean_duration < 0 or self.clean_duration > 86400:
+            raise Exception('Invalid value for `clean_duration` must be between 0 and 86400')
+
+        if self.clean_count < 0 or self.clean_count > 1000:
+            raise Exception('Invaliud value for `clean_count` must be between 0 and 1000')
 
     def get_bucket(self, attr, guild_id):
         obj = getattr(self, attr)
@@ -176,7 +184,8 @@ class SpamPlugin(Plugin):
                     Message.channel_id
                 ).where(
                     (Message.guild_id == violation.event.guild.id) &
-                    (Message.author_id == violation.member.id)
+                    (Message.author_id == violation.member.id) &
+                    (Message.timestamp > (datetime.utcnow() - timedelta(seconds=violation.rule.clean_duration)))
                 ).limit(violation.rule.clean_count).tuples()
 
                 channels = defaultdict(list)
