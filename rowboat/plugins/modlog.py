@@ -211,9 +211,10 @@ class ModLogPlugin(Plugin):
             if not chan:
                 raise MetaException('Failed to ModLog.resolve_channels', {
                     'guild_name': event.guild.name,
-                    'guild_id': event.guild.id,
-                    'config_channels': list(config.channels.keys()),
-                    'guild_channels': list(event.guild.channels.keys()),
+                    'guild_id': unicode(event.guild.id),
+                    'key': unicode(key),
+                    'config_channels': list(unicode(i) for i in config.channels.keys()),
+                    'guild_channels': list(unicode(i) for i in event.guild.channels.keys()),
                 })
             channels[chan.id] = channel
 
