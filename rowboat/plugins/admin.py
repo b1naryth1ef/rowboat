@@ -1,6 +1,5 @@
 import re
 import csv
-import time
 import gevent
 import humanize
 import operator
@@ -93,21 +92,19 @@ class AdminPlugin(Plugin):
 
         self.cleans = {}
         self.inf_task = Eventual(self.clear_infractions)
-        self.spawn(self.queue_infractions)
+        self.spawn_later(5, self.queue_infractions)
 
     def queue_infractions(self):
-        time.sleep(5)
-
         next_infraction = list(Infraction.select().where(
             (Infraction.active == 1) &
             (~(Infraction.expires_at >> None))
         ).order_by(Infraction.expires_at.asc()).limit(1))
 
         if not next_infraction:
-            self.log.info('No infractions to wait for')
+            self.log.info('[INF] no infractions to wait for')
             return
 
-        self.log.info('Waiting until %s', next_infraction[0].expires_at)
+        self.log.info('[INF] waiting until %s for %s', next_infraction[0].expires_at, next_infraction[0].id)
         self.inf_task.set_next_schedule(next_infraction[0].expires_at)
 
     def clear_infractions(self):
@@ -116,9 +113,12 @@ class AdminPlugin(Plugin):
             (Infraction.expires_at < datetime.utcnow())
         ))
 
+        self.log.info('[INF] attempting to clear %s expired infractions', len(expired))
+
         for item in expired:
             guild = self.state.guilds.get(item.guild_id)
             if not guild:
+                self.log.warning('[INF] failed to clear infraction %s, no guild exists', item.id)
                 continue
 
             # TODO: hacky
@@ -136,11 +136,15 @@ class AdminPlugin(Plugin):
                         item.guild_id,
                         item.user_id,
                         item.metadata['role'])
+            else:
+                self.log.warning('[INF] failed to clear infraction %s, type is invalid %s', item.id, item.type_)
+                continue
 
             # TODO: n+1
             item.active = False
             item.save()
 
+        # Queue the next set of infractions
         self.queue_infractions()
 
     def restore_user(self, event, member):
