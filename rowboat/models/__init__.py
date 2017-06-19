@@ -4,3 +4,4 @@ from rowboat.models.guild import *
 from rowboat.models.message import *
 from rowboat.models.notification import *
 from rowboat.models.user import *
+from rowboat.models.tags import *
