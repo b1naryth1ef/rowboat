@@ -193,6 +193,8 @@ def guild_config_update(guild):
         return '', 200
     except Guild.DoesNotExist:
         return 'Invalid Guild', 404
+    except Exception as e:
+        return 'Invalid Data: %s' % e, 400
 
 
 @guilds.route('/api/guilds/<gid>/config/raw')
