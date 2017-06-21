@@ -277,7 +277,7 @@ class GuildVoiceSession(BaseModel):
 
         indexes = (
             # Used for conflicts
-            (('session_id', 'user_id', 'guild_id', 'channel_id', 'ended_at', ), True),
+            (('session_id', 'user_id', 'guild_id', 'channel_id', 'started_at', 'ended_at', ), True),
 
             (('started_at', 'ended_at', ), False),
         )
