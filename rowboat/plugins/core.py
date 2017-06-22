@@ -529,3 +529,30 @@ class CorePlugin(Plugin):
     def control_reconnect(self, event):
         event.msg.reply('Ok, closing connection')
         self.client.gw.ws.close()
+
+    @Plugin.command('invite', '<guild:snowflake>', group='guilds', level=-1)
+    def guild_join(self, event, guild=None):
+        guild = self.state.guilds.get(guild)
+        if not guild:
+            return event.msg.reply(':no_entry_sign: invalid or unknown guild ID')
+
+        msg = event.msg.reply(u'Ok, hold on while I get you setup with an invite link to {}'.format(
+            guild.name,
+        ))
+
+        general_channel = guild.channels[guild.id]
+
+        try:
+            invite = general_channel.create_invite(
+                max_age=300,
+                max_uses=1,
+                unique=True,
+            )
+        except:
+            return msg.edit(u':no_entry_sign: Hmmm, something went wrong creating an invite for {}'.format(
+                guild.name,
+            ))
+
+        msg.edit(u'Ok, here is a temporary invite for you: {}'.format(
+            invite.code,
+        ))
