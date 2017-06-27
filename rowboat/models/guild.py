@@ -40,6 +40,8 @@ class Guild(BaseModel):
     enabled = BooleanField(default=True)
     whitelist = BinaryJSONField(default=[])
 
+    premium_end = DateTimeField(null=True)
+
     added_at = DateTimeField(default=datetime.utcnow)
 
     # SQL = '''
