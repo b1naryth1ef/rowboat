@@ -178,7 +178,8 @@ class CensorPlugin(Plugin):
         invites = INVITE_LINK_RE.findall(event.content)
 
         for invite in invites:
-            invite_info = self.get_invite_info(invite[1])
+            invite = invite[1].lower()
+            invite_info = self.get_invite_info(invite)
 
             need_whitelist = (config.invites_guild_whitelist or (config.invites_whitelist or not config.invites_blacklist))
             whitelisted = False
@@ -186,7 +187,7 @@ class CensorPlugin(Plugin):
             if invite_info and invite_info.get('id') in config.invites_guild_whitelist:
                 whitelisted = True
 
-            if invite[1] in config.invites_whitelist:
+            if invite in config.invites_whitelist:
                 whitelisted = True
 
             if need_whitelist and not whitelisted:
