@@ -133,7 +133,7 @@ class UtilitiesPlugin(Plugin):
         if not len(data['list']):
             return event.msg.reply(':warning: no matches')
 
-        event.msg.reply('{} - {}'.format(
+        event.msg.reply(u'{} - {}'.format(
             data['list'][0]['word'],
             data['list'][0]['definition'],
         ))
@@ -153,13 +153,13 @@ class UtilitiesPlugin(Plugin):
         sites = []
 
         for idx, site in enumerate(data):
-            sites.append('{} - {} ({})'.format(
+            sites.append(u'{} - {} ({})'.format(
                 site['BreachDate'],
                 site['Title'],
                 site['Domain'],
             ))
 
-        return event.msg.reply(":warning: You've been pwnd on {} sites:\n{}".format(
+        return event.msg.reply(u":warning: You've been pwnd on {} sites:\n{}".format(
             len(sites),
             '\n'.join(sites),
         ))
