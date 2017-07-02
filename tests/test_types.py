@@ -28,3 +28,11 @@ class TestRuleMatcher(unittest.TestCase):
 
         matches = list(rule_matcher(TestObject(), rules))
         self.assertEqual(matches, [1, 2, 3, 4])
+
+    def test_catch_all(self):
+        rules = [
+            {'out': 1}
+        ]
+
+        matches = list(rule_matcher(TestObject(), rules))
+        self.assertEqual(matches, [1])
