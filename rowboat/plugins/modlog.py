@@ -108,6 +108,9 @@ class ChannelConfig(SlottedModel):
     timestamps = Field(bool, default=False)
     timezone = Field(str, default='US/Eastern')
 
+    def validate(self):
+        assert pytz.timezone(self.timezone) is not None
+
     @cached_property
     def tz(self):
         return pytz.timezone(self.timezone)
