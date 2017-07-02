@@ -326,7 +326,7 @@ class UtilitiesPlugin(Plugin):
         embed.description = '\n'.join(content)
         event.msg.reply('', embed=embed)
 
-    @Plugin.command('info', '<user:user>', global_=True)
+    @Plugin.command('info', '<user:user>')
     def info(self, event, user):
         content = []
         content.append(u'**\u276F User Information**')
