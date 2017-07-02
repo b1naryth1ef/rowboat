@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from holster.enum import Enum
 from holster.emitter import Priority
-from disco.util.sanitize import ZERO_WIDTH_SPACE
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.redis import rdb
@@ -128,17 +127,6 @@ class SpamPlugin(Plugin):
 
         if not last_violated > time.time() - 10:
             self.bot.plugins.get('ModLogPlugin').log_action_ext(Actions.SPAM_DEBUG, violation.event, v=violation)
-
-            with self.bot.plugins.get('CorePlugin').send_control_message() as embed:
-                embed.title = '{} Violated'.format(violation.label)
-                embed.color = 0xfdfd96
-                embed.description = violation.msg
-                embed.add_field(name='Guild', value=violation.event.guild.name, inline=True)
-                embed.add_field(name='Guild ID', value=violation.event.guild.id, inline=True)
-                embed.add_field(name=ZERO_WIDTH_SPACE, value=ZERO_WIDTH_SPACE, inline=True)
-                embed.add_field(name='User', value=unicode(violation.member), inline=True)
-                embed.add_field(name='User ID', value=violation.event.member.id, inline=True)
-                embed.add_field(name=ZERO_WIDTH_SPACE, value=ZERO_WIDTH_SPACE, inline=True)
 
             punishment = violation.check.punishment or violation.rule.punishment
             punishment_duration = violation.check.punishment_duration or violation.rule.punishment_duration
