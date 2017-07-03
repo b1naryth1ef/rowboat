@@ -31,7 +31,6 @@ olefile==0.44
 packaging==16.8
 Pillow==4.0.0
 ply==3.8
-proto-google-cloud-vision-v1==0.15.2
 protobuf==3.2.0
 psycogreen==1.0
 psycopg2==2.6.2
