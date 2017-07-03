@@ -17,7 +17,8 @@ class Eventual(object):
 
     def wait(self, nxt):
         def f():
-            gevent.sleep((self._next - datetime.utcnow()).seconds)
+            wait_time = (self._next - datetime.utcnow())
+            gevent.sleep(wait_time.seconds + (wait_time.microseconds / 1000000.0))
             self._next = None
             gevent.spawn(self.func)
 
