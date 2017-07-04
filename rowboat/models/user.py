@@ -97,6 +97,7 @@ class Infraction(BaseModel):
         'BAN',
         'TEMPMUTE',
         'UNBAN',
+        'TEMPROLE',
         bitmask=False,
     )
 
@@ -122,6 +123,21 @@ class Infraction(BaseModel):
     @staticmethod
     def admin_config(event):
         return getattr(event.base_config.plugins, 'admin', None)
+
+    @classmethod
+    def temprole(cls, plugin, event, member, role_id, reason, expires_at):
+        User.from_disco_user(member.user)
+
+        member.add_role(role_id)
+
+        cls.create(
+            guild_id=event.guild.id,
+            user_id=member.user.id,
+            actor_id=event.author.id,
+            type_=cls.Types.TEMPROLE,
+            reason=reason,
+            expires_at=expires_at,
+            metadata={'role': role_id})
 
     @classmethod
     def kick(cls, plugin, event, member, reason):
