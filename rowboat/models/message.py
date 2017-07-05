@@ -433,8 +433,8 @@ class TempSpamScore(BaseModel):
         db_table = 'temp_spam_score'
 
     @classmethod
-    def track(cls, event, score):
+    def track(cls, message_id, score):
         cls.create(
-            message_id=event.msg.id,
+            message_id=message_id,
             score=score,
         )

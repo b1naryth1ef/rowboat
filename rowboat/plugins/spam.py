@@ -308,7 +308,7 @@ class SpamPlugin(Plugin):
         # CHECK 4
         # For every user mentioned in their message, determine how "important"
         #  or likely to be spammed they are.
-        for mention in event.msg.mentions.values():
+        for mention in event.mentions.values():
             member = event.guild.get_member(mention)
 
             # If the user is an admin of the server, they are likely to be a victim
@@ -324,12 +324,12 @@ class SpamPlugin(Plugin):
         # CHECK 5
         # Check how many bad words are in the message, generally low-effort spammers
         #  just shove "shock" value content in their message.
-        for word in event.msg.content.split(' '):
+        for word in event.content.split(' '):
             if word in BAD_WORDS:
                 score += 1
 
-        TempSpamScore.track(event, score)
-        self.log.info('[spam] advanced detection for %s: %s', event.msg.id, score)
+        TempSpamScore.track(event.id, score)
+        self.log.info('[spam] advanced detection for %s: %s', event.id, score)
 
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
     def on_message_create(self, event):
