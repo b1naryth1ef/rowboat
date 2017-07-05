@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from holster.enum import Enum
 from holster.emitter import Priority
+from disco.types.guild import VerificationLevel
+from disco.util.snowflake import to_datetime
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.redis import rdb
@@ -18,6 +20,10 @@ from rowboat.types import SlottedModel, DictField, Field
 from rowboat.models.user import Infraction
 from rowboat.models.message import Message, EMOJI_RE
 
+
+# TODO: lazy/cached
+with open('data/badwords.txt', 'r') as f:
+    BAD_WORDS = f.readlines()
 
 PunishmentType = Enum(
     'NONE',
@@ -53,6 +59,8 @@ class SubConfig(SlottedModel):
     clean = Field(bool, default=False)
     clean_count = Field(int, default=100)
     clean_duration = Field(int, default=900)
+
+    advanced = Field(bool, default=False)
 
     _cached_max_messages_bucket = Field(str, private=True)
     _cached_max_mentions_bucket = Field(str, private=True)
@@ -245,6 +253,82 @@ class SpamPlugin(Plugin):
 
         if rule.max_duplicates and rule.max_duplicates.interval and rule.max_duplicates.count:
             self.check_duplicate_messages(event, member, rule)
+
+        if rule.advanced:
+            self.check_advanced(event, member, rule)
+
+    def check_advanced(self, event, member, rule):
+        score = 0
+
+        # CHECK 1
+        # Check if the user just exited their quiescent period from guild verification
+        #  which means they may have been waiting to spam
+        duration_before_talk = 0
+        if event.guild.verification_level == VerificationLevel.MEDIUM:
+            duration_before_talk = 60 * 5
+        elif event.guild.verification_level == VerificationLevel.HIGH:
+            duration_before_talk = 60 * 10
+
+        if duration_before_talk:
+            duration = (datetime.utcnow() - member.joined_at).seconds
+            if duration >= duration_before_talk:
+                if (duration - duration_before_talk) < 10:
+                    score += 5
+                elif (duration - duration_before_talk) < 60:
+                    score += 4
+                elif (duration - duration_before_talk) < 120:
+                    score += 3
+                elif (duration - duration_before_talk) < 300:
+                    score += 1
+
+        # CHECK 2
+        # Check if the users account was created recently, which means they may
+        #  have made it just to spam.
+        account_age = (datetime.utcnow() - to_datetime(event.author.id)).seconds
+        if account_age < 15 * 60:
+            score += 15
+        elif account_age < 30 * 60:
+            score += 10
+        elif account_age < 60 * 60:
+            score += 5
+
+        # CHECK 3
+        # Check if this is the first message sent by the user, perhaps signaling
+        #  they just joined to spam
+        sent_messages = Message.select().where(
+            (Message.guild_id == event.guild.id) &
+            (Message.author_id == event.author.id)
+        ).count()
+
+        if sent_messages == 0:
+            score += 7
+        elif sent_messages < 10:
+            score += 3
+
+        # CHECK 4
+        # For every user mentioned in their message, determine how "important"
+        #  or likely to be spammed they are.
+        for mention in event.msg.mentions.values():
+            member = event.guild.get_member(mention)
+
+            # If the user is an admin of the server, they are likely to be a victim
+            if member.permissions.administrator or member.permissions.manage_guild:
+                score += 3
+            elif member.permissions.ban_members or member.permissions.kick_members:
+                score += 1
+
+            # If the user is hoisted, they are likely to be a victim
+            if any(i.hoisted for i in map(event.guild.roles.get, member.roles)):
+                score += 5
+
+        # CHECK 5
+        # Check how many bad words are in the message, generally low-effort spammers
+        #  just shove "shock" value content in their message.
+        for word in event.msg.content.split(' '):
+            if word in BAD_WORDS:
+                score += 1
+
+        self.log.info('[spam] advanced detection for %s: %s', event.msg.id, score)
 
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
     def on_message_create(self, event):
