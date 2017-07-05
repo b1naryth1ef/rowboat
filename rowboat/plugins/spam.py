@@ -18,7 +18,7 @@ from rowboat.util.stats import timed
 from rowboat.types.plugin import PluginConfig
 from rowboat.types import SlottedModel, DictField, Field
 from rowboat.models.user import Infraction
-from rowboat.models.message import Message, EMOJI_RE
+from rowboat.models.message import Message, TempSpamScore, EMOJI_RE
 
 
 # TODO: lazy/cached
@@ -328,6 +328,7 @@ class SpamPlugin(Plugin):
             if word in BAD_WORDS:
                 score += 1
 
+        TempSpamScore.track(event, score)
         self.log.info('[spam] advanced detection for %s: %s', event.msg.id, score)
 
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
