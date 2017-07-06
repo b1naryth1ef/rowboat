@@ -318,7 +318,7 @@ class SpamPlugin(Plugin):
                 score += 1
 
             # If the user is hoisted, they are likely to be a victim
-            if any(i.hoisted for i in map(event.guild.roles.get, member.roles)):
+            if any(i.hoist for i in map(event.guild.roles.get, member.roles)):
                 score += 5
 
         # CHECK 5
