@@ -329,7 +329,8 @@ class SpamPlugin(Plugin):
                 score += 1
 
         TempSpamScore.track(event.id, score)
-        self.log.info('[spam] advanced detection for %s: %s', event.id, score)
+        if score > 0:
+            self.log.info('[spam] advanced detection for %s: %s', event.id, score)
 
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
     def on_message_create(self, event):
