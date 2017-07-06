@@ -75,7 +75,11 @@ class AdminConfig(PluginConfig):
     # Role saving information
     persist = Field(PersistConfig, default=None)
 
+    # Aliases to roles, can be used in place of IDs in commands
     role_aliases = DictField(unicode, snowflake)
+
+    # Group roles can be joined/left by any user
+    group_roles = DictField(unicode, snowflake)
 
     # The mute role
     mute_role = Field(snowflake, default=None)
@@ -1068,3 +1072,29 @@ class AdminPlugin(Plugin):
                 humanize.naturaldelta(session.ended_at - session.started_at) if session.ended_at else 'Active')
 
         event.msg.reply(tbl.compile())
+
+    @Plugin.command('join', '<name:str>', aliases=['add', 'give'])
+    def join_role(self, event, name):
+        role_id = event.config.group_roles.get(name.lower())
+        if not role_id or role_id not in event.guild.roles:
+            raise CommandFail('invalid or unknown group')
+
+        member = event.guild.get_member(event.author)
+        if role_id in member.roles:
+            raise CommandFail('you are already a member of that group')
+
+        member.add_role(role_id)
+        raise CommandSuccess(u'you have joined the {} group'.format(name))
+
+    @Plugin.command('leave', '<name:snowflake|str>', aliases=['remove', 'take'])
+    def leave_role(self, event, name):
+        role_id = event.config.group_roles.get(name.lower())
+        if not role_id or role_id not in event.guild.roles:
+            raise CommandFail('invalid or unknown group')
+
+        member = event.guild.get_member(event.author)
+        if role_id not in member.roles:
+            raise CommandFail('you are not a member of that group')
+
+        member.remove_role(role_id)
+        raise CommandSuccess(u'you have left the {} group'.format(name))
