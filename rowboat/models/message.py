@@ -428,13 +428,15 @@ class Command(BaseModel):
 class TempSpamScore(BaseModel):
     message_id = BigIntegerField(primary_key=True)
     score = IntegerField()
+    marks = ArrayField(default=[])
 
     class Meta:
-        db_table = 'temp_spam_score'
+        db_table = 'temp_spam_score2'
 
     @classmethod
-    def track(cls, message_id, score):
+    def track(cls, message_id, score, marks):
         cls.create(
             message_id=message_id,
             score=score,
+            marks=marks,
         )

@@ -259,6 +259,12 @@ class SpamPlugin(Plugin):
 
     def check_advanced(self, event, member, rule):
         score = 0
+        marks = []
+
+        def mark(amount, reason):
+            global score
+            score += amount
+            marks.append(reason)
 
         # CHECK 1
         # Check if the user just exited their quiescent period from guild verification
@@ -273,24 +279,24 @@ class SpamPlugin(Plugin):
             duration = (datetime.utcnow() - member.joined_at).seconds
             if duration >= duration_before_talk:
                 if (duration - duration_before_talk) < 10:
-                    score += 5
+                    mark(10, 'check1.talk_within_ten_seconds')
                 elif (duration - duration_before_talk) < 60:
-                    score += 4
+                    mark(5, 'check1.talk_within_sixty_seconds')
                 elif (duration - duration_before_talk) < 120:
-                    score += 3
+                    mark(3, 'check1.talk_within_two_minutes')
                 elif (duration - duration_before_talk) < 300:
-                    score += 1
+                    mark(1, 'check1.talk_within_five_minutes')
 
         # CHECK 2
         # Check if the users account was created recently, which means they may
         #  have made it just to spam.
         account_age = (datetime.utcnow() - to_datetime(event.author.id)).seconds
         if account_age < 15 * 60:
-            score += 15
+            mark(5, 'check2.account_age_less_than_fifteen_minutes')
         elif account_age < 30 * 60:
-            score += 10
+            mark(3, 'check2.account_age_less_than_thirty_minutes')
         elif account_age < 60 * 60:
-            score += 5
+            mark(1, 'check2.account_age_less_than_one_hour')
 
         # CHECK 3
         # Check if this is the first message sent by the user, perhaps signaling
@@ -301,9 +307,9 @@ class SpamPlugin(Plugin):
         ).count()
 
         if sent_messages == 0:
-            score += 7
+            mark(10, 'check3.first_message_in_server')
         elif sent_messages < 10:
-            score += 3
+            mark(3, 'check3.first_ten_messages_in_server')
 
         # CHECK 4
         # For every user mentioned in their message, determine how "important"
@@ -312,25 +318,24 @@ class SpamPlugin(Plugin):
             member = event.guild.get_member(mention)
 
             # If the user is an admin of the server, they are likely to be a victim
+            if member.owner:
+                mark(7, 'check4.mentions_owner')
             if member.permissions.administrator or member.permissions.manage_guild:
-                score += 3
+                mark(5, 'check4.mentions_administrator')
             elif member.permissions.ban_members or member.permissions.kick_members:
-                score += 1
+                mark(1, 'check4.mentions_moderator')
 
             # If the user is hoisted, they are likely to be a victim
             if any(i.hoist for i in map(event.guild.roles.get, member.roles)):
-                score += 5
+                mark(7, 'check4.mentions_hoisted_user')
 
         # CHECK 5
         # Check how many bad words are in the message, generally low-effort spammers
         #  just shove "shock" value content in their message.
-        for word in event.content.split(' '):
-            if word in BAD_WORDS:
-                score += 1
+        num_bad_words = sum(1 for word in event.content.split(' ') if word in BAD_WORDS)
+        mark(num_bad_words, 'check5.has_bad_words_%s' % num_bad_words)
 
-        TempSpamScore.track(event.id, score)
-        if score > 0:
-            self.log.info('[spam] advanced detection for %s: %s', event.id, score)
+        TempSpamScore.track(event.id, score, marks)
 
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
     def on_message_create(self, event):
