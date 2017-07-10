@@ -258,12 +258,11 @@ class SpamPlugin(Plugin):
             self.check_advanced(event, member, rule)
 
     def check_advanced(self, event, member, rule):
-        score = 0
+        scores = []
         marks = []
 
         def mark(amount, reason):
-            global score
-            score += amount
+            scores.append(amount)
             marks.append(reason)
 
         # CHECK 1
@@ -335,7 +334,7 @@ class SpamPlugin(Plugin):
         num_bad_words = sum(1 for word in event.content.split(' ') if word in BAD_WORDS)
         mark(num_bad_words, 'check5.has_bad_words_%s' % num_bad_words)
 
-        TempSpamScore.track(event.id, score, marks)
+        TempSpamScore.track(event.id, sum(scores), marks)
 
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
     def on_message_create(self, event):
