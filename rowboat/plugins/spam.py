@@ -332,7 +332,8 @@ class SpamPlugin(Plugin):
         # Check how many bad words are in the message, generally low-effort spammers
         #  just shove "shock" value content in their message.
         num_bad_words = sum(1 for word in event.content.split(' ') if word in BAD_WORDS)
-        mark(num_bad_words, 'check5.has_bad_words_%s' % num_bad_words)
+        if num_bad_words:
+            mark(num_bad_words, 'check5.has_bad_words_%s' % num_bad_words)
 
         TempSpamScore.track(event.id, sum(scores), marks)
 
