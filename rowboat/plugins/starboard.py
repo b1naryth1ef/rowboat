@@ -136,6 +136,7 @@ class StarboardPlugin(Plugin):
             fn.SUM(fn.array_length(StarboardEntry.stars, 1)),
         ).join(Message).where(
             (~ (StarboardEntry.star_message_id >> None)) &
+            (StarboardEntry.blocked == 0) &
             (Message.guild_id == event.guild.id)
         ).tuples())[0]
 
@@ -147,6 +148,7 @@ class StarboardPlugin(Plugin):
         ).where(
             (~ (StarboardEntry.star_message_id >> None)) &
             (fn.array_length(StarboardEntry.stars, 1) > 0) &
+            (StarboardEntry.blocked == 0) &
             (Message.guild_id == event.guild.id)
         ).group_by(User).order_by(fn.SUM(fn.array_length(StarboardEntry.stars, 1)).desc()).limit(5).tuples())
 
