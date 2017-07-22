@@ -98,6 +98,7 @@ class Infraction(BaseModel):
         'TEMPMUTE',
         'UNBAN',
         'TEMPROLE',
+        'WARNING',
         bitmask=False,
     )
 
@@ -212,6 +213,20 @@ class Infraction(BaseModel):
             user_id=user_id,
             actor_id=event.author.id,
             type_=cls.Types.BAN,
+            reason=reason)
+
+    @classmethod
+    def warn(cls, plugin, event, member, reason, guild):
+        User.from_disco_user(member.user)
+        user_id = member.user.id
+
+        # TODO: modlog support
+
+        cls.create(
+            guild_id=guild.id,
+            user_id=user_id,
+            actor_id=event.author.id,
+            type_=cls.Types.WARNING,
             reason=reason)
 
     @classmethod

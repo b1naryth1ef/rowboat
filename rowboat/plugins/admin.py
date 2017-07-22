@@ -691,6 +691,25 @@ class AdminPlugin(Plugin):
         else:
             raise CommandFail('invalid user')
 
+    @Plugin.command('warn', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
+    def warn(self, event, user, reason=None):
+        member = None
+
+        member = event.guild.get_member(user)
+        if member:
+            self.can_act_on(event, member.id)
+            Infraction.warn(self, event, member, reason, guild=event.guild)
+        else:
+            raise CommandFail('invalid user')
+
+        if event.config.confirm_actions:
+            event.msg.reply(maybe_string(
+                reason,
+                u':ok_hand: warned {u} (`{o}`)',
+                u':ok_hand: warned {u}',
+                u=member.user if member else user,
+            ))
+
     @Plugin.command('archive here', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
     @Plugin.command('archive all', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
     @Plugin.command('archive user', '<user:user|snowflake> [size:int]', level=CommandLevels.MOD, context={'mode': 'user'})
