@@ -14,17 +14,14 @@ from yaml import load
 rowboat = Holster(Flask(__name__))
 logging.getLogger('peewee').setLevel(logging.DEBUG)
 
+with open('config.yaml', 'r') as f:
+    CONFIG = load(f)
 
-@rowboat.app.before_first_request
-def before_first_request():
-    init_db(ENV)
+rowboat.app.config.update(CONFIG['web'])
+rowboat.app.secret_key = CONFIG['web']['SECRET_KEY']
+rowboat.app.config['token'] = CONFIG.get('token')
 
-    with open('config.yaml', 'r') as f:
-        data = load(f)
-
-    rowboat.app.config.update(data['web'])
-    rowboat.app.secret_key = data['web']['SECRET_KEY']
-    rowboat.app.config['token'] = data.get('token')
+init_db(ENV)
 
 
 @rowboat.app.before_request
