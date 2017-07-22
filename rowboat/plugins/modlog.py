@@ -11,8 +11,6 @@ from holster.enum import Enum
 from holster.emitter import Priority
 from datetime import datetime
 from collections import defaultdict
-from gevent.lock import Semaphore
-from gevent.event import Event
 
 from disco.bot import CommandLevels
 from disco.types import UNSET
@@ -41,58 +39,76 @@ URL_REGEX = re.compile(r'(https?://[^\s]+)')
 
 
 class ModLogPump(object):
-    def __init__(self, channel, max_actions, action_time):
+    def __init__(self, channel, sleep_duration=5):
         self.channel = channel
-        self.action_time = action_time
-
-        self._have = Event()
+        self.sleep_duration = sleep_duration
         self._buffer = []
-        self._lock = Semaphore(max_actions)
-        self._emitter = gevent.spawn(self._emit_loop)
+        self._have = gevent.event.Event()
+        self._quiescent_period = None
+        self._lock = gevent.lock.Semaphore()
+
+        self._greenlet = gevent.spawn(self._emitter_loop)
+
+    def __del__(self):
+        if self._greenlet:
+            self._greenlet.kill()
+
+    def _emitter_loop(self):
+        while True:
+            self._have.wait()
+
+            backoff = False
+
+            with self.channel.client.api.capture() as responses:
+                try:
+                    self._emit()
+                except APIException as e:
+                    # Message send is disabled
+                    if e.code == 40004:
+                        backoff = True
+
+            if responses.rate_limited:
+                backoff = True
+
+            # If we need to backoff, set a quiescent period that will batch
+            #  requests for the next 60 seconds.
+            if backoff:
+                self._quiescent_period = time.time() + 60
+
+            if self._quiescent_period:
+                if self._quiescent_period < time.time():
+                    self._quiescent_period = None
+                else:
+                    gevent.sleep(self.sleep_duration)
+
+            if not self._buffer:
+                self._have.clear()
+
+    def _emit(self):
+        with self._lock:
+            msg = self._get_next_message()
+            if not msg:
+                return
+
+            self.channel.send_message(msg)
 
     def _get_next_message(self):
         data = ''
 
         while self._buffer:
             payload = self._buffer.pop(0)
-            if len(data) + len(payload) > 2000:
+            if len(data) + (len(payload) + 1) > 2000:
                 break
+
             data += '\n'
             data += payload
 
         return data
 
-    def _emit_loop(self):
-        while True:
-            self._have.wait()
-
-            try:
-                self._emit()
-            except APIException as e:
-                # If send message is disabled, backoff (we'll drop events but
-                #  thats ok)
-                if e.code == 40004:
-                    gevent.sleep(5)
-
-            if not len(self._buffer):
-                self._have.clear()
-
-    def _emit(self):
-        self._lock.acquire()
-        msg = self._get_next_message()
-        if not msg:
-            self._lock.release()
-            return
-        self.channel.send_message(msg)
-        gevent.spawn(self._emit_unlock)
-
-    def _emit_unlock(self):
-        gevent.sleep(self.action_time)
-        self._lock.release()
-
-    def add_message(self, payload):
-        self._buffer.append(payload)
-        self._have.set()
+    def send(self, payload):
+        with self._lock:
+            self._buffer.append(payload)
+            self._have.set()
 
 
 def filter_urls(content):
@@ -305,9 +321,9 @@ class ModLogPlugin(Plugin):
 
             if channel_id not in self.pumps:
                 self.pumps[channel_id] = ModLogPump(
-                    self.state.channels.get(channel_id), 5, 1.5
+                    self.state.channels.get(channel_id),
                 )
-            self.pumps[channel_id].add_message(msg)
+            self.pumps[channel_id].send(msg)
 
     @Plugin.command('hush', group='modlog', level=CommandLevels.ADMIN)
     def command_hush(self, event):
