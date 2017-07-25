@@ -126,6 +126,9 @@ class CorePlugin(Plugin):
 
     @Plugin.schedule(60, init=True)
     def update_rowboat_guild_access(self):
+        if ENV != 'prod':
+            return
+
         self.state.ready.wait()
 
         self.log.info('Updating rowboat guild access')
