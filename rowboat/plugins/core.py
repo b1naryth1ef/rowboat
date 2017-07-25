@@ -159,14 +159,14 @@ class CorePlugin(Plugin):
         add_access = set(users_who_should_have_access) - set(users_who_have_access)
 
         for user_id in remove_access:
-            member = rb_guild.get_member(user_id)
+            member = rb_guild.members.get(user_id)
             if not member:
                 continue
 
             member.remove_role(ROWBOAT_USER_ROLE_ID)
 
         for user_id in add_access:
-            member = rb_guild.get_member(user_id)
+            member = rb_guild.members.get(user_id)
             if not member:
                 continue
 
