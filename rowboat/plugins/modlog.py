@@ -275,12 +275,9 @@ class ModLogPlugin(Plugin):
                 if action in config._custom:
                     info = config._custom[action]
 
+            # Format contents and create the message with the given emoji
             contents = self.fmt.format(six.text_type(info['format']), e=event, **details)
-
-            msg = u':{}: {}'.format(
-                info['emoji'],
-                S(contents),
-            )
+            msg = u':{}: {}'.format(info['emoji'], contents)
 
             if chan_config.timestamps:
                 ts = pytz.utc.localize(datetime.utcnow()).astimezone(chan_config.tz)
