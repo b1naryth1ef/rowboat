@@ -78,7 +78,7 @@ class CorePlugin(Plugin):
             events = inotify.get_events(fd)
             for event in events:
                 # Can't reload core.py sadly
-                if event.name == 'core.py':
+                if event.name.startswith('core.py'):
                     continue
 
                 plugin_name = '{}Plugin'.format(event.name.split('.', 1)[0].title())
@@ -118,29 +118,56 @@ class CorePlugin(Plugin):
             elif data['type'] == 'RESTART':
                 self.log.info('Restart requested, signaling parent')
                 os.kill(os.getppid(), signal.SIGUSR1)
-            elif data['type'] == 'USER_ACCESS_UPDATE':
-                self.log.info('Updating user access')
-                self.update_user_access(data['add'], data['remove'])
 
     def unload(self, ctx):
         ctx['guilds'] = self.guilds
         ctx['startup'] = self.startup
         super(CorePlugin, self).unload(ctx)
 
-    def update_user_access(self, add, remove):
-        guild = self.state.guilds.get(ROWBOAT_GUILD_ID)
+    @Plugin.schedule(60, init=True)
+    def update_rowboat_guild_access(self):
+        self.state.ready.wait()
 
-        for user in add + remove:
-            member = guild.get_member(int(user))
+        self.log.info('Updating rowboat guild access')
+        rb_guild = self.state.guilds.get(ROWBOAT_GUILD_ID)
+        if not rb_guild:
+            return
+
+        guilds = Guild.select(
+            Guild.guild_id,
+            Guild.config
+        )
+
+        users_who_should_have_access = set()
+        for guild in guilds:
+            if 'web' not in guild.config:
+                continue
+
+            for user_id in guild.config['web'].keys():
+                users_who_should_have_access.add(int(user_id))
+
+        # TODO: sharding
+        users_who_have_access = {
+            i.id for i in rb_guild.members.values()
+            if ROWBOAT_USER_ROLE_ID in i.roles
+        }
+
+        remove_access = set(users_who_have_access) - set(users_who_should_have_access)
+        add_access = set(users_who_should_have_access) - set(users_who_have_access)
+
+        for user_id in remove_access:
+            member = rb_guild.get_member(user_id)
             if not member:
                 continue
 
-            if user in add:
-                if ROWBOAT_USER_ROLE_ID not in member.roles:
-                    member.add_role(ROWBOAT_USER_ROLE_ID)
-            else:
-                if ROWBOAT_USER_ROLE_ID in member.roles:
-                    member.remove_role(ROWBOAT_USER_ROLE_ID)
+            member.remove_role(ROWBOAT_USER_ROLE_ID)
+
+        for user_id in add_access:
+            member = rb_guild.get_member(user_id)
+            if not member:
+                continue
+
+            member.add_role(ROWBOAT_USER_ROLE_ID)
 
     def on_pre(self, plugin, func, event, args, kwargs):
         """

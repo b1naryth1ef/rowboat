@@ -4,7 +4,6 @@ import functools
 
 from flask import Blueprint, render_template, request, g, jsonify, current_app
 
-from rowboat.redis import emit
 from rowboat.util.decos import authed
 from rowboat.models.guild import Guild, GuildConfigChange
 from rowboat.models.user import User, Infraction
@@ -204,14 +203,6 @@ def guild_config_update(guild):
 
     if guild.role != 'admin' and before != after:
         return 'Cannot Alter Permissions', 403
-
-    users_with_access = [k for k, _ in after]
-    users_to_remove = [k for k, _ in before if k not in users_with_access]
-
-    emit(
-        'USER_ACCESS_UPDATE',
-        add=users_with_access,
-        remove=users_to_remove)
 
     try:
         guild.update_config(g.user.user_id, request.values.get('data'))
