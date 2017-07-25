@@ -4,6 +4,7 @@ import functools
 
 from flask import Blueprint, render_template, request, g, jsonify, current_app
 
+from rowboat.redis import emit
 from rowboat.util.decos import authed
 from rowboat.models.guild import Guild, GuildConfigChange
 from rowboat.models.user import User, Infraction
@@ -192,17 +193,25 @@ def guild_config_update(guild):
     if guild.role not in ['admin', 'editor']:
         return 'Missing Permissions', 403
 
-    if guild.role != 'admin':
-        try:
-            data = yaml.load(request.values.get('data'))
-        except:
-            return 'Invalid YAML', 400
+    # Calculate users diff
+    try:
+        data = yaml.load(request.values.get('data'))
+    except:
+        return 'Invalid YAML', 400
 
-        before = sorted(guild.config.get('web', []).items(), key=lambda i: i[0])
-        after = sorted([(str(k), v) for k, v in data.get('web', []).items()], key=lambda i: i[0])
+    before = sorted(guild.config.get('web', {}).items(), key=lambda i: i[0])
+    after = sorted([(str(k), v) for k, v in data.get('web', {}).items()], key=lambda i: i[0])
 
-        if before != after:
-            return 'Cannot Alter Permissions', 403
+    if guild.role != 'admin' and before != after:
+        return 'Cannot Alter Permissions', 403
+
+    users_with_access = [k for k, _ in after]
+    users_to_remove = [k for k, _ in before if k not in users_with_access]
+
+    emit(
+        'USER_ACCESS_UPDATE',
+        add=users_with_access,
+        remove=users_to_remove)
 
     try:
         guild.update_config(g.user.user_id, request.values.get('data'))

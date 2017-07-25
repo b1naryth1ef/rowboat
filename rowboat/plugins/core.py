@@ -38,6 +38,9 @@ Rowboat is a moderation and utilitarian Bot built for large Discord servers.
 GREEN_TICK_EMOJI = 'green_tick:305231298799206401'
 RED_TICK_EMOJI = 'red_tick:305231335512080385'
 
+ROWBOAT_GUILD_ID = 290923757399310337
+ROWBOAT_USER_ROLE_ID = 339256926921555968
+
 
 class CorePlugin(Plugin):
     def load(self, ctx):
@@ -115,11 +118,29 @@ class CorePlugin(Plugin):
             elif data['type'] == 'RESTART':
                 self.log.info('Restart requested, signaling parent')
                 os.kill(os.getppid(), signal.SIGUSR1)
+            elif data['type'] == 'USER_ACCESS_UPDATE':
+                self.log.info('Updating user access')
+                self.update_user_access(data['add'], data['remove'])
 
     def unload(self, ctx):
         ctx['guilds'] = self.guilds
         ctx['startup'] = self.startup
         super(CorePlugin, self).unload(ctx)
+
+    def update_user_access(self, add, remove):
+        guild = self.state.guilds.get(ROWBOAT_GUILD_ID)
+
+        for user in add + remove:
+            member = guild.get_member(int(user))
+            if not member:
+                continue
+
+            if user in add:
+                if ROWBOAT_USER_ROLE_ID not in member.roles:
+                    member.add_role(ROWBOAT_USER_ROLE_ID)
+            else:
+                if ROWBOAT_USER_ROLE_ID in member.roles:
+                    member.remove_role(ROWBOAT_USER_ROLE_ID)
 
     def on_pre(self, plugin, func, event, args, kwargs):
         """
