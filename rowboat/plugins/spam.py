@@ -6,8 +6,6 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from holster.enum import Enum
 from holster.emitter import Priority
-from disco.types.guild import VerificationLevel
-from disco.util.snowflake import to_datetime
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.redis import rdb
@@ -18,7 +16,7 @@ from rowboat.util.stats import timed
 from rowboat.types.plugin import PluginConfig
 from rowboat.types import SlottedModel, DictField, Field
 from rowboat.models.user import Infraction
-from rowboat.models.message import Message, TempSpamScore, EMOJI_RE
+from rowboat.models.message import Message, EMOJI_RE
 
 
 # TODO: lazy/cached
@@ -59,8 +57,6 @@ class SubConfig(SlottedModel):
     clean = Field(bool, default=False)
     clean_count = Field(int, default=100)
     clean_duration = Field(int, default=900)
-
-    advanced = Field(bool, default=False)
 
     _cached_max_messages_bucket = Field(str, private=True)
     _cached_max_mentions_bucket = Field(str, private=True)
@@ -254,89 +250,6 @@ class SpamPlugin(Plugin):
         if rule.max_duplicates and rule.max_duplicates.interval and rule.max_duplicates.count:
             self.check_duplicate_messages(event, member, rule)
 
-        if rule.advanced:
-            self.check_advanced(event, member, rule)
-
-    def check_advanced(self, event, member, rule):
-        scores = []
-        marks = []
-
-        def mark(amount, reason):
-            scores.append(amount)
-            marks.append(reason)
-
-        # CHECK 1
-        # Check if the user just exited their quiescent period from guild verification
-        #  which means they may have been waiting to spam
-        duration_before_talk = 0
-        if event.guild.verification_level == VerificationLevel.MEDIUM:
-            duration_before_talk = 60 * 5
-        elif event.guild.verification_level == VerificationLevel.HIGH:
-            duration_before_talk = 60 * 10
-
-        if duration_before_talk:
-            duration = (datetime.utcnow() - member.joined_at).seconds
-            if duration >= duration_before_talk:
-                if (duration - duration_before_talk) < 10:
-                    mark(10, 'check1.talk_within_ten_seconds')
-                elif (duration - duration_before_talk) < 60:
-                    mark(5, 'check1.talk_within_sixty_seconds')
-                elif (duration - duration_before_talk) < 120:
-                    mark(3, 'check1.talk_within_two_minutes')
-                elif (duration - duration_before_talk) < 300:
-                    mark(1, 'check1.talk_within_five_minutes')
-
-        # CHECK 2
-        # Check if the users account was created recently, which means they may
-        #  have made it just to spam.
-        account_age = (datetime.utcnow() - to_datetime(event.author.id)).seconds
-        if account_age < 15 * 60:
-            mark(5, 'check2.account_age_less_than_fifteen_minutes')
-        elif account_age < 30 * 60:
-            mark(3, 'check2.account_age_less_than_thirty_minutes')
-        elif account_age < 60 * 60:
-            mark(1, 'check2.account_age_less_than_one_hour')
-
-        # CHECK 3
-        # Check if this is the first message sent by the user, perhaps signaling
-        #  they just joined to spam
-        sent_messages = Message.select().where(
-            (Message.guild_id == event.guild.id) &
-            (Message.author_id == event.author.id)
-        ).count()
-
-        if sent_messages == 0:
-            mark(10, 'check3.first_message_in_server')
-        elif sent_messages < 10:
-            mark(3, 'check3.first_ten_messages_in_server')
-
-        # CHECK 4
-        # For every user mentioned in their message, determine how "important"
-        #  or likely to be spammed they are.
-        for mention in event.mentions.values():
-            member = event.guild.get_member(mention)
-
-            # If the user is an admin of the server, they are likely to be a victim
-            if member.owner:
-                mark(7, 'check4.mentions_owner')
-            if member.permissions.administrator or member.permissions.manage_guild:
-                mark(5, 'check4.mentions_administrator')
-            elif member.permissions.ban_members or member.permissions.kick_members:
-                mark(1, 'check4.mentions_moderator')
-
-            # If the user is hoisted, they are likely to be a victim
-            if any(i.hoist for i in map(event.guild.roles.get, member.roles)):
-                mark(7, 'check4.mentions_hoisted_user')
-
-        # CHECK 5
-        # Check how many bad words are in the message, generally low-effort spammers
-        #  just shove "shock" value content in their message.
-        num_bad_words = sum(1 for word in event.content.split(' ') if word in BAD_WORDS)
-        if num_bad_words:
-            mark(num_bad_words, 'check5.has_bad_words_%s' % num_bad_words)
-
-        TempSpamScore.track(event.id, sum(scores), marks)
-
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
     def on_message_create(self, event):
         if event.author.id == self.state.me.id:
@@ -352,7 +265,8 @@ class SpamPlugin(Plugin):
             try:
                 member = event.guild.get_member(event.author)
                 if not member:
-                    self.log.warning('Failed to find member for guild id %s and author id %s', event.guild.id, event.author.id)
+                    self.log.warning(
+                        'Failed to find member for guild id %s and author id %s', event.guild.id, event.author.id)
                     return
 
                 level = int(self.bot.plugins.get('CorePlugin').get_level(event.guild, event.author))
