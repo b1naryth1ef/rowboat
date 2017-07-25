@@ -112,6 +112,9 @@ class CorePlugin(Plugin):
 
                     # Reload the guild entirely
                     self.guilds[data['id']] = Guild.with_id(data['id'])
+
+                    # Update guild access
+                    self.update_rowboat_guild_access()
                 except:
                     self.log.exception(u'Failed to reload config for guild %s', self.guilds[data['id']].name)
                     continue
@@ -124,21 +127,21 @@ class CorePlugin(Plugin):
         ctx['startup'] = self.startup
         super(CorePlugin, self).unload(ctx)
 
-    @Plugin.schedule(60, init=True)
     def update_rowboat_guild_access(self):
-        if ENV != 'prod':
+        if ROWBOAT_GUILD_ID not in self.state.guilds or ENV != 'prod':
             return
 
-        self.state.ready.wait()
-
-        self.log.info('Updating rowboat guild access')
         rb_guild = self.state.guilds.get(ROWBOAT_GUILD_ID)
         if not rb_guild:
             return
 
+        self.log.info('Updating rowboat guild access')
+
         guilds = Guild.select(
             Guild.guild_id,
             Guild.config
+        ).where(
+            (Guild.enabled == 1)
         )
 
         users_who_should_have_access = set()
