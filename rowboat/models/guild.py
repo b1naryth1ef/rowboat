@@ -1,4 +1,3 @@
-import json
 import yaml
 import logging
 
@@ -106,7 +105,12 @@ class Guild(BaseModel):
             self.config = Guild.select(Guild.config).where(Guild.guild_id == self.guild_id).get().config
 
         if refresh or not hasattr(self, '_cached_config'):
-            self._cached_config = GuildConfig(self.config)
+            try:
+                self._cached_config = GuildConfig(self.config)
+            except:
+                log.exception('Failed to load config for Guild %s, invalid: ', self.guild_id)
+                return None
+
         return self._cached_config
 
     def sync_bans(self, guild):

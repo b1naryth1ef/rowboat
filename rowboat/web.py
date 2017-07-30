@@ -8,6 +8,7 @@ from holster.flask_ext import Holster
 from rowboat import ENV
 from rowboat.sql import init_db
 from rowboat.models.user import User
+from rowboat.types.guild import PluginsConfig
 
 from yaml import load
 
@@ -18,6 +19,8 @@ logging.getLogger('peewee').setLevel(logging.DEBUG)
 @rowboat.app.before_first_request
 def before_first_request():
     init_db(ENV)
+
+    PluginsConfig.force_load_plugin_configs()
 
     with open('config.yaml', 'r') as f:
         data = load(f)

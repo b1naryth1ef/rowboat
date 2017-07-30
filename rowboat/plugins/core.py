@@ -203,6 +203,8 @@ class CorePlugin(Plugin):
                 return
 
         event.base_config = self.guilds[guild_id].get_config()
+        if not event.base_config:
+            return
 
         plugin_name = plugin.name.lower().replace('plugin', '')
         if not getattr(event.base_config.plugins, plugin_name, None):
@@ -328,18 +330,22 @@ class CorePlugin(Plugin):
         if not guild.enabled:
             return
 
+        config = guild.get_config()
+        if not config:
+            return
+
         # Ensure we're updated
         self.log.info('Syncing guild %s', event.guild.id)
         guild.sync(event.guild)
 
         self.guilds[event.id] = guild
 
-        if guild.get_config().nickname:
+        if config.nickname:
             def set_nickname():
                 m = event.members.select_one(id=self.state.me.id)
-                if m and m.nick != guild.get_config().nickname:
+                if m and m.nick != config.nickname:
                     try:
-                        m.set_nickname(guild.get_config().nickname)
+                        m.set_nickname(config.nickname)
                     except APIException as e:
                         self.log.warning('Failed to set nickname for guild %s (%s)', event.guild, e.content)
             self.spawn_later(5, set_nickname)
