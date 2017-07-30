@@ -85,7 +85,7 @@ class AdminConfig(PluginConfig):
     role_aliases = DictField(unicode, snowflake)
 
     # Group roles can be joined/left by any user
-    group_roles = DictField(unicode, snowflake)
+    group_roles = DictField(lambda value: unicode(value).lower(), snowflake)
 
     # The mute role
     mute_role = Field(snowflake, default=None)
