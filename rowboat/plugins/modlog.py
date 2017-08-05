@@ -147,8 +147,8 @@ class ModLogConfig(PluginConfig):
 
 class Formatter(string.Formatter):
     def convert_field(self, value, conversion):
-        if conversion == 'z':
-            return S(unicode(value), escape_mentions=False, escape_codeblocks=True)
+        if conversion in ('z', 's'):
+            return S(unicode(value), escape_codeblocks=True)
         return unicode(value)
 
 
