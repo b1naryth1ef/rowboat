@@ -194,7 +194,8 @@ class AdminPlugin(Plugin):
         self.call(
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_RESTORE,
-            event
+            event,
+            member=member,
         )
 
     @Plugin.listen('GuildMemberRemove', priority=Priority.BEFORE)
@@ -607,6 +608,7 @@ class AdminPlugin(Plugin):
                 'ModLogPlugin.log_action_ext',
                 Actions.MEMBER_UNMUTED,
                 event,
+                member=member,
                 actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             )
 
@@ -929,8 +931,9 @@ class AdminPlugin(Plugin):
 
         self.call(
             'ModLogPlugin.log_action_ext',
-            (Actions.MEMBER_ROLE_ADD_REASON if mode == 'add' else Actions.MEMBER_ROLE_REMOVE_REASON),
+            (Actions.MEMBER_ROLE_ADD if mode == 'add' else Actions.MEMBER_ROLE_REMOVE),
             event,
+            member=member,
             role=role_obj,
             reason=reason or 'no reason',
         )

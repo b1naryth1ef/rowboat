@@ -96,35 +96,46 @@ class Debounce(object):
         self.guild_id = guild_id
         self.selector = selector
         self.events = events
+        self.timestamp = time.time()
 
     def is_expired(self):
         return time.time() - self.timestamp > 60
 
-    def remove(self):
-        self.plugin.debounces.remove(self)
+    def remove(self, event=None):
+        self.plugin.debounces.remove(self, event)
 
 
 class DebouncesCollection(object):
     def __init__(self):
         self._data = defaultdict(lambda: defaultdict(list))
 
+    def __iter__(self):
+        for top in self._data.values():
+            for bot in top.values():
+                for obj in bot:
+                    yield obj
+
     def add(self, obj):
         for event_name in obj.events:
             self._data[obj.guild_id][event_name].append(obj)
 
-    def remove(self, obj, event):
+    def remove(self, obj, event=None):
         for event_name in ([event] if event else obj.events):
             self._data[obj.guild_id][event_name].remove(obj)
 
     def find(self, event, delete=True, **kwargs):
-        for obj in self._data[event.guild_id][event.__class__.__name__]:
+        guild_id = event.guild_id if hasattr(event, 'guild_id') else event.guild.id
+        for obj in self._data[guild_id][event.__class__.__name__]:
+            if obj.is_expired():
+                obj.remove()
+                continue
+
             for k, v in kwargs.items():
                 if obj.selector.get(k) != v:
                     continue
 
             if delete:
-                obj.remove()
-
+                obj.remove(event=event.__class__.__name__)
             return obj
 
 
@@ -155,7 +166,8 @@ class ModLogPlugin(Plugin):
         super(ModLogPlugin, self).load(ctx)
 
     def create_debounce(self, event, events, **kwargs):
-        bounce = Debounce(self, event.guild_id, kwargs, events)
+        guild_id = event.guild_id if hasattr(event, 'guild_id') else event.guild.id
+        bounce = Debounce(self, guild_id, kwargs, events)
         self.debounces.add(bounce)
         return bounce
 

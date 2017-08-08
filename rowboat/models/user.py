@@ -162,8 +162,9 @@ class Infraction(BaseModel):
         # Create a kick modlog event
         plugin.call(
             'ModLogPlugin.log_action_ext',
-            Actions.GUILD_MEMBER_KICK,
+            Actions.MEMBER_KICk,
             event,
+            member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason'
         )
@@ -191,8 +192,9 @@ class Infraction(BaseModel):
 
         plugin.call(
             'ModLogPlugin.log_action_ext',
-            Actions.GUILD_TEMPBAN_ADD,
+            Actions.MEMBER_TEMPBAN,
             event,
+            member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason',
             expires=expires_at,
@@ -223,8 +225,9 @@ class Infraction(BaseModel):
 
         plugin.call(
             'ModLogPlugin.log_action_ext',
-            Actions.GUILD_SOFTBAN_ADD,
+            Actions.MEMBER_SOFTBAN,
             event,
+            member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason'
         )
@@ -249,16 +252,18 @@ class Infraction(BaseModel):
             'ModLogPlugin.create_debounce',
             event,
             ['GuildMemberRemove', 'GuildBanAdd'],
-            user_id=member.user.id
+            user_id=user_id,
         )
 
         guild.create_ban(user_id)
 
         plugin.call(
             'ModLogPlugin.log_action_ext',
-            Actions.GUILD_BAN_ADD_REASON,
+            Actions.MEMBER_BAN,
             event,
-            actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
+            user=(unicode(member) if not isinstance(member, (int, long)) else '<UNKNOWN>'),
+            user_id=user_id,
+            actor=unicode(event.author) if event.author.id != user_id else 'Automatic',
             reason=reason or 'no reason'
         )
 
@@ -286,6 +291,7 @@ class Infraction(BaseModel):
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_WARNED,
             event,
+            member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason'
         )
@@ -309,6 +315,7 @@ class Infraction(BaseModel):
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_MUTED,
             event,
+            member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason'
         )
@@ -340,6 +347,7 @@ class Infraction(BaseModel):
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_TEMP_MUTED,
             event,
+            member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason',
             expires=expires_at,
