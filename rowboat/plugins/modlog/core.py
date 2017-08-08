@@ -2,7 +2,6 @@ import re
 import six
 import time
 import pytz
-import gevent
 import string
 import operator
 import humanize
@@ -14,7 +13,6 @@ from collections import defaultdict
 
 from disco.bot import CommandLevels
 from disco.types import UNSET
-from disco.api.http import APIException
 from disco.util.functional import cached_property
 from disco.util.snowflake import to_unix, to_datetime
 from disco.util.sanitize import S
@@ -26,89 +24,13 @@ from rowboat.models.message import Message, MessageArchive
 from rowboat.models.guild import Guild
 from rowboat.util import ordered_load, MetaException
 
+from .pump import ModLogPump
 
+
+# Dynamically updated by the plugin
 Actions = Enum()
 
-COLORS = {
-    'red': 0xff0033,
-    'orange': 0xff7700,
-    'green': 0x009a44,
-}
-
 URL_REGEX = re.compile(r'(https?://[^\s]+)')
-
-
-class ModLogPump(object):
-    def __init__(self, channel, sleep_duration=5):
-        self.channel = channel
-        self.sleep_duration = sleep_duration
-        self._buffer = []
-        self._have = gevent.event.Event()
-        self._quiescent_period = None
-        self._lock = gevent.lock.Semaphore()
-
-        self._greenlet = gevent.spawn(self._emitter_loop)
-
-    def __del__(self):
-        if self._greenlet:
-            self._greenlet.kill()
-
-    def _emitter_loop(self):
-        while True:
-            self._have.wait()
-
-            backoff = False
-
-            with self.channel.client.api.capture() as responses:
-                try:
-                    self._emit()
-                except APIException as e:
-                    # Message send is disabled
-                    if e.code == 40004:
-                        backoff = True
-
-            if responses.rate_limited:
-                backoff = True
-
-            # If we need to backoff, set a quiescent period that will batch
-            #  requests for the next 60 seconds.
-            if backoff:
-                self._quiescent_period = time.time() + 60
-
-            if self._quiescent_period:
-                if self._quiescent_period < time.time():
-                    self._quiescent_period = None
-                else:
-                    gevent.sleep(self.sleep_duration)
-
-            if not self._buffer:
-                self._have.clear()
-
-    def _emit(self):
-        with self._lock:
-            msg = self._get_next_message()
-            if not msg:
-                return
-
-            self.channel.send_message(msg)
-
-    def _get_next_message(self):
-        data = ''
-
-        while self._buffer:
-            payload = self._buffer.pop(0)
-            if len(data) + (len(payload) + 1) > 2000:
-                break
-
-            data += '\n'
-            data += payload
-
-        return data
-
-    def send(self, payload):
-        with self._lock:
-            self._buffer.append(payload)
-            self._have.set()
 
 
 def filter_urls(content):
@@ -168,6 +90,44 @@ class Formatter(string.Formatter):
         return unicode(value)
 
 
+class Debounce(object):
+    def __init__(self, plugin, guild_id, selector, events):
+        self.plugin = plugin
+        self.guild_id = guild_id
+        self.selector = selector
+        self.events = events
+
+    def is_expired(self):
+        return time.time() - self.timestamp > 60
+
+    def remove(self):
+        self.plugin.debounces.remove(self)
+
+
+class DebouncesCollection(object):
+    def __init__(self):
+        self._data = defaultdict(lambda: defaultdict(list))
+
+    def add(self, obj):
+        for event_name in obj.events:
+            self._data[obj.guild_id][event_name].append(obj)
+
+    def remove(self, obj, event):
+        for event_name in ([event] if event else obj.events):
+            self._data[obj.guild_id][event_name].remove(obj)
+
+    def find(self, event, delete=True, **kwargs):
+        for obj in self._data[event.guild_id][event.__class__.__name__]:
+            for k, v in kwargs.items():
+                if obj.selector.get(k) != v:
+                    continue
+
+            if delete:
+                obj.remove()
+
+            return obj
+
+
 @Plugin.with_config(ModLogConfig)
 class ModLogPlugin(Plugin):
     fmt = Formatter()
@@ -184,36 +144,25 @@ class ModLogPlugin(Plugin):
         else:
             self.action_simple = ctx['action_simple']
 
-        self.debounce = ctx.get('debounce', defaultdict(lambda: defaultdict(dict)))
+        self.debounces = ctx.get('debounces') or DebouncesCollection()
+
+        # Tracks modlogs that are silenced
         self.hushed = {}
+
+        # Tracks pumps for all modlogs
         self.pumps = {}
 
         super(ModLogPlugin, self).load(ctx)
 
+    def create_debounce(self, event, events, **kwargs):
+        bounce = Debounce(self, event.guild_id, kwargs, events)
+        self.debounces.add(bounce)
+        return bounce
+
     def unload(self, ctx):
         ctx['action_simple'] = self.action_simple
-        ctx['debounce'] = self.debounce
+        ctx['debounces'] = self.debounces
         super(ModLogPlugin, self).unload(ctx)
-
-    def create_debounce(self, event, user_id, typ, **kwargs):
-        kwargs.update({
-            'type': typ,
-            'time': time.time(),
-        })
-
-        self.debounce[event.guild.id][user_id][typ] = kwargs
-
-    def pop_debounce(self, guild_id, user_id, typ):
-        obj = self.get_debounce(guild_id, user_id, typ)
-        self.delete_debounce(guild_id, user_id, typ)
-        return obj
-
-    def get_debounce(self, guild_id, user_id, typ):
-        return self.debounce[guild_id][user_id].get(typ)
-
-    def delete_debounce(self, guild_id, user_id, typ):
-        if typ in self.debounce[guild_id][user_id]:
-            del self.debounce[guild_id][user_id][typ]
 
     def resolve_channels(self, event, config):
         self.log.info('Resolving channels for guild %s (%s)',
@@ -343,16 +292,9 @@ class ModLogPlugin(Plugin):
 
     @Plugin.schedule(120)
     def cleanup_debounce(self):
-        for obj in six.itervalues(self.debounce):
-            # Copy items so we can mutate
-            for uid, uobj in list(six.iteritems(obj)):
-                for typ, tobj in list(six.iteritems(uobj)):
-
-                    if tobj['time'] + 30 > time.time():
-                        del uobj[typ]
-
-                        if not uobj:
-                            del obj[uid]
+        for obj in self.debounces:
+            if obj.is_expired():
+                obj.remove()
 
     @Plugin.listen('ChannelCreate')
     def on_channel_create(self, event):
@@ -364,47 +306,22 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('GuildBanAdd')
     def on_guild_ban_add(self, event):
-        if event.user.id in self.debounce[event.guild.id]:
-            debounce = self.get_debounce(event.guild.id, event.user.id, 'ban_reason')
+        debounce = self.debounces.find(event, user_id=event.user.id)
+        if debounce:
+            return
 
-            if debounce:
-                if debounce['temp']:
-                    if debounce['expires']:
-                        self.log_action(Actions.GUILD_TEMPBAN_ADD,
-                            event,
-                            actor=debounce['actor'],
-                            expires=debounce['expires'],
-                            reason=debounce['reason'])
-                    else:
-                        self.log_action(Actions.GUILD_SOFTBAN_ADD,
-                            event,
-                            actor=debounce['actor'],
-                            reason=debounce['reason'])
-                else:
-                    self.log_action(Actions.GUILD_BAN_ADD_REASON,
-                        event,
-                        actor=debounce['actor'],
-                        reason=debounce['reason'])
-        else:
-            self.log_action(Actions.GUILD_BAN_ADD, event)
-
-        self.create_debounce(event, event.user.id, 'ban')
+        self.log_action(Actions.GUILD_BAN_ADD, event)
 
     @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):
-        # Check for debounce to avoid unban notis on softban
-        debounce = self.get_debounce(event.guild_id, event.user.id, 'ban_reason')
-
-        if debounce and debounce['temp'] and not debounce['expires']:
+        debounce = self.debounces.find(event, user_id=event.user.id)
+        if debounce:
             return
 
         self.log_action(Actions.GUILD_BAN_REMOVE, event)
 
     @Plugin.listen('GuildMemberAdd')
     def on_guild_member_add(self, event):
-        if event.user.id in self.debounce[event.guild.id]:
-            del self.debounce[event.guild.id][event.user.id]
-
         created = humanize.naturaltime(datetime.utcnow() - to_datetime(event.user.id))
         new = (
             event.config.new_member_threshold and
@@ -415,12 +332,9 @@ class ModLogPlugin(Plugin):
 
     @Plugin.listen('GuildMemberRemove')
     def on_guild_member_remove(self, event):
-        debounce = self.get_debounce(event.guild.id, event.user.id, 'kick')
+        debounce = self.debounces.find(event, user_id=event.user.id)
 
         if debounce:
-            self.log_action(Actions.GUILD_MEMBER_KICK, event,
-                actor=debounce['actor'],
-                reason=debounce['reason'])
             return
 
         self.log_action(Actions.GUILD_MEMBER_REMOVE, event)
@@ -441,19 +355,22 @@ class ModLogPlugin(Plugin):
         if not pre_member:
             return
 
-        # TODO: server mute/deafen
+        # Global debounce, used for large member updates
+        debounce = self.debounces.find(event, user_id=event.user.id)
+        if debounce:
+            return
 
-        # Debounce member persist restores
-        debounce = self.get_debounce(event.guild.id, event.user.id, 'restore')
-        self.delete_debounce(event.guild.id, event.user.id, 'restore')
-
+        # Log nickname changes
         if (pre_member.nick or event.nick) and pre_member.nick != event.nick:
             if not pre_member.nick:
-                if not debounce:
-                    self.log_action(
-                        Actions.ADD_NICK,
-                        event,
-                        nickname=event.nick)
+                debounce = self.debounces.find(event, user_id=event.user.id, nickname=event.nick)
+                if debounce:
+                    return
+
+                self.log_action(
+                    Actions.ADD_NICK,
+                    event,
+                    nickname=event.nick)
             elif not event.nick:
                 self.log_action(
                     Actions.RMV_NICK,
@@ -466,56 +383,32 @@ class ModLogPlugin(Plugin):
                     before=pre_member.nick or '<NO_NICK>',
                     after=event.nick or '<NO_NICK>')
 
+        # Log role changes, which require diffing the pre/post roles on the member
         pre_roles = set(pre_member.roles)
         post_roles = set(event.roles)
         if pre_roles != post_roles:
             added = post_roles - pre_roles
             removed = pre_roles - post_roles
 
-            if not debounce:
-                mute_debounce = self.pop_debounce(event.guild.id, event.user.id, 'muted')
+            # Log all instances of a role getting added
+            for role in filter(bool, map(event.guild.roles.get, added)):
+                debounce = self.debounces.find(
+                    event,
+                    user_id=event.user.id,
+                    role_id=role.id,
+                )
+                if debounce:
+                    continue
 
-                for role in filter(bool, map(event.guild.roles.get, added)):
-                    if mute_debounce and role.id == mute_debounce['role']:
-                        if mute_debounce['expires_at']:
-                            self.log_action(
-                                Actions.MEMBER_TEMP_MUTED,
-                                event,
-                                actor=mute_debounce['actor'],
-                                reason=mute_debounce['reason'],
-                                expires_at=mute_debounce['expires_at'])
-                        else:
-                            self.log_action(
-                                Actions.MEMBER_MUTED,
-                                event,
-                                actor=mute_debounce['actor'],
-                                reason=mute_debounce['reason'])
-                    else:
-                        role_add_debounce = self.pop_debounce(event.guild.id, event.user.id, 'add_role')
-                        if role_add_debounce:
-                            self.log_action(Actions.GUILD_MEMBER_ROLES_ADD_REASON,
-                                event,
-                                role=role,
-                                actor=role_add_debounce['actor'],
-                                reason=role_add_debounce['reason'])
-                        else:
-                            self.log_action(Actions.GUILD_MEMBER_ROLES_ADD, event, role=role)
-
-            unmute_debounce = self.pop_debounce(event.guild.id, event.user.id, 'unmuted')
+                self.log_action(Actions.GUILD_MEMBER_ROLES_ADD, event, role=role)
 
             for role in filter(bool, map(event.guild.roles.get, removed)):
-                if unmute_debounce and role.id in unmute_debounce['roles']:
-                    self.log_action(Actions.MEMBER_UNMUTED, event, actor=unmute_debounce['actor'])
-                else:
-                    role_rmv_debounce = self.pop_debounce(event.guild.id, event.user.id, 'remove_role')
-                    if role_rmv_debounce:
-                        self.log_action(Actions.GUILD_MEMBER_ROLES_RMV_REASON,
-                            event,
-                            role=role,
-                            actor=role_rmv_debounce['actor'],
-                            reason=role_rmv_debounce['reason'])
-                    else:
-                        self.log_action(Actions.GUILD_MEMBER_ROLES_RMV, event, role=role)
+                debounce = self.debounces.find(
+                    event,
+                    user_id=event.user.id,
+                    role_id=role.id,
+                )
+                self.log_action(Actions.GUILD_MEMBER_ROLES_RMV, event, role=role)
 
     @Plugin.listen('PresenceUpdate', priority=Priority.BEFORE, metadata={'global_': True})
     def on_presence_update(self, event):
@@ -600,9 +493,8 @@ class ModLogPlugin(Plugin):
         if not channel or not msg.author:
             return
 
-        debounce = self.get_debounce(event.guild.id, msg.author.id, 'censor')
+        debounce = self.debounces.find(event, message_id=event.id)
         if debounce:
-            self.delete_debounce(event.guild.id, msg.author.id, 'censor')
             return
 
         if msg.author.id == self.state.me.id:

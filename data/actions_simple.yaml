@@ -42,17 +42,9 @@ GUILD_MEMBER_ROLES_ADD:
   emoji: key
   format: "{e.user!z} (`{e.user.id}`) role added **{role.name}**"
 
-GUILD_MEMBER_ROLES_ADD_REASON:
-  emoji: key
-  format: "{e.user!z} (`{e.user.id}`) role added **{role.name}** by **{actor!z}**: `{reason!z}`"
-
 GUILD_MEMBER_ROLES_RMV:
   emoji: key
   format: "{e.user!z} (`{e.user.id}`) role removed **{role.name}**"
-
-GUILD_MEMBER_ROLES_RMV_REASON:
-  emoji: key
-  format: "{e.user!z} (`{e.user.id}`) role removed **{role.name}** by **{actor!z}**: `{reason!z}`"
 
 GUILD_ROLE_CREATE:
   emoji: pen_ballpoint
@@ -120,7 +112,7 @@ MEMBER_MUTED:
 
 MEMBER_TEMP_MUTED:
   emoji: no_mouth
-  format: '{e.user!z} (`{e.user.id}`) was temp-muted until {expires_at} by **{actor!z}**: `{reason!z}`'
+  format: '{e.user!z} (`{e.user.id}`) was temp-muted until {expires} by **{actor!z}**: `{reason!z}`'
 
 MEMBER_UNMUTED:
   emoji: open_mouth
@@ -129,3 +121,16 @@ MEMBER_UNMUTED:
 CENSORED:
   emoji: no_entry_sign
   format: "censored message by {e.author!z} (`{e.author.id}`) in {e.channel} (`{e.channel.id}`) {c.details}:\n```{c.content!z}```"
+
+MEMBER_WARNED:
+  emoji: warning
+  format: "{e.user!z} (`{e.user.id}`) was warned by **{actor!z}**: `{reason!z}`"
+
+MEMBER_ROLE_ADD_REASON:
+  emoji: key
+  format: "{e.user!z} (`{e.user.id}`) role added **{role.name}** by **{actor!z}**: `{reason!z}`"
+
+MEMBER_ROLE_REMOVE_REASON:
+  emoji: key
+  format: "{e.user!z} (`{e.user.id}`) role removed **{role.name}** by **{actor!z}**: `{reason!z}`"
+
