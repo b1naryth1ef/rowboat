@@ -6,7 +6,7 @@ import traceback
 
 from peewee import (
     BigIntegerField, ForeignKeyField, TextField, DateTimeField,
-    BooleanField, UUIDField, IntegerField
+    BooleanField, UUIDField
 )
 from datetime import datetime, timedelta
 from playhouse.postgres_ext import BinaryJSONField, ArrayField
@@ -224,8 +224,9 @@ class MessageArchive(BaseModel):
         if fmt == 'txt':
             return u'\n'.join(map(self.encode_message_text, q))
         elif fmt == 'csv':
-            return u'\n'.join(
-                ['id,channel_id,timestamp,author_id,author,content,deleted,attachments'] + map(self.encode_message_csv, q))
+            return u'\n'.join([
+                'id,channel_id,timestamp,author_id,author,content,deleted,attachments'
+            ] + map(self.encode_message_csv, q))
         elif fmt == 'json':
             return json.dumps({
                 'messages': map(self.encode_message_json, q)
@@ -421,22 +422,4 @@ class Command(BaseModel):
             version=REV,
             success=not exception,
             traceback=traceback.format_exc() if exception else None,
-        )
-
-
-@BaseModel.register
-class TempSpamScore(BaseModel):
-    message_id = BigIntegerField(primary_key=True)
-    score = IntegerField()
-    marks = ArrayField(TextField, default=[])
-
-    class Meta:
-        db_table = 'temp_spam_score3'
-
-    @classmethod
-    def track(cls, message_id, score, marks):
-        cls.create(
-            message_id=message_id,
-            score=score,
-            marks=marks,
         )

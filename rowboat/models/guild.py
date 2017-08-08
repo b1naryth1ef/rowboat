@@ -10,7 +10,7 @@ from datetime import datetime
 from playhouse.postgres_ext import BinaryJSONField, ArrayField
 
 from rowboat.sql import BaseModel
-from rowboat.redis import rdb
+from rowboat.redis import emit
 from rowboat.models.user import User
 
 log = logging.getLogger(__name__)
@@ -87,10 +87,7 @@ class Guild(BaseModel):
         self.emit_update()
 
     def emit_update(self):
-        rdb.publish('actions', json.dumps({
-            'type': 'GUILD_UPDATE',
-            'id': self.guild_id,
-        }))
+        emit('GUILD_UPDATE', id=self.guild_id)
 
     def sync(self, guild):
         updates = {}
