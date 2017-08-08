@@ -503,13 +503,13 @@ class CorePlugin(Plugin):
         embed.set_author(name='Rowboat', icon_url=self.client.state.me.avatar_url, url='https://docs.rowboat.party/')
         embed.description = BOT_INFO
         embed.add_field(name='Servers', value=str(Guild.select().count()), inline=True)
-        embed.add_field(name='Uptime', value=humanize.naturaltime(datetime.utcnow() - self.startup), inline=True)
+        embed.add_field(name='Uptime', value=humanize.naturaldelta(datetime.utcnow() - self.startup), inline=True)
         event.msg.reply('', embed=embed)
 
     @Plugin.command('uptime', level=-1)
     def command_uptime(self, event):
         event.msg.reply('Rowboat was started {}'.format(
-            humanize.naturaltime(datetime.utcnow() - self.startup)
+            humanize.naturaldelta(datetime.utcnow() - self.startup)
         ))
 
     @Plugin.command('source', '<command>', level=-1)
