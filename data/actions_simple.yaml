@@ -18,10 +18,6 @@ GUILD_TEMPBAN_ADD:
   emoji: rotating_light
   format: '{e.user!s} (`{e.user.id}`) was temp-banned until {expires} by **{actor!s}**: `{reason!s}`'
 
-GUILD_BAN_ADD_REASON:
-  emoji: rotating_light
-  format: '{e.user!s} (`{e.user.id}`) was banned by **{actor!s}**: `{reason!s}`'
-
 GUILD_BAN_REMOVE:
   emoji: rotating_light
   format: '{e.user!s} (`{e.user.id}`) was unbanned'
