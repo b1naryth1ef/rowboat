@@ -1,3 +1,5 @@
+import os
+
 from holster.enum import Enum
 
 from rowboat.types import Model, SlottedModel, Field, DictField, text, raw, rule_matcher
@@ -23,6 +25,19 @@ class PluginsConfig(Model):
         inst = PluginConfigObj()
         cls(inst, obj)
         return inst
+
+    @classmethod
+    def force_load_plugin_configs(cls):
+        """
+        This function can be called to ensure that this class will have all its
+        attributes properly loaded, as they are dynamically set when plugin configs
+        are defined.
+        """
+        plugins = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'plugins')
+        for name in os.listdir(plugins):
+            __import__('rowboat.plugins.{}'.format(
+                name.rsplit('.', 1)[0]
+            ))
 
 
 class CommandOverrideConfig(SlottedModel):
