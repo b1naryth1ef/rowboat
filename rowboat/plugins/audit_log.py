@@ -36,9 +36,15 @@ class AuditLogPlugin(Plugin):
             self.log.info('Polled audit logs for guild %s (%s), %s pages', guild.id, guild.name, pages)
 
             if not pages or pages > 1:
-                guild.next_audit_log_sync = datetime.utcnow() + timedelta(seconds=120)
+                next_sync = datetime.utcnow() + timedelta(seconds=120)
             else:
-                guild.next_audit_log_sync = datetime.utcnow() + timedelta(seconds=360)
+                next_sync = datetime.utcnow() + timedelta(seconds=360)
+
+            Guild.update(
+                next_audit_log_sync=next_sync
+            ).where(
+                (Guild.guild_id == guild.id)
+            ).execute()
 
     def poll_guild(self, guild):
         last_entry_id = rdb.get(LAST_ENTRY_KEY.format(guild.id))
