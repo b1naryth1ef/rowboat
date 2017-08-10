@@ -20,3 +20,4 @@ bot:
     - rowboat.plugins.sql
     - rowboat.plugins.internal
     - rowboat.plugins.stats
+    - rowboat.plugins.audit_log

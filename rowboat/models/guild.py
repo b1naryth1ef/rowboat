@@ -32,6 +32,7 @@ class Guild(BaseModel):
     region = TextField(null=True)
 
     last_ban_sync = DateTimeField(null=True)
+    next_audit_log_sync = DateTimeField(null=True)
 
     # Rowboat specific data
     config = BinaryJSONField(null=True)
