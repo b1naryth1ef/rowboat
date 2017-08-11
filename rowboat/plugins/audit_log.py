@@ -20,12 +20,12 @@ class AuditLogPlugin(Plugin):
 
     @Plugin.command('poll', '<guild_id:snowflake>', level=-1, group='auditlogs')
     def command_poll(self, event, guild_id):
-        count = Guild.update(
+        Guild.update(
             next_audit_log_sync=datetime.utcnow()
         ).where(
             (Guild.guild_id == guild_id)
         ).execute()
-        event.msg.reply('Ok, queued that guild for audit log sync (%s)', count)
+        event.msg.reply('Ok, queued that guild for audit log sync')
 
     @Plugin.schedule(10, init=True)
     def poll_audit_log(self):
@@ -61,7 +61,6 @@ class AuditLogPlugin(Plugin):
         # If we haven't polled this guild before (or it has no entries), attempt
         #  to cache the last entry id so we can start emitting audit log entries
         if not last_entry_id:
-            print 'no last entry id'
             entries = guild.get_audit_log_entries(limit=1)
             if entries:
                 rdb.set(LAST_ENTRY_KEY.format(guild.id), entries[0].id)
