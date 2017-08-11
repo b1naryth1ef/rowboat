@@ -1,4 +1,3 @@
-import json
 import yaml
 import logging
 
@@ -10,7 +9,7 @@ from datetime import datetime
 from playhouse.postgres_ext import BinaryJSONField, ArrayField
 
 from rowboat.sql import BaseModel
-from rowboat.redis import rdb
+from rowboat.redis import emit
 from rowboat.models.user import User
 
 log = logging.getLogger(__name__)
@@ -88,10 +87,7 @@ class Guild(BaseModel):
         self.emit_update()
 
     def emit_update(self):
-        rdb.publish('actions', json.dumps({
-            'type': 'GUILD_UPDATE',
-            'id': self.guild_id,
-        }))
+        emit('GUILD_UPDATE', id=self.guild_id)
 
     def sync(self, guild):
         updates = {}
@@ -110,7 +106,12 @@ class Guild(BaseModel):
             self.config = Guild.select(Guild.config).where(Guild.guild_id == self.guild_id).get().config
 
         if refresh or not hasattr(self, '_cached_config'):
-            self._cached_config = GuildConfig(self.config)
+            try:
+                self._cached_config = GuildConfig(self.config)
+            except:
+                log.exception('Failed to load config for Guild %s, invalid: ', self.guild_id)
+                return None
+
         return self._cached_config
 
     def sync_bans(self, guild):

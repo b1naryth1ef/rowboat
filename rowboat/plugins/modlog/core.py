@@ -85,8 +85,8 @@ class ModLogConfig(PluginConfig):
 
 class Formatter(string.Formatter):
     def convert_field(self, value, conversion):
-        if conversion == 'z':
-            return S(unicode(value), escape_mentions=False, escape_codeblocks=True)
+        if conversion in ('z', 's'):
+            return S(unicode(value), escape_codeblocks=True)
         return unicode(value)
 
 
@@ -96,35 +96,46 @@ class Debounce(object):
         self.guild_id = guild_id
         self.selector = selector
         self.events = events
+        self.timestamp = time.time()
 
     def is_expired(self):
         return time.time() - self.timestamp > 60
 
-    def remove(self):
-        self.plugin.debounces.remove(self)
+    def remove(self, event=None):
+        self.plugin.debounces.remove(self, event)
 
 
 class DebouncesCollection(object):
     def __init__(self):
         self._data = defaultdict(lambda: defaultdict(list))
 
+    def __iter__(self):
+        for top in self._data.values():
+            for bot in top.values():
+                for obj in bot:
+                    yield obj
+
     def add(self, obj):
         for event_name in obj.events:
             self._data[obj.guild_id][event_name].append(obj)
 
-    def remove(self, obj, event):
+    def remove(self, obj, event=None):
         for event_name in ([event] if event else obj.events):
             self._data[obj.guild_id][event_name].remove(obj)
 
     def find(self, event, delete=True, **kwargs):
-        for obj in self._data[event.guild_id][event.__class__.__name__]:
+        guild_id = event.guild_id if hasattr(event, 'guild_id') else event.guild.id
+        for obj in self._data[guild_id][event.__class__.__name__]:
+            if obj.is_expired():
+                obj.remove()
+                continue
+
             for k, v in kwargs.items():
                 if obj.selector.get(k) != v:
                     continue
 
             if delete:
-                obj.remove()
-
+                obj.remove(event=event.__class__.__name__)
             return obj
 
 
@@ -155,7 +166,8 @@ class ModLogPlugin(Plugin):
         super(ModLogPlugin, self).load(ctx)
 
     def create_debounce(self, event, events, **kwargs):
-        bounce = Debounce(self, event.guild_id, kwargs, events)
+        guild_id = event.guild_id if hasattr(event, 'guild_id') else event.guild.id
+        bounce = Debounce(self, guild_id, kwargs, events)
         self.debounces.add(bounce)
         return bounce
 
@@ -240,12 +252,9 @@ class ModLogPlugin(Plugin):
                 if action in config._custom:
                     info = config._custom[action]
 
+            # Format contents and create the message with the given emoji
             contents = self.fmt.format(six.text_type(info['format']), e=event, **details)
-
-            msg = u':{}: {}'.format(
-                info['emoji'],
-                S(contents),
-            )
+            msg = u':{}: {}'.format(info['emoji'], contents)
 
             if chan_config.timestamps:
                 ts = pytz.utc.localize(datetime.utcnow()).astimezone(chan_config.tz)
