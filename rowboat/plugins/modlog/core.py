@@ -12,8 +12,7 @@ from datetime import datetime
 from collections import defaultdict
 
 from disco.bot import CommandLevels
-from disco.types import UNSET
-from disco.util.functional import cached_property
+from disco.types.base import UNSET, cached_property
 from disco.util.snowflake import to_unix, to_datetime
 from disco.util.sanitize import S
 

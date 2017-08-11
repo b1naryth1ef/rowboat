@@ -143,4 +143,5 @@ class Migrate(object):
             cls([lambda c: True], func).run()
         return deco
 
-init_db()
+from rowboat import ENV
+init_db(ENV)

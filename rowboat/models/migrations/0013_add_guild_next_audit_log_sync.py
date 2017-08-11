@@ -1,5 +1,5 @@
 from rowboat.models.migrations import Migrate
-from rowboat.models.channel import Guild
+from rowboat.models.guild import Guild
 
 
 @Migrate.only_if(Migrate.missing, Guild, 'next_audit_log_sync')
