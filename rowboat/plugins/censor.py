@@ -67,7 +67,10 @@ class Censorship(Exception):
     def details(self):
         if self.reason is CensorReason.INVITE:
             if self.ctx['guild']:
-                return u'invite `{}` to {}'.format(self.ctx['invite'], S(self.ctx['guild']['name'], escape_codeblocks=True))
+                return u'invite `{}` to {}'.format(
+                    self.ctx['invite'],
+                    S(self.ctx['guild']['name'], escape_codeblocks=True)
+                )
             else:
                 return u'invite `{}`'.format(self.ctx['invite'])
         elif self.reason is CensorReason.DOMAIN:
@@ -159,13 +162,20 @@ class CensorPlugin(Plugin):
                     if config.blocked_words:
                         self.filter_blocked_words(event, config)
             except Censorship as c:
-                self.bot.plugins.get('ModLogPlugin').log_action_ext(
+                self.call(
+                    'ModLogPlugin.create_debounce',
+                    event,
+                    ['MessageDelete'],
+                    message_id=event.message.id,
+                )
+
+                event.delete()
+
+                self.call(
+                    'ModLogPlugin.log_action_ext',
                     Actions.CENSORED,
                     event,
                     c=c)
-
-                self.bot.plugins.get('ModLogPlugin').create_debounce(event, author.id, 'censor')
-                event.delete()
 
     def filter_zalgo(self, event, config):
         s = ZALGO_RE.search(event.content)
@@ -180,7 +190,10 @@ class CensorPlugin(Plugin):
         for _, invite in invites:
             invite_info = self.get_invite_info(invite)
 
-            need_whitelist = (config.invites_guild_whitelist or (config.invites_whitelist or not config.invites_blacklist))
+            need_whitelist = (
+                config.invites_guild_whitelist or
+                (config.invites_whitelist or not config.invites_blacklist)
+            )
             whitelisted = False
 
             if invite_info and invite_info.get('id') in config.invites_guild_whitelist:
@@ -195,7 +208,9 @@ class CensorPlugin(Plugin):
                     'invite': invite,
                     'guild': invite_info,
                 })
-            elif config.invites_blacklist and (invite in config.invites_blacklist or invite.lower() in config.invites_blacklist):
+            elif config.invites_blacklist and (
+                    invite in config.invites_blacklist or
+                    invite.lower() in config.invites_blacklist):
                 raise Censorship(CensorReason.INVITE, event, ctx={
                     'hit': 'blacklist',
                     'invite': invite,
@@ -211,7 +226,8 @@ class CensorPlugin(Plugin):
             except:
                 continue
 
-            if (config.domains_whitelist or not config.domains_blacklist) and parsed.netloc not in config.domains_whitelist:
+            if (config.domains_whitelist or not config.domains_blacklist)\
+                    and parsed.netloc not in config.domains_whitelist:
                 raise Censorship(CensorReason.DOMAIN, event, ctx={
                     'hit': 'whitelist',
                     'url': url,

@@ -101,6 +101,19 @@ class RowboatPlugin(RavenPlugin, Plugin):
     def name(self):
         return self.__class__.__name__.replace('Plugin', '').lower()
 
+    def call(self, query, *args, **kwargs):
+        plugin_name, method_name = query.split('.', 1)
+
+        plugin = self.bot.plugins.get(plugin_name)
+        if not plugin:
+            raise Exception('Cannot resolve plugin %s (%s)' % (plugin_name, query))
+
+        method = getattr(plugin, method_name, None)
+        if not method:
+            raise Exception('Cannot resolve method %s for plugin %s' % (method_name, plugin_name))
+
+        return method(*args, **kwargs)
+
 
 class CommandResponse(Exception):
     EMOJI = None

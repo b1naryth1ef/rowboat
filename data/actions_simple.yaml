@@ -18,10 +18,6 @@ GUILD_TEMPBAN_ADD:
   emoji: rotating_light
   format: '{e.user!s} (`{e.user.id}`) was temp-banned until {expires} by **{actor!s}**: `{reason!s}`'
 
-GUILD_BAN_ADD_REASON:
-  emoji: rotating_light
-  format: '{e.user!s} (`{e.user.id}`) was banned by **{actor!s}**: `{reason!s}`'
-
 GUILD_BAN_REMOVE:
   emoji: rotating_light
   format: '{e.user!s} (`{e.user.id}`) was unbanned'
@@ -34,25 +30,13 @@ GUILD_MEMBER_REMOVE:
   emoji: outbox_tray
   format: '{e.user!s} (`{e.user.id}`) left the server'
 
-GUILD_MEMBER_KICK:
-  emoji: boot
-  format: '{e.user!s} (`{e.user.id}`) was kicked by **{actor!s}**: `{reason!s}`'
-
 GUILD_MEMBER_ROLES_ADD:
   emoji: key
   format: "{e.user!s} (`{e.user.id}`) role added **{role.name}**"
 
-GUILD_MEMBER_ROLES_ADD_REASON:
-  emoji: key
-  format: "{e.user!s} (`{e.user.id}`) role added **{role.name}** by **{actor!s}**: `{reason!s}`"
-
 GUILD_MEMBER_ROLES_RMV:
   emoji: key
   format: "{e.user!s} (`{e.user.id}`) role removed **{role.name}**"
-
-GUILD_MEMBER_ROLES_RMV_REASON:
-  emoji: key
-  format: "{e.user!s} (`{e.user.id}`) role removed **{role.name}** by **{actor!s}**: `{reason!s}`"
 
 GUILD_ROLE_CREATE:
   emoji: pen_ballpoint
@@ -112,20 +96,49 @@ SPAM_DEBUG:
 
 MEMBER_RESTORE:
   emoji: helmet_with_cross
-  format: "{e.member!s} was restored"
+  format: "{member!s} was restored"
 
 MEMBER_MUTED:
   emoji: no_mouth
-  format: '{e.user!s} (`{e.user.id}`) was muted by **{actor!s}**: `{reason!s}`'
+  format: '{member!s} (`{member.id}`) was muted by **{actor!s}**: `{reason!s}`'
 
 MEMBER_TEMP_MUTED:
   emoji: no_mouth
-  format: '{e.user!s} (`{e.user.id}`) was temp-muted until {expires_at} by **{actor!s}**: `{reason!s}`'
+  format: '{member!s} (`{member.id}`) was temp-muted until {expires} by **{actor!s}**: `{reason!s}`'
 
 MEMBER_UNMUTED:
   emoji: open_mouth
-  format: '{e.user!s} (`{e.user.id}`) was unmuted by **{actor!s}**'
+  format: '{member!s} (`{member.id}`) was unmuted by **{actor!s}**'
 
 CENSORED:
   emoji: no_entry_sign
   format: "censored message by {e.author!s} (`{e.author.id}`) in {e.channel} (`{e.channel.id}`) {c.details}:\n```{c.content!s}```"
+
+MEMBER_WARNED:
+  emoji: warning
+  format: "{member!s} (`{member.id}`) was warned by **{actor!s}**: `{reason!s}`"
+
+MEMBER_ROLE_ADD:
+  emoji: key
+  format: "{member!s} (`{member.id}`) role added **{role.name}** by **{actor!s}**: `{reason!s}`"
+
+MEMBER_ROLE_REMOVE:
+  emoji: key
+  format: "{member!s} (`{member.id}`) role removed **{role.name}** by **{actor!s}**: `{reason!s}`"
+
+MEMBER_BAN:
+  emoji: rotating_light
+  format: '{user!s} (`{user_id}`) was banned by **{actor!s}**: `{reason!s}`'
+
+MEMBER_SOFTBAN:
+  emoji: rotating_light
+  format: '{member!s} (`{member.id}`) was soft-banned by **{actor!s}**: `{reason!s}`'
+
+MEMBER_TEMPBAN:
+  emoji: rotating_light
+  format: '{member!s} (`{member.id}`) was temp-banned until {expires} by **{actor!s}**: `{reason!s}`'
+
+MEMBER_KICK:
+  emoji: boot
+  format: '{member!s} (`{member.id}`) was kicked by **{actor!s}**: `{reason!s}`'
+

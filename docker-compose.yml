@@ -2,6 +2,8 @@ version: '2'
 services:
   db:
     build: ./docker/database/
+    volumes:
+      - ./.data:/var/lib/postgresql/data
   redis:
     image: redis:3.2
     command: redis-server --appendonly yes

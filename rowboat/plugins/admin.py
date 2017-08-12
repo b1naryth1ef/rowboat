@@ -55,6 +55,12 @@ GREEN_TICK_EMOJI = 'green_tick:305231298799206401'
 RED_TICK_EMOJI = 'red_tick:305231335512080385'
 
 
+def clamp(string, size):
+    if len(string) > size:
+        return string[:size] + '...'
+    return string
+
+
 def maybe_string(obj, exists, notexists, **kwargs):
     if obj:
         return exists.format(o=obj, **kwargs)
@@ -177,9 +183,20 @@ class AdminPlugin(Plugin):
         if not kwargs:
             return
 
-        self.bot.plugins.get('ModLogPlugin').create_debounce(event, member.user.id, 'restore')
+        self.call(
+            'ModLogPlugin.create_debounce',
+            event,
+            ['GuildMemberUpdate'],
+        )
+
         member.modify(**kwargs)
-        self.bot.plugins.get('ModLogPlugin').log_action_ext(Actions.MEMBER_RESTORE, event)
+
+        self.call(
+            'ModLogPlugin.log_action_ext',
+            Actions.MEMBER_RESTORE,
+            event,
+            member=member,
+        )
 
     @Plugin.listen('GuildMemberRemove', priority=Priority.BEFORE)
     def on_guild_member_remove(self, event):
@@ -346,7 +363,15 @@ class AdminPlugin(Plugin):
             else:
                 active = 'no'
 
-            tbl.add(inf.id, inf.created_at.isoformat(), str(type_), unicode(inf.user), unicode(inf.actor), active, reason)
+            tbl.add(
+                inf.id,
+                inf.created_at.isoformat(),
+                str(type_),
+                unicode(inf.user),
+                unicode(inf.actor),
+                active,
+                clamp(reason, 128)
+            )
 
         event.msg.reply(tbl.compile())
 
@@ -372,9 +397,16 @@ class AdminPlugin(Plugin):
 
         converted = False
         if inf.type_ in [Infraction.Types.MUTE.index, Infraction.Types.BAN.index]:
-            inf.type_ = Infraction.Types.TEMPMUTE if inf.type_ == Infraction.Types.MUTE.index else Infraction.Types.TEMPBAN
+            inf.type_ = (
+                Infraction.Types.TEMPMUTE
+                if inf.type_ == Infraction.Types.MUTE.index else
+                Infraction.Types.TEMPBAN
+            )
             converted = True
-        elif inf.type_ not in [Infraction.Types.TEMPMUTE.index, Infraction.Types.TEMPBAN.index, Infraction.Types.TEMPROLE.index]:
+        elif inf.type_ not in [
+                Infraction.Types.TEMPMUTE.index,
+                Infraction.Types.TEMPBAN.index,
+                Infraction.Types.TEMPROLE.index]:
             raise CommandFail('cannot set the duration for that type of infraction')
 
         inf.expires_at = expires_dt
@@ -517,7 +549,10 @@ class AdminPlugin(Plugin):
         else:
             raise CommandFail('invalid user')
 
-    @Plugin.command('temprole', '<user:user|snowflake> <role:snowflake|str> <duration:str> [reason:str...]', level=CommandLevels.MOD)
+    @Plugin.command(
+        'temprole',
+        '<user:user|snowflake> <role:snowflake|str> <duration:str> [reason:str...]',
+        level=CommandLevels.MOD)
     def temprole(self, event, user, role, duration, reason=None):
         member = event.guild.get_member(user)
         if not member:
@@ -560,11 +595,22 @@ class AdminPlugin(Plugin):
 
             Infraction.clear_active(event, member.id, [Infraction.Types.MUTE, Infraction.Types.TEMPMUTE])
 
-            self.bot.plugins.get('ModLogPlugin').create_debounce(
-                    event, member.user.id, 'unmuted', actor=unicode(event.author),
-                    roles=[event.config.mute_role])
+            self.call(
+                'ModLogPlugin.create_debounce',
+                event,
+                ['GuildMemberUpdate'],
+                role_id=event.config.mute_role,
+            )
 
             member.remove_role(event.config.mute_role)
+
+            self.call(
+                'ModLogPlugin.log_action_ext',
+                Actions.MEMBER_UNMUTED,
+                event,
+                member=member,
+                actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
+            )
 
             if event.config.confirm_actions:
                 event.msg.reply(u':ok_hand: {} is now unmuted'.format(member.user))
@@ -712,8 +758,16 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('archive here', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
     @Plugin.command('archive all', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
-    @Plugin.command('archive user', '<user:user|snowflake> [size:int]', level=CommandLevels.MOD, context={'mode': 'user'})
-    @Plugin.command('archive channel', '<channel:channel|snowflake> [size:int]', level=CommandLevels.MOD, context={'mode': 'channel'})
+    @Plugin.command(
+        'archive user',
+        '<user:user|snowflake> [size:int]',
+        level=CommandLevels.MOD,
+        context={'mode': 'user'})
+    @Plugin.command(
+        'archive channel',
+        '<channel:channel|snowflake> [size:int]',
+        level=CommandLevels.MOD,
+        context={'mode': 'channel'})
     def archive(self, event, size=50, mode=None, user=None, channel=None):
         if 0 > size >= 15000:
             raise CommandFail('too many messages must be between 1-15000')
@@ -800,9 +854,23 @@ class AdminPlugin(Plugin):
         self.cleans[event.channel.id].join()
         del self.cleans[event.channel.id]
 
-    @Plugin.command('add', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'add'}, group='role')
-    @Plugin.command('rmv', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'remove'}, group='role')
-    @Plugin.command('remove', '<user:user> <role:str> [reason:str...]', level=CommandLevels.MOD, context={'mode': 'remove'}, group='role')
+    @Plugin.command(
+        'add',
+        '<user:user> <role:str> [reason:str...]',
+        level=CommandLevels.MOD,
+        context={'mode': 'add'},
+        group='role')
+    @Plugin.command(
+        'rmv',
+        '<user:user> <role:str> [reason:str...]',
+        level=CommandLevels.MOD,
+        context={'mode': 'remove'},
+        group='role')
+    @Plugin.command('remove',
+            '<user:user> <role:str> [reason:str...]',
+            level=CommandLevels.MOD,
+            context={'mode': 'remove'},
+            group='role')
     def role_add(self, event, user, role, reason=None, mode=None):
         role_obj = None
 
@@ -831,7 +899,10 @@ class AdminPlugin(Plugin):
             raise CommandFail('too many matches for that role, try something more exact or the role ID')
 
         author_member = event.guild.get_member(event.author)
-        highest_role = sorted([event.guild.roles.get(r) for r in author_member.roles], key=lambda i: i.position, reverse=True)
+        highest_role = sorted(
+            [event.guild.roles.get(r) for r in author_member.roles],
+            key=lambda i: i.position,
+            reverse=True)
         if not author_member.owner and (not highest_role or highest_role[0].position < role_obj.position):
             raise CommandFail('you can only {} roles that are ranked lower than your highest role'.format(mode))
 
@@ -846,13 +917,26 @@ class AdminPlugin(Plugin):
         elif mode == 'remove' and role_obj.id not in member.roles:
             return CommandFail(u'{} doesn\'t have the {} role'.format(member, role_obj.name))
 
-        self.bot.plugins.get('ModLogPlugin').create_debounce(
-            event, member.user.id, mode + '_role', actor=event.author, reason=reason or 'no reason')
+        self.call(
+            'ModLogPlugin.create_debounce',
+            event,
+            ['GuildMemberUpdate'],
+            role_id=role_obj.id,
+        )
 
         if mode == 'add':
             member.add_role(role_obj.id)
         else:
             member.remove_role(role_obj.id)
+
+        self.call(
+            'ModLogPlugin.log_action_ext',
+            (Actions.MEMBER_ROLE_ADD if mode == 'add' else Actions.MEMBER_ROLE_REMOVE),
+            event,
+            member=member,
+            role=role_obj,
+            reason=reason or 'no reason',
+        )
 
         event.msg.reply(u':ok_hand: {} role {} to {}'.format('added' if mode == 'add' else 'removed',
             role_obj.name,
@@ -918,7 +1002,11 @@ class AdminPlugin(Plugin):
             MessageEmbedField(name='Total Reactions', value=sum(i[0] for i in reactions_given), inline=True))
 
         if reactions_given:
-            emoji = reactions_given[0][2] if not reactions_given[0][1] else '<:{}:{}>'.format(reactions_given[0][2], reactions_given[0][1])
+            emoji = (
+                reactions_given[0][2]
+                if not reactions_given[0][1] else
+                '<:{}:{}>'.format(reactions_given[0][2], reactions_given[0][1])
+            )
             embed.fields.append(
                 MessageEmbedField(name='Most Used Reaction', value=u'{} (used {} times)'.format(
                     emoji,
@@ -926,8 +1014,9 @@ class AdminPlugin(Plugin):
                 ), inline=True))
 
         if emojis:
-            embed.fields.append(
-                MessageEmbedField(name='Most Used Emoji', value=u'<:{1}:{0}> (`{1}`, used {2} times)'.format(*emojis[0])))
+            embed.add_field(
+                name='Most Used Emoji',
+                value=u'<:{1}:{0}> (`{1}`, used {2} times)'.format(*emojis[0]))
 
         embed.thumbnail = MessageEmbedThumbnail(url=user.avatar_url)
         embed.color = get_dominant_colors_user(user)
@@ -967,11 +1056,12 @@ class AdminPlugin(Plugin):
         if not invites:
             return event.msg.reply('I didn\'t find any invites matching your criteria')
 
-        msg = event.msg.reply('Ok, a total of {} invites created by {} users with {} total uses would be pruned.'.format(
-            len(invites),
-            len({i.inviter.id for i in invites}),
-            sum(i.uses for i in invites)
-        ))
+        msg = event.msg.reply(
+            'Ok, a total of {} invites created by {} users with {} total uses would be pruned.'.format(
+                len(invites),
+                len({i.inviter.id for i in invites}),
+                sum(i.uses for i in invites)
+            ))
 
         msg.chain(False).\
             add_reaction(GREEN_TICK_EMOJI).\
@@ -1000,7 +1090,11 @@ class AdminPlugin(Plugin):
         else:
             msg = msg.reply('Not pruning invites')
 
-    @Plugin.command('clean', '<user:user|snowflake> [count:int] [emoji:str]', level=CommandLevels.MOD, group='reactions')
+    @Plugin.command(
+        'clean',
+        '<user:user|snowflake> [count:int] [emoji:str]',
+        level=CommandLevels.MOD,
+        group='reactions')
     def reactions_clean(self, event, user, count=10, emoji=None):
         if isinstance(user, DiscoUser):
             user = user.id
