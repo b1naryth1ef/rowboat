@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from disco.bot import CommandLevels
 from disco.types.user import User as DiscoUser
 from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
+from disco.types.permissions import Permissions
 from disco.util.functional import chunks
 from disco.util.sanitize import S
 
@@ -1188,15 +1189,35 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('join', '<name:str>', aliases=['add', 'give'])
     def join_role(self, event, name):
-        role_id = event.config.group_roles.get(name.lower())
-        if not role_id or role_id not in event.guild.roles:
+        role = event.guild.roles.get(event.config.group_roles.get(name.lower))
+        if not role:
             raise CommandFail('invalid or unknown group')
 
+        has_any_admin_perms = any(role.permissions.can(i) for i in (
+            Permissions.KICK_MEMBERS,
+            Permissions.BAN_MEMBERS,
+            Permissions.ADMINISTRATOR,
+            Permissions.MANAGE_CHANNELS,
+            Permissions.MANAGE_GUILD,
+            Permissions.MANAGE_MESSAGES,
+            Permissions.MENTION_EVERYONE,
+            Permissions.MUTE_MEMBERS,
+            Permissions.MOVE_MEMBERS,
+            Permissions.MANAGE_NICKNAMES,
+            Permissions.MANAGE_ROLES,
+            Permissions.MANAGE_WEBHOOKS,
+            Permissions.MANAGE_EMOJIS,
+        ))
+
+        # Sanity check
+        if has_any_admin_perms:
+            raise CommandFail('cannot join group with admin permissions')
+
         member = event.guild.get_member(event.author)
-        if role_id in member.roles:
+        if role.id in member.roles:
             raise CommandFail('you are already a member of that group')
 
-        member.add_role(role_id)
+        member.add_role(role)
         raise CommandSuccess(u'you have joined the {} group'.format(name))
 
     @Plugin.command('leave', '<name:snowflake|str>', aliases=['remove', 'take'])
