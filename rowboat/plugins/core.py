@@ -28,18 +28,15 @@ from rowboat.models.guild import Guild, GuildBan
 from rowboat.models.message import Command
 from rowboat.models.notification import Notification
 from rowboat.plugins.modlog import Actions
+from rowboat.constants import (
+    GREEN_TICK_EMOJI, RED_TICK_EMOJI, ROWBOAT_GUILD_ID, ROWBOAT_USER_ROLE_ID
+)
 
 PY_CODE_BLOCK = u'```py\n{}\n```'
 
 BOT_INFO = '''
 Rowboat is a moderation and utilitarian Bot built for large Discord servers.
 '''
-
-GREEN_TICK_EMOJI = 'green_tick:305231298799206401'
-RED_TICK_EMOJI = 'red_tick:305231335512080385'
-
-ROWBOAT_GUILD_ID = 290923757399310337
-ROWBOAT_USER_ROLE_ID = 339256926921555968
 
 GUILDS_WAITING_SETUP_KEY = 'gws'
 

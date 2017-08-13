@@ -13,10 +13,7 @@ from rowboat.types import ChannelField, Field, SlottedModel, ListField, DictFiel
 from rowboat.models.user import StarboardBlock, User
 from rowboat.models.message import StarboardEntry, Message
 from rowboat.util.timing import Debounce
-
-
-STAR_EMOJI = u'\U00002B50'
-UNKNOWN_MESSAGE = 10008
+from rowboat.constants import STAR_EMOJI, ERR_UNKNOWN_MESSAGE
 
 
 def is_star_event(e):
@@ -382,7 +379,9 @@ class StarboardPlugin(Plugin):
                 continue
 
             # If we previously posted this in the wrong starboard, delete it
-            if star.star_channel_id and (star.star_channel_id != sb_id or len(star.stars) < sb_config.min_stars) or star.blocked:
+            if star.star_channel_id and (
+                    star.star_channel_id != sb_id or
+                    len(star.stars) < sb_config.min_stars) or star.blocked:
                 self.delete_star(star, update=True)
 
             if len(star.stars) < sb_config.min_stars or star.blocked:
@@ -435,7 +434,7 @@ class StarboardPlugin(Plugin):
                     embed=embed)
             except APIException as e:
                 # If we get a 10008, assume this message was deleted
-                if e.code == UNKNOWN_MESSAGE:
+                if e.code == ERR_UNKNOWN_MESSAGE:
                     star.star_message_id = None
                     star.star_channel_id = None
 

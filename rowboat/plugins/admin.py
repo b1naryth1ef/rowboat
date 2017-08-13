@@ -30,6 +30,9 @@ from rowboat.plugins.modlog import Actions
 from rowboat.models.user import User, Infraction
 from rowboat.models.guild import GuildMemberBackup, GuildBan, GuildEmoji, GuildVoiceSession
 from rowboat.models.message import Message, Reaction, MessageArchive
+from rowboat.constants import (
+    GREEN_TICK_EMOJI_ID, RED_TICK_EMOJI_ID, GREEN_TICK_EMOJI, RED_TICK_EMOJI
+)
 
 EMOJI_RE = re.compile(r'<:[a-zA-Z0-9_]+:([0-9]+)>')
 
@@ -50,11 +53,6 @@ GROUP BY 1, 2
 ORDER BY 3 {}
 LIMIT 30
 """
-
-GREEN_TICK_EMOJI_ID = 305231298799206401
-RED_TICK_EMOJI_ID = 305231335512080385
-GREEN_TICK_EMOJI = 'green_tick:305231298799206401'
-RED_TICK_EMOJI = 'red_tick:305231335512080385'
 
 
 def clamp(string, size):

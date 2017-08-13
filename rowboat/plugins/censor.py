@@ -14,7 +14,7 @@ from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelFiel
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.message import Message
 from rowboat.plugins.modlog import Actions
-
+from rowboat.constants import INVITE_LINK_RE, URL_RE
 
 CensorReason = Enum(
     'INVITE',
@@ -22,9 +22,6 @@ CensorReason = Enum(
     'WORD',
     'ZALGO',
 )
-
-INVITE_LINK_RE = re.compile(r'(discordapp.com/invite|discord.me|discord.gg)(?:/#)?(?:/invite)?/([a-z0-9\-]+)', re.I)
-URL_RE = re.compile(r'(https?://[^\s]+)')
 
 
 class CensorSubConfig(SlottedModel):

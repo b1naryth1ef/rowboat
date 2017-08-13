@@ -19,10 +19,6 @@ from rowboat.models.user import Infraction
 from rowboat.models.message import Message, EMOJI_RE
 
 
-# TODO: lazy/cached
-with open('data/badwords.txt', 'r') as f:
-    BAD_WORDS = f.readlines()
-
 PunishmentType = Enum(
     'NONE',
     'MUTE',

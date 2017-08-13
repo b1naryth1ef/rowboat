@@ -1,4 +1,3 @@
-import re
 import random
 import requests
 import humanize
@@ -24,20 +23,9 @@ from rowboat.models.guild import GuildVoiceSession
 from rowboat.models.user import User, Infraction
 from rowboat.models.message import Message, Reminder
 from rowboat.util.images import get_dominant_colors_user, get_dominant_colors_guild
-
-
-YEAR_IN_SEC = 60 * 60 * 24 * 365
-CDN_URL = 'https://twemoji.maxcdn.com/2/72x72/{}.png'
-EMOJI_RE = re.compile(r'<:(.+):([0-9]+)>')
-USER_MENTION_RE = re.compile('<@!?([0-9]+)>')
-
-STATUS_EMOJI = {
-    Status.ONLINE: ':status_online:305889169811439617',
-    Status.IDLE: ':status_away:305889079222992896',
-    Status.DND: ':status_dnd:305889053255925760',
-    Status.OFFLINE: ':status_offline:305889028996071425',
-    GameType.STREAMING: ':status_streaming:305889126463569920',
-}
+from rowboat.constants import (
+    STATUS_EMOJI, EMOJI_RE, USER_MENTION_RE, YEAR_IN_SEC, CDN_URL
+)
 
 
 def get_status_emoji(presence):
