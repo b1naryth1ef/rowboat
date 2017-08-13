@@ -41,6 +41,8 @@ RED_TICK_EMOJI = 'red_tick:305231335512080385'
 ROWBOAT_GUILD_ID = 290923757399310337
 ROWBOAT_USER_ROLE_ID = 339256926921555968
 
+GUILDS_WAITING_SETUP_KEY = 'gws'
+
 
 class CorePlugin(Plugin):
     def load(self, ctx):
@@ -317,7 +319,7 @@ class CorePlugin(Plugin):
     @Plugin.listen('GuildDelete', conditional=lambda e: e.deleted is True)
     def on_guild_leave(self, event):
         with self.send_control_message() as embed:
-            embed.title = 'Removed to Guild'
+            embed.title = 'Removed from Guild'
             embed.add_field(name='Guild ID', value=str(event.guild.id), inline=True)
 
     @Plugin.listen('GuildCreate', priority=Priority.BEFORE, conditional=lambda e: not e.created)
@@ -325,6 +327,13 @@ class CorePlugin(Plugin):
         try:
             guild = Guild.with_id(event.id)
         except Guild.DoesNotExist:
+            # If the guild is not awaiting setup, leave it now
+            if not rdb.sismember(GUILDS_WAITING_SETUP_KEY, str(event.id)):
+                self.log.warning(
+                    'Leaving guild %s (%s), not within setup list',
+                    event.id, event.name
+                )
+                event.guild.leave()
             return
 
         if not guild.enabled:
@@ -494,6 +503,7 @@ class CorePlugin(Plugin):
             return event.msg.reply(':warning: bot must have the Administrator permission')
 
         guild = Guild.setup(event.guild)
+        rdb.srem(GUILDS_WAITING_SETUP_KEY, str(event.guild.id))
         self.guilds[event.guild.id] = guild
         event.msg.reply(':ok_hand: successfully loaded configuration')
 
@@ -591,7 +601,7 @@ class CorePlugin(Plugin):
         self.client.gw.ws.close()
 
     @Plugin.command('invite', '<guild:snowflake>', group='guilds', level=-1)
-    def guild_join(self, event, guild=None):
+    def guild_join(self, event, guild):
         guild = self.state.guilds.get(guild)
         if not guild:
             return event.msg.reply(':no_entry_sign: invalid or unknown guild ID')
@@ -616,3 +626,13 @@ class CorePlugin(Plugin):
         msg.edit(u'Ok, here is a temporary invite for you: {}'.format(
             invite.code,
         ))
+
+    @Plugin.command('wh', '<guild:snowflake>', group='guilds', level=-1)
+    def guild_whitelist(self, event, guild):
+        rdb.sadd(GUILDS_WAITING_SETUP_KEY, str(guild))
+        event.msg.reply('Ok, guild %s is now in the whitelist' % guild)
+
+    @Plugin.command('unwh', '<guild:snowflake>', group='guilds', level=-1)
+    def guild_unwhitelist(self, event, guild):
+        rdb.srem(GUILDS_WAITING_SETUP_KEY, str(guild))
+        event.msg.reply('Ok, I\'ve made sure guild %s is no longer in the whitelist' % guild)
