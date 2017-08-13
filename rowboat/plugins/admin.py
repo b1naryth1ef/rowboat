@@ -899,10 +899,10 @@ class AdminPlugin(Plugin):
         context={'mode': 'remove'},
         group='role')
     @Plugin.command('remove',
-            '<user:user> <role:str> [reason:str...]',
-            level=CommandLevels.MOD,
-            context={'mode': 'remove'},
-            group='role')
+        '<user:user> <role:str> [reason:str...]',
+        level=CommandLevels.MOD,
+        context={'mode': 'remove'},
+        group='role')
     def role_add(self, event, user, role, reason=None, mode=None):
         role_obj = None
 
@@ -935,7 +935,7 @@ class AdminPlugin(Plugin):
             [event.guild.roles.get(r) for r in author_member.roles],
             key=lambda i: i.position,
             reverse=True)
-        if not author_member.owner and (not highest_role or highest_role[0].position < role_obj.position):
+        if not author_member.owner and (not highest_role or highest_role[0].position <= role_obj.position):
             raise CommandFail('you can only {} roles that are ranked lower than your highest role'.format(mode))
 
         member = event.guild.get_member(user)
