@@ -6,7 +6,7 @@ Rowboat is a private Discord bot focused on being a highly powerful and configur
 
 ## Should I Run Rowboat Locally?
 
-Probablly not. Rowboat has enough moving pieces that running a local version is complicated. The main purpose of having the source released is to allow others to understand and audit the functionality. The code is by no means meant to be easy to setup or bootstrap, and I don't plan on supporting folks trying to run locally. That said, feel free to run a local version of Rowboat for your server (but not a public version please).
+Probably not. Rowboat has enough moving pieces that running a local version is complicated. The main purpose of having the source released is to allow others to understand and audit the functionality. The code is by no means meant to be easy to setup or bootstrap, and I don't plan on supporting folks trying to run locally. That said, feel free to run a local version of Rowboat for your server (but not a public version please).
 
 ## Development
 
