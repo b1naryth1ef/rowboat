@@ -3,7 +3,7 @@ import json
 import urlparse
 
 from holster.enum import Enum
-from disco.util.functional import cached_property
+from disco.types.base import cached_property
 from disco.util.sanitize import S
 
 from rowboat.redis import rdb

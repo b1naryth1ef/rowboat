@@ -1,5 +1,6 @@
 import re
 import csv
+import time
 import gevent
 import humanize
 import operator
@@ -88,6 +89,9 @@ class AdminConfig(PluginConfig):
     # Group roles can be joined/left by any user
     group_roles = DictField(lambda value: unicode(value).lower(), snowflake)
 
+    # Locked roles cannot be changed unless they are unlocked w/ command
+    locked_roles = ListField(snowflake)
+
     # The mute role
     mute_role = Field(snowflake, default=None)
     reason_edit_level = Field(int, default=int(CommandLevels.ADMIN))
@@ -101,6 +105,9 @@ class AdminPlugin(Plugin):
         self.cleans = {}
         self.inf_task = Eventual(self.clear_infractions)
         self.spawn_later(5, self.queue_infractions)
+
+        self.unlocked_roles = {}
+        self.role_debounces = {}
 
     def queue_infractions(self):
         next_infraction = list(Infraction.select().where(
@@ -231,6 +238,32 @@ class AdminPlugin(Plugin):
     @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):
         Infraction.clear_active(event, event.user.id, [Infraction.Types.BAN, Infraction.Types.TEMPBAN])
+
+    @Plugin.listen('GuildRoleUpdate', priority=Priority.BEFORE)
+    def on_guild_role_update(self, event):
+        if event.role.id not in event.config.locked_roles:
+            return
+
+        if event.role.id in self.unlocked_roles and self.unlocked_roles[event.role.id] > time.time():
+            return
+
+        if event.role.id in self.role_debounces:
+            if self.role_debounces.pop(event.role.id) > time.time():
+                return
+
+        role_before = event.guild.roles.get(event.role.id)
+        if not role_before:
+            return
+
+        to_update = {}
+        for field in ('name', 'hoist', 'color', 'permissions', 'position'):
+            if getattr(role_before, field) != getattr(event.role, field):
+                to_update[field] = getattr(role_before, field)
+
+        if to_update:
+            self.log.warning('Rolling back update to roll %s (in %s), roll is locked', event.role.id, event.guild_id)
+            self.role_debounces[event.role.id] = time.time() + 60
+            event.role.update(**to_update)
 
     @Plugin.command('unban', '<user:snowflake> [reason:str...]', level=CommandLevels.MOD)
     def unban(self, event, user, reason=None):
@@ -1232,3 +1265,14 @@ class AdminPlugin(Plugin):
 
         member.remove_role(role_id)
         raise CommandSuccess(u'you have left the {} group'.format(name))
+
+    @Plugin.command('unlock', '<role_id:snowflake>', group='role', level=CommandLevels.ADMIN)
+    def unlock_role(self, event, role_id):
+        if role_id not in event.config.locked_roles:
+            raise CommandFail('role %s is not locked' % role_id)
+
+        if role_id in self.unlocked_roles and self.unlocked_roles[role_id] > time.time():
+            raise CommandFail('role %s is already unlocked' % role_id)
+
+        self.unlocked_roles[role_id] = time.time() + 360
+        raise CommandSuccess('role is unlocked for 5 minutes')
