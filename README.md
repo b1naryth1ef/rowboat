@@ -31,7 +31,3 @@ To get a local version of rowboat running, you will need [docker-compose](https:
 ## Can You Add Rowboat To My Server?
 
 Maybe. If you are interested in having Rowboat on your server, please join ([discord.gg/rowboat](https://discord.gg/rowboat)) the server and provide an invite and some general information. Rowboat is only added to larger (1-2k+ average CCU) servers that have more complex moderation requirements.
-
-
-## Usage Agreement
-
