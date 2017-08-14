@@ -333,6 +333,10 @@ class Infraction(BaseModel):
         from rowboat.plugins.modlog import Actions
         admin_config = cls.admin_config(event)
 
+        if not admin_config.mute_role:
+            plugin.log.warning('Cannot tempmute member %s, no tempmute role', member.id)
+            return
+
         plugin.call(
             'ModLogPlugin.create_debounce',
             event,
