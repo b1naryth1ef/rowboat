@@ -120,7 +120,11 @@ class DebouncesCollection(object):
 
     def remove(self, obj, event=None):
         for event_name in ([event] if event else obj.events):
-            self._data[obj.guild_id][event_name].remove(obj)
+            if event_name in obj.events:
+                obj.events.remove(event_name)
+
+            if obj in self._data[obj.guild_id][event_name]:
+                self._data[obj.guild_id][event_name].remove(obj)
 
     def find(self, event, delete=True, **kwargs):
         guild_id = event.guild_id if hasattr(event, 'guild_id') else event.guild.id
