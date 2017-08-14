@@ -1,5 +1,14 @@
 # Changelog
 
+## V1.0.1
+
+### Bugfixes
+
+- Fixed admin add/rmv role being able to operate on role that matched the command executors highest role.
+- Fixed error triggered when removing debounces that where already partially-removed
+- Fixed add/remove role throwing a command error when attempting to execute the modlog portion of their code.
+- Fixed case where User.tempmute was called externally (e.g. by spam) for a guild without a mute role setup
+
 ## V1.0.0
 
 ### **BREAKING** Group Permissions Protection
