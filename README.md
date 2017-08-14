@@ -8,6 +8,13 @@ Rowboat is a private Discord bot focused on being a highly powerful and configur
 
 Probably not. Rowboat has enough moving pieces that running a local version is complicated. The main purpose of having the source released is to allow others to understand and audit the functionality. The code is by no means meant to be easy to setup or bootstrap, and I don't plan on supporting folks trying to run locally. That said, feel free to run a local version of Rowboat for your server (but not a public version please).
 
+### Self-hosting Agreement
+
+- You may not use the Rowboat logo or name within derivative bots.
+- You may not host a public version of Rowboat.
+- You may not charge for the usage of your instance of Rowboat.
+- You may not provide support for Rowboat.
+
 ## Development
 
 Rowboat development is focused on the requirements of servers looking to move onto Rowboat as their core moderation bot. Generally a good overview of the planned or in-development tasks is the [Trello Board](https://trello.com/b/wiCACp0k/rowboat), although its by no means a purely-true source.
@@ -24,4 +31,7 @@ To get a local version of rowboat running, you will need [docker-compose](https:
 ## Can You Add Rowboat To My Server?
 
 Maybe. If you are interested in having Rowboat on your server, please join ([discord.gg/rowboat](https://discord.gg/rowboat)) the server and provide an invite and some general information. Rowboat is only added to larger (1-2k+ average CCU) servers that have more complex moderation requirements.
+
+
+## Usage Agreement
 
