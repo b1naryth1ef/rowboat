@@ -1025,7 +1025,7 @@ class AdminPlugin(Plugin):
         embed.fields.append(
             MessageEmbedField(name='Total Deleted Messages', value=deleted or '0', inline=True))
         embed.fields.append(
-            MessageEmbedField(name='Total Custom Emoji\'s', value=q[2] or '0', inline=True))
+            MessageEmbedField(name='Total Custom Emojis', value=q[2] or '0', inline=True))
         embed.fields.append(
             MessageEmbedField(name='Total Mentions', value=q[3] or '0', inline=True))
         embed.fields.append(
