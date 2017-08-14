@@ -967,6 +967,7 @@ class AdminPlugin(Plugin):
             event,
             member=member,
             role=role_obj,
+            actor=unicode(event.author),
             reason=reason or 'no reason',
         )
 
@@ -1220,7 +1221,7 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('join', '<name:str>', aliases=['add', 'give'])
     def join_role(self, event, name):
-        role = event.guild.roles.get(event.config.group_roles.get(name.lower))
+        role = event.guild.roles.get(event.config.group_roles.get(name.lower()))
         if not role:
             raise CommandFail('invalid or unknown group')
 
