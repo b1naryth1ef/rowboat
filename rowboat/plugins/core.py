@@ -149,7 +149,10 @@ class CorePlugin(Plugin):
                 continue
 
             for user_id in guild.config['web'].keys():
-                users_who_should_have_access.add(int(user_id))
+                try:
+                    users_who_should_have_access.add(int(user_id))
+                except:
+                    self.log.warning('Guild %s has invalid user ACLs: %s', guild.guild_id, guild.config['web'])
 
         # TODO: sharding
         users_who_have_access = {
