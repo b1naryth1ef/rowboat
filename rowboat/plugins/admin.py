@@ -1273,5 +1273,5 @@ class AdminPlugin(Plugin):
         if role_id in self.unlocked_roles and self.unlocked_roles[role_id] > time.time():
             raise CommandFail('role %s is already unlocked' % role_id)
 
-        self.unlocked_roles[role_id] = time.time() + 360
+        self.unlocked_roles[role_id] = time.time() + 300
         raise CommandSuccess('role is unlocked for 5 minutes')
