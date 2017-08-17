@@ -383,7 +383,7 @@ class UtilitiesPlugin(Plugin):
         ).group_by(GuildVoiceSession.user_id).tuples().async()
 
         # Wait for them all to complete (we're still going to be as slow as the
-        #  slowest query, so no need to be smart about this.
+        #  slowest query, so no need to be smart about this.)
         wait_many(newest_msg, oldest_msg, infractions, voice, timeout=10)
         tags = to_tags(guild_id=event.msg.guild.id)
 
