@@ -261,7 +261,7 @@ class Infraction(BaseModel):
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_BAN,
             event,
-            user=(unicode(member) if not isinstance(member, (int, long)) else '<UNKNOWN>'),
+            user=unicode(member),
             user_id=user_id,
             actor=unicode(event.author) if event.author.id != user_id else 'Automatic',
             reason=reason or 'no reason'
