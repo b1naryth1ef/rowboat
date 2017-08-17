@@ -1,5 +1,22 @@
 # Changelog
 
+## V1.0.2
+
+### Bugfixes
+
+- Fixed the user in a ban/forceban's modlog message being `<UNKNOWN>`. The modlog entry will now contain their ID if Rowboat cannot resolve further user information
+- Fixed the duration of unlocking a role being 6 minutes instead of 5 minutes like the response message said
+- Fixed some misc errors thrown when passing webhook messages to censor/spam plugins
+- Fixed case where Rowboat guild access was not being properly synced due to invalid data being passed in the web configuration for some guilds
+- Fixed the documentation URL being outdated
+- Fixed some commands being incorrectly exposed publically
+- Fixed the ability to revoke or change ones own roles within the configuration
+
+### Etc
+
+- Removed ignored\_channels, this concept is no longer (and hasn't been for a long time) used.
+- Improved the performance (and formatting) around the !info command
+
 ## V1.0.1
 
 ### Bugfixes
