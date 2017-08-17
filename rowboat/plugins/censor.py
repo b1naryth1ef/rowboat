@@ -138,6 +138,9 @@ class CensorPlugin(Plugin):
         if author.id == self.state.me.id:
             return
 
+        if event.webhook_id:
+            return
+
         configs = list(self.compute_relevant_configs(event, author))
         if not configs:
             return

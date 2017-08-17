@@ -251,6 +251,9 @@ class SpamPlugin(Plugin):
         if event.author.id == self.state.me.id:
             return
 
+        if event.webhook_id:
+            return
+
         # Lineralize events by guild ID to prevent spamming events
         if event.guild.id not in self.guild_locks:
             self.guild_locks[event.guild.id] = Semaphore()
