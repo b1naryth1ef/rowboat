@@ -18,6 +18,8 @@ from disco.util.sanitize import S
 from rowboat.plugins import RowboatPlugin as Plugin, CommandFail
 from rowboat.util.timing import Eventual
 from rowboat.util.input import parse_duration
+from rowboat.util.gevent import wait_many
+from rowboat.util.stats import statsd, to_tags
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.guild import GuildVoiceSession
 from rowboat.models.user import User, Infraction
@@ -318,6 +320,8 @@ class UtilitiesPlugin(Plugin):
     def info(self, event, user):
         content = []
         content.append(u'**\u276F User Information**')
+        content.append(u'ID: {}'.format(user.id))
+        content.append(u'Profile: <@{}>'.format(user.id))
 
         if user.presence:
             emoji, status = get_status_emoji(user.presence)
@@ -351,16 +355,44 @@ class UtilitiesPlugin(Plugin):
                     ', '.join((member.guild.roles.get(r).name for r in member.roles))
                 ))
 
-        try:
-            newest_msg = Message.select(Message.timestamp).where(
-                (Message.author_id == user.id) &
-                (Message.guild_id == event.guild.id)
-            ).order_by(Message.timestamp.desc()).get()
+        # Execute a bunch of queries async
+        newest_msg = Message.select(Message.timestamp).where(
+            (Message.author_id == user.id) &
+            (Message.guild_id == event.guild.id)
+        ).limit(1).order_by(Message.timestamp.desc()).async()
 
-            oldest_msg = Message.select(Message.timestamp).where(
-                (Message.author_id == user.id) &
-                (Message.guild_id == event.guild.id)
-            ).order_by(Message.timestamp.asc()).get()
+        oldest_msg = Message.select(Message.timestamp).where(
+            (Message.author_id == user.id) &
+            (Message.guild_id == event.guild.id)
+        ).limit(1).order_by(Message.timestamp.asc()).async()
+
+        infractions = Infraction.select(
+            Infraction.guild_id,
+            fn.COUNT('*')
+        ).where(
+            (Infraction.user_id == user.id)
+        ).group_by(Infraction.guild_id).tuples().async()
+
+        voice = GuildVoiceSession.select(
+            GuildVoiceSession.user_id,
+            fn.COUNT('*'),
+            fn.SUM(GuildVoiceSession.ended_at - GuildVoiceSession.started_at)
+        ).where(
+            (GuildVoiceSession.user_id == user.id) &
+            (~(GuildVoiceSession.ended_at >> None))
+        ).group_by(GuildVoiceSession.user_id).tuples().async()
+
+        # Wait for them all to complete (we're still going to be as slow as the
+        #  slowest query, so no need to be smart about this.
+        wait_many(newest_msg, oldest_msg, infractions, voice, timeout=10)
+        tags = to_tags(guild_id=event.msg.guild.id)
+
+        if newest_msg.value and oldest_msg.value:
+            statsd.timing('sql.duration.newest_msg', newest_msg.value._query_time, tags=tags)
+            statsd.timing('sql.duration.oldest_msg', oldest_msg.value._query_time, tags=tags)
+            newest_msg = newest_msg.value.get()
+            oldest_msg = oldest_msg.value.get()
+
             content.append(u'\n **\u276F Activity**')
             content.append('Last Message: {} ago ({})'.format(
                 humanize.naturaldelta(datetime.utcnow() - newest_msg.timestamp),
@@ -370,32 +402,18 @@ class UtilitiesPlugin(Plugin):
                 humanize.naturaldelta(datetime.utcnow() - oldest_msg.timestamp),
                 oldest_msg.timestamp.isoformat(),
             ))
-        except Message.DoesNotExist:
-            pass
 
-        infractions = list(Infraction.select(
-            Infraction.guild_id,
-            fn.COUNT('*')
-        ).where(
-            (Infraction.user_id == user.id)
-        ).group_by(Infraction.guild_id).tuples())
-
-        if infractions:
+        if infractions.value:
+            statsd.timing('sql.duration.infractions', infractions.value._query_time, tags=tags)
+            infractions = list(infractions.value)
             total = sum(i[1] for i in infractions)
             content.append(u'\n**\u276F Infractions**')
             content.append('Total Infractions: {}'.format(total))
             content.append('Unique Servers: {}'.format(len(infractions)))
 
-        voice = list(GuildVoiceSession.select(
-            GuildVoiceSession.user_id,
-            fn.COUNT('*'),
-            fn.SUM(GuildVoiceSession.ended_at - GuildVoiceSession.started_at)
-        ).where(
-            (GuildVoiceSession.user_id == user.id) &
-            (~(GuildVoiceSession.ended_at >> None))
-        ).group_by(GuildVoiceSession.user_id).tuples())
-
-        if voice:
+        if voice.value:
+            statsd.timing('plugin.utilities.info.sql.voice', voice.value._query_time, tags=tags)
+            voice = list(voice.value)
             content.append(u'\n**\u276F Voice**')
             content.append(u'Sessions: {}'.format(voice[0][1]))
             content.append(u'Time: {}'.format(humanize.naturaldelta(
@@ -409,10 +427,9 @@ class UtilitiesPlugin(Plugin):
             user.avatar,
         )
 
-        embed.set_author(name=u'{}#{} (<@{}>)'.format(
+        embed.set_author(name=u'{}#{}'.format(
             user.username,
             user.discriminator,
-            user.id,
         ), icon_url=avatar)
 
         embed.set_thumbnail(url=avatar)

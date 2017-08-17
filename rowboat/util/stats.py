@@ -4,6 +4,12 @@ from contextlib import contextmanager
 from datadog import statsd
 
 
+def to_tags(obj=None, **kwargs):
+    if obj:
+        kwargs.update(obj)
+    return ['{}:{}'.format(k, v) for k, v in kwargs.items()]
+
+
 @contextmanager
 def timed(metricname, tags=None):
     start = time.time()
@@ -12,4 +18,6 @@ def timed(metricname, tags=None):
     except:
         raise
     finally:
-        statsd.timing(metricname, (time.time() - start) * 1000, tags=['{}:{}'.format(k, v) for k, v in (tags or {}).items()])
+        if tags and isinstance(tags, dict):
+            tags = to_tags(tags)
+        statsd.timing(metricname, (time.time() - start) * 1000, tags=tags)

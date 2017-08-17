@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import re
 import yaml
 from collections import OrderedDict
