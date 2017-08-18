@@ -169,7 +169,10 @@ class ModLogPlugin(Plugin):
         super(ModLogPlugin, self).load(ctx)
 
     def create_debounce(self, event, events, **kwargs):
-        guild_id = event.guild_id if hasattr(event, 'guild_id') else event.guild.id
+        if isinstance(event, (int, long)):
+            guild_id = event
+        else:
+            guild_id = event.guild_id if hasattr(event, 'guild_id') else event.guild.id
         bounce = Debounce(self, guild_id, kwargs, events)
         self.debounces.add(bounce)
         return bounce
@@ -179,31 +182,31 @@ class ModLogPlugin(Plugin):
         ctx['debounces'] = self.debounces
         super(ModLogPlugin, self).unload(ctx)
 
-    def resolve_channels(self, event, config):
+    def resolve_channels(self, guild, config):
         self.log.info('Resolving channels for guild %s (%s)',
-            event.guild.id,
-            event.guild.name)
+            guild.id,
+            guild.name)
 
         channels = {}
         for key, channel in config.channels.items():
             if isinstance(key, int):
-                chan = event.guild.channels.select_one(id=key)
+                chan = guild.channels.select_one(id=key)
             else:
-                chan = event.guild.channels.select_one(name=key)
+                chan = guild.channels.select_one(name=key)
 
             if not chan:
                 raise MetaException('Failed to ModLog.resolve_channels', {
-                    'guild_name': event.guild.name,
-                    'guild_id': unicode(event.guild.id),
+                    'guild_name': guild.name,
+                    'guild_id': unicode(guild.id),
                     'key': unicode(key),
                     'config_channels': list(unicode(i) for i in config.channels.keys()),
-                    'guild_channels': list(unicode(i) for i in event.guild.channels.keys()),
+                    'guild_channels': list(unicode(i) for i in guild.channels.keys()),
                 })
             channels[chan.id] = channel
 
         self.log.info('Resolved channels for guild %s (%s): %s',
-            event.guild.id,
-            event.guild.name,
+            guild.id,
+            guild.name,
             channels)
 
         if config._channels:
@@ -212,18 +215,20 @@ class ModLogPlugin(Plugin):
         config._channels = channels
 
         config._custom = None
-        if config.custom and event.rowboat_guild.is_whitelisted(Guild.WhitelistFlags.MODLOG_CUSTOM_FORMAT):
-            custom = {}
-            for action, override in config.custom.items():
-                action = Actions.get(action)
-                if not action:
-                    continue
+        if config.custom:
+            rowboat_guild = self.call('CorePlugin.get_guild', guild.id)
+            if rowboat_guild and rowboat_guild.is_whitelisted(Guild.WhitelistFlags.MODLOG_CUSTOM_FORMAT):
+                custom = {}
+                for action, override in config.custom.items():
+                    action = Actions.get(action)
+                    if not action:
+                        continue
 
-                custom[action] = override.to_dict()
-                if not custom[action].get('emoji'):
-                    custom[action]['emoji'] = self.action_simple[action]['emoji']
+                    custom[action] = override.to_dict()
+                    if not custom[action].get('emoji'):
+                        custom[action]['emoji'] = self.action_simple[action]['emoji']
 
-            config._custom = custom
+                config._custom = custom
 
         config.resolved = True
 
@@ -231,19 +236,28 @@ class ModLogPlugin(Plugin):
         action = Actions.add(name)
         self.action_simple[action] = simple
 
-    def log_action_ext(self, action, event, **details):
-        assert hasattr(event.base_config.plugins, 'modlog')
-        return self.log_action_raw(action, event, event.guild, getattr(event.base_config.plugins, 'modlog'), **details)
+    def log_action_ext(self, action, guild_id, **details):
+        config = self.call('CorePlugin.get_config', guild_id)
+        if not hasattr(config.plugins, 'modlog'):
+            self.log.warning('log_action_ext ignored for %s, lack of modlog config', guild_id)
+            return
+
+        return self.log_action_raw(
+            action,
+            self.state.guilds.get(guild_id),
+            getattr(config.plugins, 'modlog'),
+            **details)
 
     def log_action(self, action, event, **details):
-        return self.log_action_raw(action, event, event.guild, event.config.get(), **details)
+        details['e'] = event
+        return self.log_action_raw(action, event.guild, event.config.get(), **details)
 
-    def log_action_raw(self, action, event, guild, config, **details):
+    def log_action_raw(self, action, guild, config, **details):
         if not config:
             return
 
         if not config.resolved:
-            self.resolve_channels(event, config)
+            self.resolve_channels(guild, config)
 
         if not {action} & config.subscribed:
             return
@@ -256,7 +270,7 @@ class ModLogPlugin(Plugin):
                     info = config._custom[action]
 
             # Format contents and create the message with the given emoji
-            contents = self.fmt.format(six.text_type(info['format']), e=event, **details)
+            contents = self.fmt.format(six.text_type(info['format']), **details)
             msg = u':{}: {}'.format(info['emoji'], contents)
 
             if chan_config.timestamps:

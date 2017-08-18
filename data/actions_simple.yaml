@@ -110,6 +110,10 @@ MEMBER_UNMUTED:
   emoji: open_mouth
   format: '{member!s} (`{member.id}`) was unmuted by **{actor!s}**'
 
+MEMBER_TEMPMUTE_EXPIRE:
+  emoji: open_mouth
+  format: '{member!s} (`{member.id}`) was automatically unmuted, their tempmute (#{inf.id}) expired'
+
 CENSORED:
   emoji: no_entry_sign
   format: "censored message by {e.author!s} (`{e.author.id}`) in {e.channel} (`{e.channel.id}`) {c.details}:\n```{c.content!s}```"
@@ -138,7 +142,10 @@ MEMBER_TEMPBAN:
   emoji: rotating_light
   format: '{member!s} (`{member.id}`) was temp-banned until {expires} by **{actor!s}**: `{reason!s}`'
 
+MEMBER_TEMPBAN_EXPIRE:
+  emoji: rotating_light
+  format: '{user!s} (`{user_id}`) was automatically unbanned, their tempban (#{inf.id}) expired'
+
 MEMBER_KICK:
   emoji: boot
   format: '{member!s} (`{member.id}`) was kicked by **{actor!s}**: `{reason!s}`'
-

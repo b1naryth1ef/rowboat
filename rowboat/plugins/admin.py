@@ -138,13 +138,45 @@ class AdminPlugin(Plugin):
             # TODO: hacky
             type_ = {i.index: i for i in Infraction.Types.attrs}[item.type_]
             if type_ == Infraction.Types.TEMPBAN:
-                # TODO: debounce
+                self.call(
+                    'ModLogPlugin.create_debounce',
+                    guild.id,
+                    ['GuildBanRemove'],
+                    user_id=item.user_id,
+                )
+
                 guild.delete_ban(item.user_id)
+
+                # TODO: perhaps join on users above and use username from db
+                self.call(
+                    'ModLogPlugin.log_action_ext',
+                    Actions.MEMBER_TEMPBAN_EXPIRE,
+                    guild.id,
+                    user_id=item.user_id,
+                    user=unicode(self.state.users.get(item.user_id) or item.user_id),
+                    inf=item
+                )
             elif type_ == Infraction.Types.TEMPMUTE or Infraction.Types.TEMPROLE:
                 member = guild.get_member(item.user_id)
                 if member:
                     if item.metadata['role'] in member.roles:
+                        self.call(
+                            'ModLogPlugin.create_debounce',
+                            guild.id,
+                            ['GuildMemberUpdate'],
+                            user_id=item.user_id,
+                            role_id=item.metadata['role'],
+                        )
+
                         member.remove_role(item.metadata['role'])
+
+                        self.call(
+                            'ModLogPlugin.log_action_ext',
+                            Actions.MEMBER_TEMPMUTE_EXPIRE,
+                            guild.id,
+                            member=member,
+                            inf=item
+                        )
                 else:
                     GuildMemberBackup.remove_role(
                         item.guild_id,
@@ -201,7 +233,7 @@ class AdminPlugin(Plugin):
         self.call(
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_RESTORE,
-            event,
+            event.guild.id,
             member=member,
         )
 
@@ -640,7 +672,7 @@ class AdminPlugin(Plugin):
             self.call(
                 'ModLogPlugin.log_action_ext',
                 Actions.MEMBER_UNMUTED,
-                event,
+                event.guild.id,
                 member=member,
                 actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             )
@@ -965,7 +997,7 @@ class AdminPlugin(Plugin):
         self.call(
             'ModLogPlugin.log_action_ext',
             (Actions.MEMBER_ROLE_ADD if mode == 'add' else Actions.MEMBER_ROLE_REMOVE),
-            event,
+            event.guild.id,
             member=member,
             role=role_obj,
             actor=unicode(event.author),

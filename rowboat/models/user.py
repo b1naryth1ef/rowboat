@@ -163,7 +163,7 @@ class Infraction(BaseModel):
         plugin.call(
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_KICk,
-            event,
+            event.guild.id,
             member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason'
@@ -193,7 +193,7 @@ class Infraction(BaseModel):
         plugin.call(
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_TEMPBAN,
-            event,
+            event.guild.id,
             member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason',
@@ -226,7 +226,7 @@ class Infraction(BaseModel):
         plugin.call(
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_SOFTBAN,
-            event,
+            event.guild.id,
             member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason'
@@ -260,7 +260,7 @@ class Infraction(BaseModel):
         plugin.call(
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_BAN,
-            event,
+            event.guild.id,
             user=unicode(member),
             user_id=user_id,
             actor=unicode(event.author) if event.author.id != user_id else 'Automatic',
@@ -290,7 +290,7 @@ class Infraction(BaseModel):
         plugin.call(
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_WARNED,
-            event,
+            event.guild.id,
             member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason'
@@ -314,7 +314,7 @@ class Infraction(BaseModel):
         plugin.call(
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_MUTED,
-            event,
+            event.guild.id,
             member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason'
@@ -350,7 +350,7 @@ class Infraction(BaseModel):
         plugin.call(
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_TEMP_MUTED,
-            event,
+            event.guild.id,
             member=member,
             actor=unicode(event.author) if event.author.id != member.id else 'Automatic',
             reason=reason or 'no reason',

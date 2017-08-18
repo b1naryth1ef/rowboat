@@ -126,7 +126,12 @@ class SpamPlugin(Plugin):
         rdb.setex('lv:{e.member.guild_id}:{e.member.id}'.format(e=violation.event), int(time.time()), 60)
 
         if not last_violated > time.time() - 10:
-            self.bot.plugins.get('ModLogPlugin').log_action_ext(Actions.SPAM_DEBUG, violation.event, v=violation)
+            self.call(
+                'ModLogPlugin.log_action_ext',
+                Actions.SPAM_DEBUG,
+                violation.event.guild.id,
+                v=violation
+            )
 
             punishment = violation.check.punishment or violation.rule.punishment
             punishment_duration = violation.check.punishment_duration or violation.rule.punishment_duration

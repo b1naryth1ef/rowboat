@@ -216,6 +216,14 @@ class CorePlugin(Plugin):
 
         return event
 
+    def get_config(self, guild_id, *args, **kwargs):
+        # Externally Used
+        return self.guilds[guild_id].get_config(*args, **kwargs)
+
+    def get_guild(self, guild_id):
+        # Externally Used
+        return self.guilds[guild_id]
+
     def _attach_local_event_data(self, event, plugin_name, guild_id):
         if not hasattr(event, 'config'):
             event.config = LocalProxy()
