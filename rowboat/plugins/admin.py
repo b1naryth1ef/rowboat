@@ -1,5 +1,6 @@
 import re
 import csv
+import time
 import gevent
 import humanize
 import operator
@@ -14,6 +15,7 @@ from datetime import datetime, timedelta
 from disco.bot import CommandLevels
 from disco.types.user import User as DiscoUser
 from disco.types.message import MessageTable, MessageEmbed, MessageEmbedField, MessageEmbedThumbnail
+from disco.types.permissions import Permissions
 from disco.util.functional import chunks
 from disco.util.sanitize import S
 
@@ -28,6 +30,9 @@ from rowboat.plugins.modlog import Actions
 from rowboat.models.user import User, Infraction
 from rowboat.models.guild import GuildMemberBackup, GuildBan, GuildEmoji, GuildVoiceSession
 from rowboat.models.message import Message, Reaction, MessageArchive
+from rowboat.constants import (
+    GREEN_TICK_EMOJI_ID, RED_TICK_EMOJI_ID, GREEN_TICK_EMOJI, RED_TICK_EMOJI
+)
 
 EMOJI_RE = re.compile(r'<:[a-zA-Z0-9_]+:([0-9]+)>')
 
@@ -48,11 +53,6 @@ GROUP BY 1, 2
 ORDER BY 3 {}
 LIMIT 30
 """
-
-GREEN_TICK_EMOJI_ID = 305231298799206401
-RED_TICK_EMOJI_ID = 305231335512080385
-GREEN_TICK_EMOJI = 'green_tick:305231298799206401'
-RED_TICK_EMOJI = 'red_tick:305231335512080385'
 
 
 def clamp(string, size):
@@ -87,6 +87,9 @@ class AdminConfig(PluginConfig):
     # Group roles can be joined/left by any user
     group_roles = DictField(lambda value: unicode(value).lower(), snowflake)
 
+    # Locked roles cannot be changed unless they are unlocked w/ command
+    locked_roles = ListField(snowflake)
+
     # The mute role
     mute_role = Field(snowflake, default=None)
     reason_edit_level = Field(int, default=int(CommandLevels.ADMIN))
@@ -100,6 +103,9 @@ class AdminPlugin(Plugin):
         self.cleans = {}
         self.inf_task = Eventual(self.clear_infractions)
         self.spawn_later(5, self.queue_infractions)
+
+        self.unlocked_roles = {}
+        self.role_debounces = {}
 
     def queue_infractions(self):
         next_infraction = list(Infraction.select().where(
@@ -230,6 +236,32 @@ class AdminPlugin(Plugin):
     @Plugin.listen('GuildBanRemove')
     def on_guild_ban_remove(self, event):
         Infraction.clear_active(event, event.user.id, [Infraction.Types.BAN, Infraction.Types.TEMPBAN])
+
+    @Plugin.listen('GuildRoleUpdate', priority=Priority.BEFORE)
+    def on_guild_role_update(self, event):
+        if event.role.id not in event.config.locked_roles:
+            return
+
+        if event.role.id in self.unlocked_roles and self.unlocked_roles[event.role.id] > time.time():
+            return
+
+        if event.role.id in self.role_debounces:
+            if self.role_debounces.pop(event.role.id) > time.time():
+                return
+
+        role_before = event.guild.roles.get(event.role.id)
+        if not role_before:
+            return
+
+        to_update = {}
+        for field in ('name', 'hoist', 'color', 'permissions', 'position'):
+            if getattr(role_before, field) != getattr(event.role, field):
+                to_update[field] = getattr(role_before, field)
+
+        if to_update:
+            self.log.warning('Rolling back update to roll %s (in %s), roll is locked', event.role.id, event.guild_id)
+            self.role_debounces[event.role.id] = time.time() + 60
+            event.role.update(**to_update)
 
     @Plugin.command('unban', '<user:snowflake> [reason:str...]', level=CommandLevels.MOD)
     def unban(self, event, user, reason=None):
@@ -867,10 +899,10 @@ class AdminPlugin(Plugin):
         context={'mode': 'remove'},
         group='role')
     @Plugin.command('remove',
-            '<user:user> <role:str> [reason:str...]',
-            level=CommandLevels.MOD,
-            context={'mode': 'remove'},
-            group='role')
+        '<user:user> <role:str> [reason:str...]',
+        level=CommandLevels.MOD,
+        context={'mode': 'remove'},
+        group='role')
     def role_add(self, event, user, role, reason=None, mode=None):
         role_obj = None
 
@@ -903,7 +935,7 @@ class AdminPlugin(Plugin):
             [event.guild.roles.get(r) for r in author_member.roles],
             key=lambda i: i.position,
             reverse=True)
-        if not author_member.owner and (not highest_role or highest_role[0].position < role_obj.position):
+        if not author_member.owner and (not highest_role or highest_role[0].position <= role_obj.position):
             raise CommandFail('you can only {} roles that are ranked lower than your highest role'.format(mode))
 
         member = event.guild.get_member(user)
@@ -935,6 +967,7 @@ class AdminPlugin(Plugin):
             event,
             member=member,
             role=role_obj,
+            actor=unicode(event.author),
             reason=reason or 'no reason',
         )
 
@@ -993,7 +1026,7 @@ class AdminPlugin(Plugin):
         embed.fields.append(
             MessageEmbedField(name='Total Deleted Messages', value=deleted or '0', inline=True))
         embed.fields.append(
-            MessageEmbedField(name='Total Custom Emoji\'s', value=q[2] or '0', inline=True))
+            MessageEmbedField(name='Total Custom Emojis', value=q[2] or '0', inline=True))
         embed.fields.append(
             MessageEmbedField(name='Total Mentions', value=q[3] or '0', inline=True))
         embed.fields.append(
@@ -1188,15 +1221,35 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('join', '<name:str>', aliases=['add', 'give'])
     def join_role(self, event, name):
-        role_id = event.config.group_roles.get(name.lower())
-        if not role_id or role_id not in event.guild.roles:
+        role = event.guild.roles.get(event.config.group_roles.get(name.lower()))
+        if not role:
             raise CommandFail('invalid or unknown group')
 
+        has_any_admin_perms = any(role.permissions.can(i) for i in (
+            Permissions.KICK_MEMBERS,
+            Permissions.BAN_MEMBERS,
+            Permissions.ADMINISTRATOR,
+            Permissions.MANAGE_CHANNELS,
+            Permissions.MANAGE_GUILD,
+            Permissions.MANAGE_MESSAGES,
+            Permissions.MENTION_EVERYONE,
+            Permissions.MUTE_MEMBERS,
+            Permissions.MOVE_MEMBERS,
+            Permissions.MANAGE_NICKNAMES,
+            Permissions.MANAGE_ROLES,
+            Permissions.MANAGE_WEBHOOKS,
+            Permissions.MANAGE_EMOJIS,
+        ))
+
+        # Sanity check
+        if has_any_admin_perms:
+            raise CommandFail('cannot join group with admin permissions')
+
         member = event.guild.get_member(event.author)
-        if role_id in member.roles:
+        if role.id in member.roles:
             raise CommandFail('you are already a member of that group')
 
-        member.add_role(role_id)
+        member.add_role(role)
         raise CommandSuccess(u'you have joined the {} group'.format(name))
 
     @Plugin.command('leave', '<name:snowflake|str>', aliases=['remove', 'take'])
@@ -1211,3 +1264,14 @@ class AdminPlugin(Plugin):
 
         member.remove_role(role_id)
         raise CommandSuccess(u'you have left the {} group'.format(name))
+
+    @Plugin.command('unlock', '<role_id:snowflake>', group='role', level=CommandLevels.ADMIN)
+    def unlock_role(self, event, role_id):
+        if role_id not in event.config.locked_roles:
+            raise CommandFail('role %s is not locked' % role_id)
+
+        if role_id in self.unlocked_roles and self.unlocked_roles[role_id] > time.time():
+            raise CommandFail('role %s is already unlocked' % role_id)
+
+        self.unlocked_roles[role_id] = time.time() + 300
+        raise CommandSuccess('role is unlocked for 5 minutes')

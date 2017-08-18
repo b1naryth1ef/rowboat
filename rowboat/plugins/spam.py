@@ -19,10 +19,6 @@ from rowboat.models.user import Infraction
 from rowboat.models.message import Message, EMOJI_RE
 
 
-# TODO: lazy/cached
-with open('data/badwords.txt', 'r') as f:
-    BAD_WORDS = f.readlines()
-
 PunishmentType = Enum(
     'NONE',
     'MUTE',
@@ -253,6 +249,9 @@ class SpamPlugin(Plugin):
     @Plugin.listen('MessageCreate', priority=Priority.AFTER)
     def on_message_create(self, event):
         if event.author.id == self.state.me.id:
+            return
+
+        if event.webhook_id:
             return
 
         # Lineralize events by guild ID to prevent spamming events

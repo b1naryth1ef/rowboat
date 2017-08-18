@@ -202,7 +202,10 @@ def guild_config_update(guild):
     after = sorted([(str(k), v) for k, v in data.get('web', {}).items()], key=lambda i: i[0])
 
     if guild.role != 'admin' and before != after:
-        return 'Cannot Alter Permissions', 403
+        return 'Invalid Access', 403
+
+    if guild.role != data.get('web', {}).get(g.user.user_id):
+        return 'Cannot change your own permissions', 400
 
     try:
         guild.update_config(g.user.user_id, request.values.get('data'))

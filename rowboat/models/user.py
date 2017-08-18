@@ -261,7 +261,7 @@ class Infraction(BaseModel):
             'ModLogPlugin.log_action_ext',
             Actions.MEMBER_BAN,
             event,
-            user=(unicode(member) if not isinstance(member, (int, long)) else '<UNKNOWN>'),
+            user=unicode(member),
             user_id=user_id,
             actor=unicode(event.author) if event.author.id != user_id else 'Automatic',
             reason=reason or 'no reason'
@@ -332,6 +332,10 @@ class Infraction(BaseModel):
     def tempmute(cls, plugin, event, member, reason, expires_at):
         from rowboat.plugins.modlog import Actions
         admin_config = cls.admin_config(event)
+
+        if not admin_config.mute_role:
+            plugin.log.warning('Cannot tempmute member %s, no tempmute role', member.id)
+            return
 
         plugin.call(
             'ModLogPlugin.create_debounce',

@@ -26,7 +26,7 @@ class InternalPlugin(Plugin):
         self.lock = Semaphore()
         self.cache = []
 
-    @Plugin.command('errors', group='commands')
+    @Plugin.command('errors', group='commands', level=-1)
     def on_commands_errors(self, event):
         q = Command.select().join(
             Message, on=(Command.message_id == Message.id)
@@ -42,7 +42,7 @@ class InternalPlugin(Plugin):
 
         event.msg.reply(tbl.compile())
 
-    @Plugin.command('info', '<mid:snowflake>', group='commands')
+    @Plugin.command('info', '<mid:snowflake>', group='commands', level=-1)
     def on_commands_info(self, event, mid):
         cmd = Command.select(Command, Message, Channel).join(
             Message, on=(Command.message_id == Message.id).alias('message')
