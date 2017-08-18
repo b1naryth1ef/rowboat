@@ -317,26 +317,13 @@ class CorePlugin(Plugin):
             embed.add_field(name='Gateway Server', value=event.trace[0], inline=False)
             embed.add_field(name='Session Server', value=event.trace[1], inline=False)
 
-    @Plugin.listen('GuildCreate', conditional=lambda e: e.created is True)
-    def on_guild_join(self, event):
-        with self.send_control_message() as embed:
-            embed.title = 'Added to Guild'
-            embed.add_field(name='Guild Name', value=event.guild.name, inline=True)
-            embed.add_field(name='Guild ID', value=str(event.guild.id), inline=True)
-
-    @Plugin.listen('GuildDelete', conditional=lambda e: e.deleted is True)
-    def on_guild_leave(self, event):
-        with self.send_control_message() as embed:
-            embed.title = 'Removed from Guild'
-            embed.add_field(name='Guild ID', value=str(event.guild.id), inline=True)
-
     @Plugin.listen('GuildCreate', priority=Priority.BEFORE, conditional=lambda e: not e.created)
     def on_guild_create(self, event):
         try:
             guild = Guild.with_id(event.id)
         except Guild.DoesNotExist:
             # If the guild is not awaiting setup, leave it now
-            if not rdb.sismember(GUILDS_WAITING_SETUP_KEY, str(event.id)):
+            if not rdb.sismember(GUILDS_WAITING_SETUP_KEY, str(event.id)) and event.id != ROWBOAT_GUILD_ID:
                 self.log.warning(
                     'Leaving guild %s (%s), not within setup list',
                     event.id, event.name
