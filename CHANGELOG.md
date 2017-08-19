@@ -1,5 +1,21 @@
 # Changelog
 
+## V1.0.3
+
+### Features
+
+- Added two new modlog events, `MEMBER_TEMPMUTE_EXPIRE` and `MEMBER_TEMPBAN_EXPIRE` which are triggered when their respective infractions expire
+
+### Bugfixes
+
+- Fixed cases where certain modlog channels could become stuck due to transient Discord issues
+- Fixed cases where content in certain censor filters would be ignored due to its casing, censor now ignores all casing in filters within its config
+
+### Etc
+
+- Don't leave the ROWBOAT\_GUILD\_ID, its special (and not doing this makes it impossible to bootstrap the bot otherwise)
+- Improved the performance of !stats
+
 ## V1.0.2
 
 ### Bugfixes
