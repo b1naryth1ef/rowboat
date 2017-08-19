@@ -476,7 +476,8 @@ class ModLogPlugin(Plugin):
                         guild,
                         config.plugins.modlog,
                         before=before,
-                        after=unicode(event.user))
+                        after=unicode(event.user),
+                        e=event)
 
     @Plugin.listen('MessageUpdate', priority=Priority.BEFORE)
     def on_message_update(self, event):

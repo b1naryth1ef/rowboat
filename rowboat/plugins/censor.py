@@ -175,6 +175,7 @@ class CensorPlugin(Plugin):
                     'ModLogPlugin.log_action_ext',
                     Actions.CENSORED,
                     event.guild.id,
+                    e=event,
                     c=c)
 
     def filter_zalgo(self, event, config):
