@@ -2,9 +2,10 @@ import time
 
 import gevent
 from disco.api.http import APIException
+from disco.util.logging import LoggingClass
 
 
-class ModLogPump(object):
+class ModLogPump(LoggingClass):
     def __init__(self, channel, sleep_duration=5):
         self.channel = channel
         self.sleep_duration = sleep_duration
@@ -14,6 +15,11 @@ class ModLogPump(object):
         self._lock = gevent.lock.Semaphore()
 
         self._greenlet = gevent.spawn(self._emitter_loop)
+
+    def _start_emitter(self, greenlet=None):
+        self.log.warning('Restarting emitter for ModLogPump %s' % self.channel)
+        self._greenlet = gevent.spawn(self._emitter_loop)
+        self._greenlet.link_exception(self._start_emitter)
 
     def __del__(self):
         if self._greenlet:
@@ -32,6 +38,8 @@ class ModLogPump(object):
                     # Message send is disabled
                     if e.code == 40004:
                         backoff = True
+                except Exception:
+                    self.log.exception('Exception when executing ModLogPump._emit: ')
 
             if responses.rate_limited:
                 backoff = True
