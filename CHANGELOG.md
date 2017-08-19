@@ -1,5 +1,9 @@
 # Changelog
 
+## V1.0.5
+
+Similar changes to v1.0.4
+
 ## V1.0.4
 
 ### Bugfixes
