@@ -1,5 +1,11 @@
 # Changelog
 
+## V1.0.4
+
+### Bugfixes
+
+- Fixed invalid function call causing errors w/ CHANGE\_USERNAME event
+
 ## V1.0.3
 
 ### Features
