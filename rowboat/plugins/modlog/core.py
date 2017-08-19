@@ -473,7 +473,6 @@ class ModLogPlugin(Plugin):
                 for guild, config in subscribed_guilds[Actions.CHANGE_USERNAME]:
                     self.log_action_raw(
                         Actions.CHANGE_USERNAME,
-                        event,
                         guild,
                         config.plugins.modlog,
                         before=before,
