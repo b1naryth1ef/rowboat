@@ -10,7 +10,7 @@ from rowboat.redis import rdb
 from rowboat.util.stats import timed
 from rowboat.util.zalgo import ZALGO_RE
 from rowboat.plugins import RowboatPlugin as Plugin
-from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake
+from rowboat.types import SlottedModel, Field, ListField, DictField, ChannelField, snowflake, lower
 from rowboat.types.plugin import PluginConfig
 from rowboat.models.message import Message
 from rowboat.plugins.modlog import Actions
@@ -29,15 +29,15 @@ class CensorSubConfig(SlottedModel):
 
     filter_invites = Field(bool, default=True)
     invites_guild_whitelist = ListField(snowflake, default=[])
-    invites_whitelist = ListField(unicode, default=[])
-    invites_blacklist = ListField(unicode, default=[])
+    invites_whitelist = ListField(lower, default=[])
+    invites_blacklist = ListField(lower, default=[])
 
     filter_domains = Field(bool, default=True)
-    domains_whitelist = ListField(unicode, default=[])
-    domains_blacklist = ListField(unicode, default=[])
+    domains_whitelist = ListField(lower, default=[])
+    domains_blacklist = ListField(lower, default=[])
 
-    blocked_words = ListField(unicode, default=[])
-    blocked_tokens = ListField(unicode, default=[])
+    blocked_words = ListField(lower, default=[])
+    blocked_tokens = ListField(lower, default=[])
 
     @cached_property
     def blocked_words_re(self):
@@ -199,7 +199,7 @@ class CensorPlugin(Plugin):
             if invite_info and invite_info.get('id') in config.invites_guild_whitelist:
                 whitelisted = True
 
-            if invite in config.invites_whitelist or invite.lower() in config.invites_whitelist:
+            if invite.lower() in config.invites_whitelist:
                 whitelisted = True
 
             if need_whitelist and not whitelisted:
@@ -208,9 +208,7 @@ class CensorPlugin(Plugin):
                     'invite': invite,
                     'guild': invite_info,
                 })
-            elif config.invites_blacklist and (
-                    invite in config.invites_blacklist or
-                    invite.lower() in config.invites_blacklist):
+            elif config.invites_blacklist and invite.lower() in config.invites_blacklist:
                 raise Censorship(CensorReason.INVITE, event, ctx={
                     'hit': 'blacklist',
                     'invite': invite,
@@ -227,13 +225,13 @@ class CensorPlugin(Plugin):
                 continue
 
             if (config.domains_whitelist or not config.domains_blacklist)\
-                    and parsed.netloc not in config.domains_whitelist:
+                    and parsed.netloc.lower() not in config.domains_whitelist:
                 raise Censorship(CensorReason.DOMAIN, event, ctx={
                     'hit': 'whitelist',
                     'url': url,
                     'domain': parsed.netloc,
                 })
-            elif config.domains_blacklist and parsed.netloc in config.domains_blacklist:
+            elif config.domains_blacklist and parsed.netloc.lower() in config.domains_blacklist:
                 raise Censorship(CensorReason.DOMAIN, event, ctx={
                     'hit': 'blacklist',
                     'url': url,

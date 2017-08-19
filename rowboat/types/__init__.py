@@ -4,8 +4,12 @@ from disco.types.base import Model, SlottedModel, Field, ListField, DictField, t
 
 __all__ = [
     'Model', 'SlottedModel', 'Field', 'ListField', 'DictField', 'text', 'snowflake', 'channel', 'raw',
-    'rule_matcher'
+    'rule_matcher', 'lower',
 ]
+
+
+def lower(raw):
+    return unicode(raw).lower()
 
 
 def raw(obj):
