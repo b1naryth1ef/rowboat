@@ -29,7 +29,7 @@ def get_dominant_colors(img, n=3):
         rgbs = [map(int, c.center.coords) for c in clusters]
         return map(rtoh, rgbs)
     except:
-        return 0x00000
+        return [0x00000]
 
 
 def get_dominant_colors_user(user, url=None):
