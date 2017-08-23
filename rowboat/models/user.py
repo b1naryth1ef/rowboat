@@ -132,7 +132,7 @@ class Infraction(BaseModel):
 
         # TODO: modlog
 
-        member.add_role(role_id)
+        member.add_role(role_id, reason=reason)
 
         cls.create(
             guild_id=event.guild.id,
@@ -157,7 +157,7 @@ class Infraction(BaseModel):
             user_id=member.user.id
         )
 
-        member.kick()
+        member.kick(reason=reason)
 
         # Create a kick modlog event
         plugin.call(
@@ -188,7 +188,7 @@ class Infraction(BaseModel):
             user_id=member.user.id
         )
 
-        member.ban()
+        member.ban(reason=reason)
 
         plugin.call(
             'ModLogPlugin.log_action_ext',
@@ -220,8 +220,8 @@ class Infraction(BaseModel):
             user_id=member.user.id
         )
 
-        member.ban(delete_message_days=7)
-        member.unban()
+        member.ban(delete_message_days=7, reason=reason)
+        member.unban(reason=reason)
 
         plugin.call(
             'ModLogPlugin.log_action_ext',
@@ -255,7 +255,7 @@ class Infraction(BaseModel):
             user_id=user_id,
         )
 
-        guild.create_ban(user_id)
+        guild.create_ban(user_id, reason=reason)
 
         plugin.call(
             'ModLogPlugin.log_action_ext',
@@ -309,7 +309,7 @@ class Infraction(BaseModel):
             role_id=admin_config.mute_role,
         )
 
-        member.add_role(admin_config.mute_role)
+        member.add_role(admin_config.mute_role, reason=reason)
 
         plugin.call(
             'ModLogPlugin.log_action_ext',
@@ -345,7 +345,7 @@ class Infraction(BaseModel):
             role_id=admin_config.mute_role,
         )
 
-        member.add_role(admin_config.mute_role)
+        member.add_role(admin_config.mute_role, reason=reason)
 
         plugin.call(
             'ModLogPlugin.log_action_ext',
