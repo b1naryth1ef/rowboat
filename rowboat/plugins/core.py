@@ -81,10 +81,11 @@ class CorePlugin(Plugin):
                     continue
 
                 plugin_name = '{}Plugin'.format(event.name.split('.', 1)[0].title())
-                if plugin_name in self.bot.plugins:
+                plugin = next((v for k, v in self.bot.plugins.items() if k.lower() == plugin_name.lower()), None)
+                if plugin:
                     self.log.info('Detected change in %s, reloading...', plugin_name)
                     try:
-                        self.bot.plugins[plugin_name].reload()
+                        plugin.reload()
                     except Exception:
                         self.log.exception('Failed to reload: ')
 
