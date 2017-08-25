@@ -556,38 +556,18 @@ class AdminPlugin(Plugin):
         return True
 
     @Plugin.command('mute', '<user:user|snowflake> [reason:str...]', level=CommandLevels.MOD)
-    def mute(self, event, user, reason=None):
-        member = event.guild.get_member(user)
-        if member:
-            self.can_act_on(event, member.id)
-            if not event.config.mute_role:
-                raise CommandFail('mute is not setup on this server')
-
-            existed = False
-            # If the user is already muted check if we can take this from a temp
-            #  to perma mute.
-            if event.config.mute_role in member.roles:
-                existed = Infraction.clear_active(event, member.id, [Infraction.Types.TEMPMUTE])
-
-                # The user is 100% muted and not tempmuted at this point, so lets bail
-                if not existed:
-                    raise CommandFail(u'{} is already muted'.format(member.user))
-
-            Infraction.mute(self, event, member, reason)
-
-            if event.config.confirm_actions:
-                existed = u' [was temp-muted]' if existed else ''
-                event.msg.reply(maybe_string(
-                    reason,
-                    u':ok_hand: {u} is now muted (`{o}`)' + existed,
-                    u':ok_hand: {u} is now muted' + existed,
-                    u=member.user,
-                ))
-        else:
-            raise CommandFail('invalid user')
-
     @Plugin.command('tempmute', '<user:user|snowflake> <duration:str> [reason:str...]', level=CommandLevels.MOD)
-    def tempmute(self, event, user, duration, reason=None):
+    def tempmute(self, event, user, duration=None, reason=None):
+        if not duration and reason:
+            duration = parse_duration(reason.split(' ')[0], safe=True)
+            if duration:
+                if ' ' in reason:
+                    reason = reason.split(' ', 1)[-1]
+                else:
+                    reason = None
+        else:
+            duration = parse_duration(duration)
+
         member = event.guild.get_member(user)
         if member:
             self.can_act_on(event, member.id)
@@ -597,20 +577,41 @@ class AdminPlugin(Plugin):
             if event.config.mute_role in member.roles:
                 raise CommandFail(u'{} is already muted'.format(member.user))
 
-            expire_dt = parse_duration(duration)
+            # If we have a duration set, this is a tempmute
+            if duration:
+                # Create the infraction
+                Infraction.tempmute(self, event, member, reason, duration)
+                self.queue_infractions()
 
-            # Create the infraction
-            Infraction.tempmute(self, event, member, reason, expire_dt)
-            self.queue_infractions()
+                if event.config.confirm_actions:
+                    event.msg.reply(maybe_string(
+                        reason,
+                        u':ok_hand: {u} is now muted for {t} (`{o}`)',
+                        u':ok_hand: {u} is now muted for {t}',
+                        u=member.user,
+                        t=humanize.naturaldelta(duration - datetime.utcnow()),
+                    ))
+            else:
+                existed = False
+                # If the user is already muted check if we can take this from a temp
+                #  to perma mute.
+                if event.config.mute_role in member.roles:
+                    existed = Infraction.clear_active(event, member.id, [Infraction.Types.TEMPMUTE])
 
-            if event.config.confirm_actions:
-                event.msg.reply(maybe_string(
-                    reason,
-                    u':ok_hand: {u} is now muted for {t} (`{o}`)',
-                    u':ok_hand: {u} is now muted for {t}',
-                    u=member.user,
-                    t=humanize.naturaldelta(expire_dt - datetime.utcnow()),
-                ))
+                    # The user is 100% muted and not tempmuted at this point, so lets bail
+                    if not existed:
+                        raise CommandFail(u'{} is already muted'.format(member.user))
+
+                Infraction.mute(self, event, member, reason)
+
+                if event.config.confirm_actions:
+                    existed = u' [was temp-muted]' if existed else ''
+                    event.msg.reply(maybe_string(
+                        reason,
+                        u':ok_hand: {u} is now muted (`{o}`)' + existed,
+                        u':ok_hand: {u} is now muted' + existed,
+                        u=member.user,
+                    ))
         else:
             raise CommandFail('invalid user')
 

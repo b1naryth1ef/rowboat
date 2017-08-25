@@ -11,8 +11,10 @@ UNITS = {
 }
 
 
-def parse_duration(raw, source=None, negative=False):
+def parse_duration(raw, source=None, negative=False, safe=False):
     if not raw:
+        if safe:
+            return None
         raise CommandError('Invalid duration')
 
     value = 0
@@ -24,6 +26,8 @@ def parse_duration(raw, source=None, negative=False):
             continue
 
         if char not in UNITS:
+            if safe:
+                return None
             raise CommandError('Invalid duration')
 
         value += UNITS[char](int(digits))
