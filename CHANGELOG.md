@@ -1,5 +1,22 @@
 # Changelog
 
+## V1.1.0
+
+### Features
+
+- **MAJOR** Added support for audit-log reasons withing various admin actions. This will log the reason you provide for kicks/bans/mutes/etc within the Discord audit-log.
+- **MAJOR** !mute behavior has changed. If a valid duration string is the first part of the reason, a !mute command is transformed into a tempmute. This should help resolve a common mistake people make.
+- !join and !leave will no longer respond if no group roles are specified within the admin config
+- Added a SQL command for global admins to graph word usage in a server.
+
+### Bugfixes
+
+- Fixed reloading of SQLPlugin in development
+- Fixed some user images causing `get_dominant_colors` to return an incorrect value causing a command exception
+- Fixed error case in modlog when handling VoiceStateUpdate
+- Fixed a case where a user could not save the webconfig because the web access object had their ID stored as a string
+- Fixed censor throwing errors when a message which was censored was already deleted
+
 ## V1.0.5
 
 Similar changes to v1.0.4

@@ -10,7 +10,7 @@ ENV = os.getenv('ENV', 'local')
 DSN = os.getenv('DSN')
 REV = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip()
 
-VERSION = '1.0.5'
+VERSION = '1.1.0'
 
 raven_client = Client(
     DSN,
