@@ -1273,6 +1273,9 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('join', '<name:str>', aliases=['add', 'give'])
     def join_role(self, event, name):
+        if not event.config.group_roles:
+            return
+
         role = event.guild.roles.get(event.config.group_roles.get(name.lower()))
         if not role:
             raise CommandFail('invalid or unknown group')
@@ -1306,6 +1309,9 @@ class AdminPlugin(Plugin):
 
     @Plugin.command('leave', '<name:snowflake|str>', aliases=['remove', 'take'])
     def leave_role(self, event, name):
+        if not event.config.group_roles:
+            return
+
         role_id = event.config.group_roles.get(name.lower())
         if not role_id or role_id not in event.guild.roles:
             raise CommandFail('invalid or unknown group')
