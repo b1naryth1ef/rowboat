@@ -2,6 +2,8 @@ import time
 import gevent
 import psycopg2
 import markovify
+import pygal
+import cairosvg
 
 from gevent.pool import Pool
 from holster.enum import Enum
@@ -324,8 +326,63 @@ class SQLPlugin(Plugin):
         p.join()
         event.msg.reply(u'Completed backfill on {}'.format(guild.name))
 
-    @Plugin.command('words', '<target:user|channel|guild>', level=-1)
-    def words(self, event, target):
+    @Plugin.command('usage', '<word:str> [unit:str] [amount:int]', level=-1, group='words')
+    def words_usage(self, event, word, unit='days', amount=7):
+        sql = '''
+            SELECT date, coalesce(count, 0) AS count
+            FROM
+                generate_series(
+                    NOW() - interval %s,
+                    NOW(),
+                    %s
+                ) AS date
+            LEFT OUTER JOIN (
+                SELECT date_trunc(%s, timestamp) AS dt, count(*) AS count
+                FROM messages
+                WHERE
+                    timestamp >= (NOW() - interval %s) AND
+                    timestamp < (NOW()) AND
+                    guild_id=%s AND
+                    (SELECT count(*) FROM regexp_matches(content, %s)) >= 1
+                GROUP BY dt
+            ) results
+            ON (date_trunc(%s, date) = results.dt);
+        '''
+
+        tuples = list(Message.raw(
+            sql,
+            '{} {}'.format(amount, unit),
+            '1 {}'.format(unit),
+            unit,
+            '{} {}'.format(amount, unit),
+            event.guild.id,
+            '\s?{}\s?'.format(word),
+            unit
+        ).tuples())
+
+        chart = pygal.Line()
+        chart.title = 'Usage of {} Over {} {}s'.format(
+            word, amount, unit,
+        )
+
+        if unit == 'days':
+            chart.x_labels = [i[0].strftime('%a %d') for i in tuples]
+        elif unit == 'minutes':
+            chart.x_labels = [i[0].strftime('%X') for i in tuples]
+        else:
+            chart.x_labels = [i[0].strftime('%x %X') for i in tuples]
+
+        chart.x_labels = [i[0] for i in tuples]
+        chart.add(word, [i[1] for i in tuples])
+
+        pngdata = cairosvg.svg2png(
+            bytestring=chart.render(),
+            dpi=72)
+
+        event.msg.reply(attachments=[('chart.png', pngdata)])
+
+    @Plugin.command('top', '<target:user|channel|guild>', level=-1, group='words')
+    def words_top(self, event, target):
         if isinstance(target, DiscoUser):
             q = 'author_id'
         elif isinstance(target, DiscoChannel):
@@ -351,7 +408,7 @@ class SQLPlugin(Plugin):
         t = MessageTable()
         t.set_header('Word', 'Count')
 
-        for word, count in Message.raw(sql, (target.id, )).tuples():
+        for word, count in Message.raw(sql, target.id).tuples():
             if '```' in word:
                 continue
             t.add(word, count)
