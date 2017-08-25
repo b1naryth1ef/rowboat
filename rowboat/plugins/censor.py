@@ -5,6 +5,7 @@ import urlparse
 from holster.enum import Enum
 from disco.types.base import cached_property
 from disco.util.sanitize import S
+from disco.api.http import APIException
 
 from rowboat.redis import rdb
 from rowboat.util.stats import timed
@@ -169,14 +170,17 @@ class CensorPlugin(Plugin):
                     message_id=event.message.id,
                 )
 
-                event.delete()
+                try:
+                    event.delete()
 
-                self.call(
-                    'ModLogPlugin.log_action_ext',
-                    Actions.CENSORED,
-                    event.guild.id,
-                    e=event,
-                    c=c)
+                    self.call(
+                        'ModLogPlugin.log_action_ext',
+                        Actions.CENSORED,
+                        event.guild.id,
+                        e=event,
+                        c=c)
+                except APIException:
+                    self.log.exception('Failed to delete censored message: ')
 
     def filter_zalgo(self, event, config):
         s = ZALGO_RE.search(event.content)
