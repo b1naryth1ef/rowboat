@@ -64,7 +64,7 @@ class Guild(BaseModel):
             icon=guild.icon,
             splash=guild.splash,
             region=guild.region,
-            config={'web': {str(guild.owner_id): 'admin'}},
+            config={'web': {guild.owner_id: 'admin'}},
             config_raw='')
 
     def is_whitelisted(self, flag):

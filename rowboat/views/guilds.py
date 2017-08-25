@@ -204,7 +204,8 @@ def guild_config_update(guild):
     if guild.role != 'admin' and before != after:
         return 'Invalid Access', 403
 
-    if guild.role != data.get('web', {}).get(g.user.user_id):
+    role = data.get('web', {}).get(g.user.user_id) or data.get('web', {}).get(str(g.user.user_id))
+    if guild.role != role:
         return 'Cannot change your own permissions', 400
 
     try:
