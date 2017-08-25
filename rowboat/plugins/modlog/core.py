@@ -563,7 +563,7 @@ class ModLogPlugin(Plugin):
                     Actions.VOICE_CHANNEL_MOVE,
                     event,
                     before_channel=old_vs.channel)
-        elif not event.channel_id:
+        elif old_vs and not event.channel_id:
             self.log_action(
                 Actions.VOICE_CHANNEL_LEAVE,
                 event,
