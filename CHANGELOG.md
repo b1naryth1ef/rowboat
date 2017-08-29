@@ -1,5 +1,10 @@
 # Changelog
 
+## V1.1.1
+
+- Removed some utilities commands that didn't fit rowboats goal
+- Etc SQL changes
+
 ## V1.1.0
 
 ### Features
