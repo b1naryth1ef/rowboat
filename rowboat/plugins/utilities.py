@@ -112,63 +112,6 @@ class UtilitiesPlugin(Plugin):
         r.raise_for_status()
         event.msg.reply('', attachments=[('cat.jpg', r.content)])
 
-    @Plugin.command('urban', '<term:str...>', global_=True)
-    def urban(self, event, term):
-        r = requests.get('http://api.urbandictionary.com/v0/define', params={
-            'term': term,
-        })
-        r.raise_for_status()
-        data = r.json()
-
-        if not len(data['list']):
-            return event.msg.reply(':warning: no matches')
-
-        event.msg.reply(u'{} - {}'.format(
-            data['list'][0]['word'],
-            data['list'][0]['definition'],
-        ))
-
-    @Plugin.command('pwnd', '<email:str>', global_=True)
-    def pwnd(self, event, email):
-        r = requests.get('https://haveibeenpwned.com/api/v2/breachedaccount/{}'.format(
-            email
-        ))
-
-        if r.status_code == 404:
-            return event.msg.reply(":white_check_mark: you haven't been pwnd yet, awesome!")
-
-        r.raise_for_status()
-        data = r.json()
-
-        sites = []
-
-        for idx, site in enumerate(data):
-            sites.append(u'{} - {} ({})'.format(
-                site['BreachDate'],
-                site['Title'],
-                site['Domain'],
-            ))
-
-        return event.msg.reply(u":warning: You've been pwnd on {} sites:\n{}".format(
-            len(sites),
-            '\n'.join(sites),
-        ))
-
-    @Plugin.command('geoip', '<ip:str>', global_=True)
-    def geoip(self, event, ip):
-        r = requests.get('http://json.geoiplookup.io/{}'.format(ip))
-        r.raise_for_status()
-        data = r.json()
-
-        event.msg.reply(u'{} - {}, {} ({}) | {}, {}'.format(
-            data['isp'],
-            data['city'],
-            data['region'],
-            data['country_code'],
-            data['latitude'],
-            data['longitude'],
-        ))
-
     @Plugin.command('emoji', '<emoji:str>', global_=True)
     def emoji(self, event, emoji):
         if not EMOJI_RE.match(emoji):
@@ -178,11 +121,11 @@ class UtilitiesPlugin(Plugin):
 
         name, eid = EMOJI_RE.findall(emoji)[0]
         fields.append('**ID:** {}'.format(eid))
-        fields.append('**Name:** {}'.format(name))
+        fields.append('**Name:** {}'.format(S(name)))
 
         guild = self.state.guilds.find_one(lambda v: eid in v.emojis)
         if guild:
-            fields.append('**Guild:** {} ({})'.format(guild.name, guild.id))
+            fields.append('**Guild:** {} ({})'.format(S(guild.name), guild.id))
 
         url = 'https://discordapp.com/api/emojis/{}.png'.format(eid)
         r = requests.get(url)
