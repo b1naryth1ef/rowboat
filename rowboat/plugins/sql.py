@@ -349,6 +349,9 @@ class SQLPlugin(Plugin):
             ON (date_trunc(%s, date) = results.dt);
         '''
 
+        msg = event.msg.reply(':alarm_clock: One moment pls...')
+
+        start = time.time()
         tuples = list(Message.raw(
             sql,
             '{} {}'.format(amount, unit),
@@ -359,9 +362,11 @@ class SQLPlugin(Plugin):
             '\s?{}\s?'.format(word),
             unit
         ).tuples())
+        sql_duration = time.time() - start
 
+        start = time.time()
         chart = pygal.Line()
-        chart.title = 'Usage of {} Over {} {}s'.format(
+        chart.title = 'Usage of {} Over {} {}'.format(
             word, amount, unit,
         )
 
@@ -378,8 +383,15 @@ class SQLPlugin(Plugin):
         pngdata = cairosvg.svg2png(
             bytestring=chart.render(),
             dpi=72)
+        chart_duration = time.time() - start
 
-        event.msg.reply(attachments=[('chart.png', pngdata)])
+        event.msg.reply(
+            '_SQL: {}ms_ - _Chart: {}ms_'.format(
+                int(sql_duration * 1000),
+                int(chart_duration * 1000),
+            ),
+            attachments=[('chart.png', pngdata)])
+        msg.delete()
 
     @Plugin.command('top', '<target:user|channel|guild>', level=-1, group='words')
     def words_top(self, event, target):
