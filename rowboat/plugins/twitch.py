@@ -2,6 +2,7 @@ import json
 import requests
 
 from holster.enum import Enum
+from disco.types.message import MessageEmbed
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types.plugin import PluginConfig
@@ -83,10 +84,13 @@ class TwitchPlugin(Plugin):
             for stream in new_streams:
                 pipe.sadd(TWITCH_STREAM_TO_GUILD_KEY.format(stream), str(guild.guild_id))
 
+            pipe.execute()
+
         with rdb.pipeline() as pipe:
             key = TWITCH_STREAMS_GUILD_KEY.format(guild.guild_id)
-            pipe.srem(key)
-            pipe.sadd(key, new_streams)
+            pipe.delete(key)
+            pipe.sadd(key, *new_streams)
+            pipe.execute()
 
     def get_userid_for_usernames(self, usernames):
         result = {k: None for k in usernames}
@@ -153,71 +157,96 @@ class TwitchPlugin(Plugin):
 
         statuses = self.get_channel_statuses(mapping.values())
         for channel_id, stream in statuses.iteritems():
+            if not stream:
+                continue
+
             old_state = self.get_stream_state(channel_id)
             new_state = self.prepare_state(stream) if stream else None
+
+            self.on_stream_update(channel_id, old_state, new_state)
+            continue
 
             # If we have a previous state, but we no longer have a state,
             #  we should consider this stream as moving from online to offline
             if old_state and not new_state:
-                self.on_stream_offline(stream, old_state)
+                self.on_stream_offline(channel_id, old_state)
             # Otherwise if we have no previous state, but we have a stream,
             #  this stream is now going online
             elif new_state and not old_state:
-                self.on_stream_online(stream, new_state)
+                self.on_stream_online(channel_id, new_state)
             # If we have both a previous state and a stream, the stream is being
             #  updated
             elif new_state and old_state:
-                self.on_stream_update(stream, old_state, new_state)
+                self.on_stream_update(channel_id, old_state, new_state)
 
-    def on_stream_offline(self, stream, old_state):
-        self.log.info('Going offline %s / %s', stream, old_state)
-        if not old_state['type'] == 'live':
-            return
-
-        guild_ids = rdb.smembers(TWITCH_STREAM_TO_GUILD_KEY.format(
-            stream['channel']['name']
-        ))
-
-        # Grab the guild state
-        for guild_id in guild_ids:
-            guild_state = rdb.hgetall(TWITCH_GUILD_STATE_KEY.format(
-                guild_id,
-                stream['channel']['name'],
-            ))
-            print guild_state
-
-    def on_stream_online(self, stream, new_state):
-        self.log.info('Going online %s / %s', stream, new_state)
-        if not new_state['type'] == 'live':
-            return
-
-        self.set_stream_state(stream['channel']['_id'], new_state)
+    def on_stream_update(self, channel_id, old_state, new_state):
+        self.log.info('Updating %s / %s / %s', channel_id, old_state, new_state)
+        name = new_state['name'] if new_state else old_state['name']
 
         guild_ids = rdb.smembers(TWITCH_STREAM_TO_GUILD_KEY.format(
-            stream['name']
+            name,
         ))
 
         for guild_id in guild_ids:
-            guild_state = rdb.hgetall(TWITCH_GUILD_STATE_KEY.format(
+            guild_state = rdb.get(TWITCH_GUILD_STATE_KEY.format(
                 guild_id,
-                stream['channel']['name'],
+                channel_id,
             ))
+            guild_state = json.loads(guild_state) if guild_state else {}
 
-            # If there is no previous state, grab the guilds config
-            if not guild_state:
+            # If there is no previous state, we should post online messages
+            if not guild_state and new_state:
                 config = self.call('CorePlugin.get_config', int(guild_id))
                 twitch = getattr(config.plugins, 'twitch', None)
 
                 if not twitch:
                     continue
 
-                print 'would post to guild %s' % guild_id
+                twitch = twitch.streams.get(name)
+
+                message = self.post_message(guild_id, twitch, new_state)
+                rdb.set(TWITCH_GUILD_STATE_KEY.format(
+                    guild_id,
+                    channel_id
+                ), json.dumps({
+                    'message': message.id,
+                }))
+
+            # Going offline
+            if guild_state and not new_state:
+                if twitch.delete:
+                    channel = self.state.channels.get(twitch.channel)
+                    channel.delete_message(guild_state['message'])
+
+                rdb.delete(TWITCH_GUILD_STATE_KEY.format(guild_id, channel_id))
 
             print guild_state
 
-    def on_stream_update(self, stream, old_state, new_state):
-        self.log.info('Updating %s / %s / %s', stream, old_state, new_state)
-        self.set_stream_state(stream['channel']['_id'], new_state)
+        # Update stream state in redis
+        self.set_stream_state(channel_id, new_state)
+
+    def post_message(self, guild_id, twitch, new_state):
+        embed = None
+        # if twitch.mode == FormatMode.PRETTY:
+        if True:
+            embed = MessageEmbed()
+            embed.title = u'{}'.format(new_state['status'])
+            embed.url = 'https://twitch.tv/{}'.format(new_state['name'])
+            embed.color = 0x6441A4
+            embed.set_image(url=new_state['preview'])
+            embed.add_field(name='Viewers', value=new_state['viewers'])
+
+        if twitch.notification_type == NotificationType.HERE:
+            msg = u'@here {} is now live!'.format(new_state['name'])
+        elif twitch.notification_type == NotificationType.EVERYONE:
+            msg = u'@everyone {} is now live!'.format(new_state['name'])
+        elif twitch.notification_type == NotificationType.ROLE:
+            msg = u'<@&{}> {} is now live!'.format(twitch.notification_target, new_state['name'])
+        else:
+            msg = u'{} is now live!'.format(new_state['name'])
+
+        channel = self.state.channels.get(twitch.channel)
+        return channel.send_message(msg, embed=embed)
 
 # THONKS
 #  - changing config with active stream
