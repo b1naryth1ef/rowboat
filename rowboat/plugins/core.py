@@ -1,5 +1,6 @@
 import os
 import json
+import gevent
 import pprint
 import signal
 import inspect
@@ -8,7 +9,7 @@ import functools
 import contextlib
 
 from datetime import datetime, timedelta
-from holster.emitter import Priority
+from holster.emitter import Priority, Emitter
 from disco.bot import Bot
 from disco.types.message import MessageEmbed
 from disco.api.http import APIException
@@ -48,6 +49,8 @@ class CorePlugin(Plugin):
         self.startup = ctx.get('startup', datetime.utcnow())
         self.guilds = ctx.get('guilds', {})
 
+        self.emitter = Emitter(gevent.spawn)
+
         super(CorePlugin, self).load(ctx)
 
         # Overwrite the main bot instances plugin loader so we can magicfy events
@@ -57,6 +60,10 @@ class CorePlugin(Plugin):
             self.spawn(self.wait_for_plugin_changes)
 
         self._wait_for_actions_greenlet = self.spawn(self.wait_for_actions)
+
+    def spawn_wait_for_actions(self, *args, **kwargs):
+        self._wait_for_actions_greenlet = self.spawn(self.wait_for_actions)
+        self._wait_for_actions_greenlet.link_exception(self.spawn_wait_for_actions)
 
     def our_add_plugin(self, cls, *args, **kwargs):
         if getattr(cls, 'global_plugin', False):
@@ -98,6 +105,7 @@ class CorePlugin(Plugin):
                 continue
 
             data = json.loads(item['data'])
+            print data, data['id'], self.guilds
             if data['type'] == 'GUILD_UPDATE' and data['id'] in self.guilds:
                 with self.send_control_message() as embed:
                     embed.title = u'Reloaded config for {}'.format(
@@ -108,13 +116,16 @@ class CorePlugin(Plugin):
 
                 # Refresh config, mostly to validate
                 try:
-                    self.guilds[data['id']].get_config(refresh=True)
+                    config = self.guilds[data['id']].get_config(refresh=True)
 
                     # Reload the guild entirely
                     self.guilds[data['id']] = Guild.with_id(data['id'])
 
                     # Update guild access
                     self.update_rowboat_guild_access()
+
+                    # Finally, emit the event
+                    self.emitter.emit('GUILD_CONFIG_UPDATE', self.guilds[data['id']], config)
                 except:
                     self.log.exception(u'Failed to reload config for guild %s', self.guilds[data['id']].name)
                     continue
@@ -275,12 +286,16 @@ class CorePlugin(Plugin):
         ))
         embed.timestamp = datetime.utcnow().isoformat()
         embed.color = 0x779ecb
-        yield embed
-        self.bot.client.api.channels_messages_create(
-            290924692057882635 if ENV == 'prod' else 301869081714491393,
-            '',
-            embed=embed
-        )
+        try:
+            yield embed
+            self.bot.client.api.channels_messages_create(
+                290924692057882635 if ENV == 'prod' else 301869081714491393,
+                '',
+                embed=embed
+            )
+        except:
+            self.log.exception('Failed to send control message:')
+            return
 
     @Plugin.listen('Resumed')
     def on_resumed(self, event):
