@@ -3,12 +3,14 @@ services:
   db:
     build: ./docker/database/
     volumes:
-      - ./.data:/var/lib/postgresql/
+      - postgres:/var/lib/postgresql/data:rw
   redis:
     image: redis:3.2
     command: redis-server --appendonly yes
     volumes:
       - ./.data:/data
+    ports:
+      - "6379:6379"
   statsd:
     image: python:2.7.13
     volumes:
@@ -37,3 +39,5 @@ services:
       - "7171:7171"
     depends_on:
       - web
+volumes:
+  postgres: {}
