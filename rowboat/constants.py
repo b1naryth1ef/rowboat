@@ -23,7 +23,7 @@ EMOJI_RE = re.compile(r'<:(.+):([0-9]+)>')
 USER_MENTION_RE = re.compile('<@!?([0-9]+)>')
 
 # IDs and such
-ROWBOAT_GUILD_ID = 157733188964188160
+ROWBOAT_GUILD_ID = 290923757399310337
 ROWBOAT_USER_ROLE_ID = 339256926921555968
 
 # Discord Error codes
