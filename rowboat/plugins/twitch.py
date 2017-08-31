@@ -6,7 +6,7 @@ from disco.types.message import MessageEmbed
 
 from rowboat.plugins import RowboatPlugin as Plugin
 from rowboat.types.plugin import PluginConfig
-from rowboat.types import SlottedModel, DictField, Field, ChannelField, snowflake
+from rowboat.types import SlottedModel, DictField, ListField, Field, ChannelField, snowflake
 from rowboat.redis import rdb
 
 TWITCH_API_URL = 'https://api.twitch.tv/kraken'
@@ -45,7 +45,8 @@ class StreamConfig(SlottedModel):
 
 
 class TwitchConfig(PluginConfig):
-    streams = DictField(str, StreamConfig)
+    streams = ListField(str)
+    config = DictField(str, StreamConfig)
 
 
 @Plugin.with_config(TwitchConfig)
@@ -71,7 +72,7 @@ class TwitchPlugin(Plugin):
         if not hasattr(config.plugins, 'twitch'):
             return
 
-        new_streams = set(config.plugins.twitch.streams.keys())
+        new_streams = set(config.plugins.twitch.streams)
         old_streams = rdb.smembers(TWITCH_STREAMS_GUILD_KEY.format(guild.guild_id))
 
         with rdb.pipeline(transaction=False) as pipe:
@@ -236,7 +237,13 @@ class TwitchPlugin(Plugin):
                 if not twitch:
                     continue
 
-                twitch = twitch.streams.get(name)
+                if name in twitch.config:
+                    twitch = twitch.config[name]
+                else:
+                    twitch = twitch.config.get('*')
+
+                if not twitch:
+                    continue
 
                 message = self.post_message(twitch, new_state)
                 self.set_guild_state(guild_id, channel_id, {
