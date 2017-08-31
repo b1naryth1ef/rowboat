@@ -162,11 +162,7 @@ class TwitchPlugin(Plugin):
         if not guild_streams:
             return
 
-        if len(guild_streams) == 1:
-            streams = rdb.smembers(guild_streams[0])
-        else:
-            streams = rdb.sinter(*guild_streams)
-
+        streams = rdb.sunion(*guild_streams)
         if not streams:
             self.log.info('no streams to update')
             return

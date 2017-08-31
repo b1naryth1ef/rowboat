@@ -105,7 +105,6 @@ class CorePlugin(Plugin):
                 continue
 
             data = json.loads(item['data'])
-            print data, data['id'], self.guilds
             if data['type'] == 'GUILD_UPDATE' and data['id'] in self.guilds:
                 with self.send_control_message() as embed:
                     embed.title = u'Reloaded config for {}'.format(
