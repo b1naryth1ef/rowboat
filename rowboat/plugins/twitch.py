@@ -24,10 +24,11 @@ TWITCH_STREAM_STATE_KEY = 't:ss:{}'
 # Caches state for a given guild
 TWITCH_GUILD_STATE_KEY = 't:gs:{}:{}'
 
-FormatMode = Enum(
-    'PLAIN',
-    'PRETTY',
-)
+# Key used to backoff checking when a stream is live
+TWITCH_STREAM_BACKOFF = 't:sb:{}'
+
+# Backoff for five minutes
+STREAM_BACKOFF_DURATION = 60 * 5
 
 NotificationType = Enum(
     'HERE',
@@ -38,9 +39,6 @@ NotificationType = Enum(
 
 class StreamConfig(SlottedModel):
     channel = Field(ChannelField)
-    mode = Field(FormatMode, default=FormatMode.PRETTY)
-    update = Field(bool, default=False)
-    delete = Field(bool, default=False)
 
     notification_type = Field(NotificationType)
     notification_target = Field(snowflake)
@@ -120,7 +118,6 @@ class TwitchPlugin(Plugin):
 
         result = {cid: None for cid in channel_ids}
         for stream in r.json()['streams']:
-            print stream
             result[stream['channel']['_id']] = stream
 
         return result
@@ -134,8 +131,21 @@ class TwitchPlugin(Plugin):
     def set_stream_state(self, channel_id, data):
         rdb.set(TWITCH_STREAM_STATE_KEY.format(channel_id), json.dumps(data))
 
+    def get_guild_state(self, guild_id, channel_id):
+        data = rdb.get(TWITCH_GUILD_STATE_KEY.format(guild_id, channel_id))
+        if not data:
+            return {}
+        return json.loads(data)
+
+    def set_guild_state(self, guild_id, channel_id, state):
+        rdb.set(TWITCH_GUILD_STATE_KEY.format(
+            guild_id,
+            channel_id
+        ), json.dumps(state))
+
     def prepare_state(self, stream):
         return {
+            'id': stream['_id'],
             'name': stream['channel']['name'],
             'game': stream['game'],
             'type': stream['stream_type'],
@@ -144,10 +154,18 @@ class TwitchPlugin(Plugin):
             'preview': stream['preview']['large'],
         }
 
-    @Plugin.schedule(10, init=False)
+    @Plugin.schedule(90, init=False)
     def check_streams(self):
         # TODO: batch this at some point
-        streams = rdb.sinter(*[TWITCH_STREAMS_GUILD_KEY.format(i) for i in self.state.guilds.keys()])
+        guild_streams = [TWITCH_STREAMS_GUILD_KEY.format(i) for i in self.state.guilds.keys()]
+        if not guild_streams:
+            return
+
+        if len(guild_streams) == 1:
+            streams = rdb.smembers(guild_streams[0])
+        else:
+            streams = rdb.sinter(*guild_streams)
+
         if not streams:
             self.log.info('no streams to update')
             return
@@ -155,10 +173,25 @@ class TwitchPlugin(Plugin):
         mapping = {k: v for k, v in self.get_userid_for_usernames(streams).items() if v}
         self.log.info('Syncing stream infromation for: %s', mapping)
 
-        statuses = self.get_channel_statuses(mapping.values())
+        to_check = mapping.values()
+        with rdb.pipeline() as pipe:
+            for channel_id in to_check:
+                pipe.exists(TWITCH_STREAM_BACKOFF.format(channel_id))
+
+            result = pipe.execute()
+
+            to_check = [
+                channel_id
+                for idx, channel_id in enumerate(to_check)
+                if not result[idx]
+            ]
+
+        statuses = self.get_channel_statuses(to_check)
         for channel_id, stream in statuses.iteritems():
             if not stream:
                 continue
+
+            rdb.setex(TWITCH_STREAM_BACKOFF.format(channel_id), 1,  STREAM_BACKOFF_DURATION)
 
             old_state = self.get_stream_state(channel_id)
             new_state = self.prepare_state(stream) if stream else None
@@ -188,14 +221,15 @@ class TwitchPlugin(Plugin):
         ))
 
         for guild_id in guild_ids:
-            guild_state = rdb.get(TWITCH_GUILD_STATE_KEY.format(
-                guild_id,
-                channel_id,
-            ))
-            guild_state = json.loads(guild_state) if guild_state else {}
+            guild_state = self.get_guild_state(guild_id, channel_id)
+
+            is_new_stream_that_requires_informing = (
+                (not guild_state and new_state) or
+                (guild_state and new_state and guild_state['id'] != new_state['id'])
+            )
 
             # If there is no previous state, we should post online messages
-            if not guild_state and new_state:
+            if is_new_stream_that_requires_informing:
                 config = self.call('CorePlugin.get_config', int(guild_id))
                 twitch = getattr(config.plugins, 'twitch', None)
 
@@ -204,37 +238,28 @@ class TwitchPlugin(Plugin):
 
                 twitch = twitch.streams.get(name)
 
-                message = self.post_message(guild_id, twitch, new_state)
-                rdb.set(TWITCH_GUILD_STATE_KEY.format(
-                    guild_id,
-                    channel_id
-                ), json.dumps({
+                message = self.post_message(twitch, new_state)
+                self.set_guild_state(guild_id, channel_id, {
                     'message': message.id,
-                }))
-
-            # Going offline
-            if guild_state and not new_state:
-                if twitch.delete:
-                    channel = self.state.channels.get(twitch.channel)
-                    channel.delete_message(guild_state['message'])
-
-                rdb.delete(TWITCH_GUILD_STATE_KEY.format(guild_id, channel_id))
-
-            print guild_state
+                    'id': new_state['id'],
+                })
 
         # Update stream state in redis
         self.set_stream_state(channel_id, new_state)
 
-    def post_message(self, guild_id, twitch, new_state):
-        embed = None
-        # if twitch.mode == FormatMode.PRETTY:
-        if True:
-            embed = MessageEmbed()
-            embed.title = u'{}'.format(new_state['status'])
-            embed.url = 'https://twitch.tv/{}'.format(new_state['name'])
-            embed.color = 0x6441A4
-            embed.set_image(url=new_state['preview'])
-            embed.add_field(name='Viewers', value=new_state['viewers'])
+    def post_message(self, twitch, new_state):
+        msg, embed = self.generate_message(twitch, new_state)
+        channel = self.state.channels.get(twitch.channel)
+        return channel.send_message(msg, embed=embed)
+
+    def generate_message(self, twitch, new_state):
+        embed = MessageEmbed()
+        embed.title = u'{}'.format(new_state['status'])
+        embed.url = 'https://twitch.tv/{}'.format(new_state['name'])
+        embed.color = 0x6441A4
+        embed.set_image(url=new_state['preview'])
+        embed.add_field(name='Game', value=new_state['game'])
+        embed.add_field(name='Viewers', value=new_state['viewers'])
 
         if twitch.notification_type == NotificationType.HERE:
             msg = u'@here {} is now live!'.format(new_state['name'])
@@ -245,14 +270,4 @@ class TwitchPlugin(Plugin):
         else:
             msg = u'{} is now live!'.format(new_state['name'])
 
-        channel = self.state.channels.get(twitch.channel)
-        return channel.send_message(msg, embed=embed)
-
-# THONKS
-#  - changing config with active stream
-
-# Notify users
-#  - at-everyone
-#  - at-here
-#  - at-role
-# Live update information
+        return msg, embed
