@@ -1,5 +1,11 @@
 # Changelog
 
+## V1.2.0
+
+### Features
+
+- Twitch plugin added, can be used to track and notify a server of streams going online. (Currently early beta)
+
 ## V1.1.1
 
 - Removed some utilities commands that didn't fit rowboats goal
