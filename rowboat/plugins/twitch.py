@@ -72,7 +72,7 @@ class TwitchPlugin(Plugin):
         if not hasattr(config.plugins, 'twitch'):
             return
 
-        new_streams = set(config.plugins.twitch.streams)
+        new_streams = {i.lower() for i in config.plugins.twitch.streams}
         old_streams = rdb.smembers(TWITCH_STREAMS_GUILD_KEY.format(guild.guild_id))
 
         with rdb.pipeline(transaction=False) as pipe:
@@ -196,19 +196,6 @@ class TwitchPlugin(Plugin):
             self.on_stream_update(channel_id, old_state, new_state)
             continue
 
-            # If we have a previous state, but we no longer have a state,
-            #  we should consider this stream as moving from online to offline
-            if old_state and not new_state:
-                self.on_stream_offline(channel_id, old_state)
-            # Otherwise if we have no previous state, but we have a stream,
-            #  this stream is now going online
-            elif new_state and not old_state:
-                self.on_stream_online(channel_id, new_state)
-            # If we have both a previous state and a stream, the stream is being
-            #  updated
-            elif new_state and old_state:
-                self.on_stream_update(channel_id, old_state, new_state)
-
     def on_stream_update(self, channel_id, old_state, new_state):
         self.log.info('Updating %s / %s / %s', channel_id, old_state, new_state)
         name = new_state['name'] if new_state else old_state['name']
@@ -261,8 +248,8 @@ class TwitchPlugin(Plugin):
         embed.url = 'https://twitch.tv/{}'.format(new_state['name'])
         embed.color = 0x6441A4
         embed.set_image(url=new_state['preview'])
-        embed.add_field(name='Game', value=new_state['game'])
-        embed.add_field(name='Viewers', value=new_state['viewers'])
+        embed.add_field(name='Game', value=new_state['game'], inline=True)
+        embed.add_field(name='Viewers', value=new_state['viewers'], inline=True)
 
         if twitch.notification_type == NotificationType.HERE:
             msg = u'@here {} is now live!'.format(new_state['name'])
