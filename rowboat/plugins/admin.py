@@ -565,7 +565,7 @@ class AdminPlugin(Plugin):
                     reason = reason.split(' ', 1)[-1]
                 else:
                     reason = None
-        else:
+        elif duration:
             duration = parse_duration(duration)
 
         member = event.guild.get_member(user)
