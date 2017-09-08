@@ -822,18 +822,20 @@ class AdminPlugin(Plugin):
                 u=member.user if member else user,
             ))
 
-    @Plugin.command('archive here', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
-    @Plugin.command('archive all', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'})
+    @Plugin.command('here', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'}, group='archive')
+    @Plugin.command('all', '[size:int]', level=CommandLevels.MOD, context={'mode': 'all'}, group='archive')
     @Plugin.command(
-        'archive user',
+        'user',
         '<user:user|snowflake> [size:int]',
         level=CommandLevels.MOD,
-        context={'mode': 'user'})
+        context={'mode': 'user'},
+        group='archive')
     @Plugin.command(
-        'archive channel',
+        'channel',
         '<channel:channel|snowflake> [size:int]',
         level=CommandLevels.MOD,
-        context={'mode': 'channel'})
+        context={'mode': 'channel'},
+        group='archive')
     def archive(self, event, size=50, mode=None, user=None, channel=None):
         if 0 > size >= 15000:
             raise CommandFail('too many messages must be between 1-15000')
@@ -850,6 +852,26 @@ class AdminPlugin(Plugin):
 
         archive = MessageArchive.create_from_message_ids([i.id for i in q])
         event.msg.reply('OK, archived {} messages at {}'.format(len(archive.message_ids), archive.url))
+
+    @Plugin.command('extend', '<archive:str> <duration:str>', level=CommandLevels.MOD, group='archive')
+    def archive_extend(self, event, archive_id, duration):
+        try:
+            archive = MessageArchive.get(archive_id=archive_id)
+        except MessageArchive.DoesNotExist:
+            raise CommandFail('invalid message archive id')
+
+        archive.expires_at = parse_duration(duration)
+
+        MessageArchive.update(
+            expires_at=parse_duration(duration)
+        ).where(
+            (MessageArchive.archive_id == archive_id)
+        ).execute()
+
+        raise CommandSuccess('duration of archive {} has been extended (<{}>)'.format(
+            archive_id,
+            archive.url,
+        ))
 
     @Plugin.command('clean cancel', level=CommandLevels.MOD)
     def clean_cacnel(self, event):
