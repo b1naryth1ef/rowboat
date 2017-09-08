@@ -532,11 +532,18 @@ class ModLogPlugin(Plugin):
         if msg.channel_id in event.config.ignored_channels:
             return
 
+        # Truncate/limit the size of contents
+        contents = filter_urls(msg.content)
+        if contents > 1750:
+            contents = contents[:1750] + u'... ({} more characters)'.format(
+                len(contents) - 1750
+            )
+
         self.log_action(Actions.MESSAGE_DELETE, event,
                 author=msg.author,
                 author_id=msg.author.id,
                 channel=channel,
-                msg=filter_urls(msg.content),
+                msg=contents,
                 attachments='' if not msg.attachments else u'({})'.format(
                     ', '.join(u'<{}>'.format(i) for i in msg.attachments)))
 
