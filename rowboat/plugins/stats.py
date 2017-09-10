@@ -64,6 +64,10 @@ class StatsPlugin(Plugin):
             for k, v in member_status.items():
                 statsd.gauge('guild.presence.{}'.format(str(k).lower()), v, tags=to_tags({'guild_id': guild.id}))
 
+            statsd.gauge('guild.members', len(guild.members),  tags=to_tags({
+                'guild_id': guild.id,
+            }))
+
         # Track some information about discos internal state
         statsd.gauge('disco.state.dms', len(self.state.dms))
         statsd.gauge('disco.state.guilds', len(self.state.guilds))
