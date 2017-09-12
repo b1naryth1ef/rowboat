@@ -245,7 +245,7 @@ class SpamPlugin(Plugin):
         check_bucket('max_links', 'Too Many Links', lambda e: len(URL_RE.findall(e.message.content)))
         # TODO: unicode emoji too pls
         check_bucket('max_emojis', 'Too Many Emojis', lambda e: len(EMOJI_RE.findall(e.message.content)))
-        check_bucket('max_newlines', 'Too Many Newlines', lambda e: e.message.content.count('\n'))
+        check_bucket('max_newlines', 'Too Many Newlines', lambda e: e.message.content.count('\n') + e.message.content.count('\r'))
         check_bucket('max_attachments', 'Too Many Attachments', lambda e: len(e.message.attachments))
 
         if rule.max_duplicates and rule.max_duplicates.interval and rule.max_duplicates.count:
