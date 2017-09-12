@@ -259,7 +259,7 @@ class CorePlugin(Plugin):
             guild.sync_bans(self.client.state.guilds.get(guild.guild_id))
 
     @Plugin.listen('GuildUpdate')
-    def on_guild_udpate(self, event):
+    def on_guild_update(self, event):
         self.log.info('Got guild update for guild %s (%s)', event.guild.id, event.guild.channels)
 
     @Plugin.listen('GuildMembersChunk')
