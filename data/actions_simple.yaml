@@ -92,7 +92,7 @@ COMMAND_USED:
 
 SPAM_DEBUG:
   emoji: helmet_with_cross
-  format: "{v.member!s} (`{v.member.id}`) violated {v.label} ({e.event.channel.mention}): {v.msg}"
+  format: "{v.member!s} (`{v.member.id}`) violated {v.label} ({v.event.channel.mention}): {v.msg}"
 
 MEMBER_RESTORE:
   emoji: helmet_with_cross

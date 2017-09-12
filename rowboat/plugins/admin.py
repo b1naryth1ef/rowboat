@@ -853,7 +853,7 @@ class AdminPlugin(Plugin):
         archive = MessageArchive.create_from_message_ids([i.id for i in q])
         event.msg.reply('OK, archived {} messages at {}'.format(len(archive.message_ids), archive.url))
 
-    @Plugin.command('extend', '<archive:str> <duration:str>', level=CommandLevels.MOD, group='archive')
+    @Plugin.command('extend', '<archive_id:str> <duration:str>', level=CommandLevels.MOD, group='archive')
     def archive_extend(self, event, archive_id, duration):
         try:
             archive = MessageArchive.get(archive_id=archive_id)

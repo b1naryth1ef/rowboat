@@ -1,3 +1,5 @@
+import time
+
 from datadog import initialize, statsd
 from collections import defaultdict
 from disco.types.user import Status
@@ -19,6 +21,21 @@ class StatsPlugin(Plugin):
             initialize(statsd_host='statsd', statsd_port=8125)
         else:
             initialize(statsd_host='localhost', statsd_port=8125)
+
+        self.nonce = 0
+        self.nonces = {}
+        self.unhooked_send_message = self.client.api.channels_messages_create
+        self.client.api.channels_messages_create = self.send_message_hook
+
+    def unload(self, ctx):
+        self.client.api.channels_messages_create = self.unhooked_send_message
+        super(StatsPlugin, self).unload(ctx)
+
+    def send_message_hook(self, *args, **kwargs):
+        self.nonce += 1
+        kwargs['nonce'] = self.nonce
+        self.nonces[self.nonce] = time.time()
+        return self.unhooked_send_message(*args, **kwargs)
 
     @Plugin.listen('')
     def on_gateway_event(self, event):
@@ -63,6 +80,15 @@ class StatsPlugin(Plugin):
 
         if event.guild:
             tags['guild_id'] = event.guild.id
+
+        if event.author.id == self.client.state.me.id:
+            if event.msg.nonce in self.nonces:
+                statsd.timing(
+                    'latency.message_send',
+                    time.time() - self.nonces[event.msg.nonce],
+                    tags=to_tags(tags)
+                )
+                del self.nonces[event.msg.nonce]
 
         statsd.increment('guild.messages.create', tags=to_tags(tags))
 

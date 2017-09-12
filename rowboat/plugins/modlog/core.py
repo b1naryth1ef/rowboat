@@ -534,7 +534,7 @@ class ModLogPlugin(Plugin):
 
         # Truncate/limit the size of contents
         contents = filter_urls(msg.content)
-        if contents > 1750:
+        if len(contents) > 1750:
             contents = contents[:1750] + u'... ({} more characters)'.format(
                 len(contents) - 1750
             )
