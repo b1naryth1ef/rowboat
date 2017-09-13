@@ -14,6 +14,7 @@ STATUS_EMOJI = {
     Status.OFFLINE: ':status_offline:305889028996071425',
     GameType.STREAMING: ':status_streaming:305889126463569920',
 }
+SNOOZE_EMOJI = u'\U0001f4a4'
 
 
 # Regexes

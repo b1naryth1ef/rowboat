@@ -2,6 +2,7 @@ import random
 import requests
 import humanize
 import operator
+import gevent
 
 from six import BytesIO
 from PIL import Image
@@ -26,7 +27,8 @@ from rowboat.models.user import User, Infraction
 from rowboat.models.message import Message, Reminder
 from rowboat.util.images import get_dominant_colors_user, get_dominant_colors_guild
 from rowboat.constants import (
-    STATUS_EMOJI, EMOJI_RE, USER_MENTION_RE, YEAR_IN_SEC, CDN_URL
+    STATUS_EMOJI, SNOOZE_EMOJI, GREEN_TICK_EMOJI, GREEN_TICK_EMOJI_ID,
+    EMOJI_RE, USER_MENTION_RE, YEAR_IN_SEC, CDN_URL
 )
 
 
@@ -387,24 +389,54 @@ class UtilitiesPlugin(Plugin):
         )
 
         for reminder in reminders:
-            message = reminder.message_id
-            channel = self.state.channels.get(message.channel_id)
-            if not channel:
-                self.log.warning('Not triggering reminder, channel %s was not found!',
-                    message.channel_id)
-                reminder.delete_instance()
-                continue
-
-            channel.send_message(u'<@{}> you asked me at {} ({} ago) to remind you about: {}'.format(
-                message.author_id,
-                reminder.created_at,
-                humanize.naturaldelta(reminder.created_at - datetime.utcnow()),
-                S(reminder.content)
-            ))
-
-            reminder.delete_instance()
+            self.spawn(self.trigger_reminder)
 
         self.queue_reminders()
+
+    def trigger_reminder(self, reminder):
+        message = reminder.message_id
+        channel = self.state.channels.get(message.channel_id)
+        if not channel:
+            self.log.warning('Not triggering reminder, channel %s was not found!',
+                message.channel_id)
+            reminder.delete_instance()
+            return
+
+        msg = channel.send_message(u'<@{}> you asked me at {} ({} ago) to remind you about: {}'.format(
+            message.author_id,
+            reminder.created_at,
+            humanize.naturaldelta(reminder.created_at - datetime.utcnow()),
+            S(reminder.content)
+        ))
+
+        # Add the emoji options
+        msg.add_reaction(SNOOZE_EMOJI)
+        msg.add_reaction(GREEN_TICK_EMOJI)
+
+        try:
+            mra_event = self.wait_for_event(
+                'MessageReactionAdd',
+                message_id=msg.id,
+                conditional=lambda e: (
+                    (e.emoji.name == SNOOZE_EMOJI or e.emoji.id == GREEN_TICK_EMOJI_ID) and
+                    e.user_id == message.author_id
+                )
+            ).get(timeout=30)
+        except gevent.Timeout:
+            reminder.delete_instance()
+            return
+        finally:
+            # Cleanup
+            msg.delete_reaction(SNOOZE_EMOJI)
+            msg.delete_instance(GREEN_TICK_EMOJI)
+
+        if mra_event.emoji.name == SNOOZE_EMOJI:
+            reminder.remind_at = datetime.utcnow() + timedelta(minutes=20)
+            reminder.save()
+            msg.edit(u'Ok, I\'ve snoozed that reminder for 20 minutes.')
+            return
+
+        reminder.delete_instance()
 
     @Plugin.command('clear', group='r', global_=True)
     def cmd_remind_clear(self, event):
