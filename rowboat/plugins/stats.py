@@ -82,13 +82,13 @@ class StatsPlugin(Plugin):
             tags['guild_id'] = event.guild.id
 
         if event.author.id == self.client.state.me.id:
-            if event.msg.nonce in self.nonces:
+            if event.nonce in self.nonces:
                 statsd.timing(
                     'latency.message_send',
-                    time.time() - self.nonces[event.msg.nonce],
+                    time.time() - self.nonces[event.nonce],
                     tags=to_tags(tags)
                 )
-                del self.nonces[event.msg.nonce]
+                del self.nonces[event.nonce]
 
         statsd.increment('guild.messages.create', tags=to_tags(tags))
 
