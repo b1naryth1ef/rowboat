@@ -1,3 +1,4 @@
+import re
 import time
 import operator
 
@@ -17,6 +18,9 @@ from rowboat.types.plugin import PluginConfig
 from rowboat.types import SlottedModel, DictField, Field
 from rowboat.models.user import Infraction
 from rowboat.models.message import Message, EMOJI_RE
+
+
+UPPER_RE = re.compile('[A-Z]')
 
 
 PunishmentType = Enum(
@@ -41,6 +45,7 @@ class SubConfig(SlottedModel):
     max_messages = Field(CheckConfig, default=None)
     max_mentions = Field(CheckConfig, default=None)
     max_links = Field(CheckConfig, default=None)
+    max_upper_case = Field(CheckConfig, default=None)
     max_emojis = Field(CheckConfig, default=None)
     max_newlines = Field(CheckConfig, default=None)
     max_attachments = Field(CheckConfig, default=None)
@@ -57,6 +62,7 @@ class SubConfig(SlottedModel):
     _cached_max_messages_bucket = Field(str, private=True)
     _cached_max_mentions_bucket = Field(str, private=True)
     _cached_max_links_bucket = Field(str, private=True)
+    _cached_max_upper_case_bucket = Field(str, private=True)
     _cached_max_emojis_bucket = Field(str, private=True)
     _cached_max_newlines_bucket = Field(str, private=True)
     _cached_max_attachments_bucket = Field(str, private=True)
@@ -243,6 +249,7 @@ class SpamPlugin(Plugin):
         check_bucket('max_messages', 'Too Many Messages', 1)
         check_bucket('max_mentions', 'Too Many Mentions', lambda e: len(e.mentions))
         check_bucket('max_links', 'Too Many Links', lambda e: len(URL_RE.findall(e.message.content)))
+        check_bucket('max_upper_case' 'Too Many Capitals', lambda e: len(UPPER_RE.findall(e.message.content)))
         # TODO: unicode emoji too pls
         check_bucket('max_emojis', 'Too Many Emojis', lambda e: len(EMOJI_RE.findall(e.message.content)))
         check_bucket('max_newlines', 'Too Many Newlines', lambda e: e.message.content.count('\n') + e.message.content.count('\r'))
