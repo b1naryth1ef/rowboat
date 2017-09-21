@@ -1,5 +1,25 @@
 # Changelog
 
+## V1.3.0
+
+### Features
+
+- Added `archive extend` command which extends the duration of a current or expired archive
+- Added some information to the guild overview/information page on the dashboard (thanks @swvn9)
+- Added a spam bucket for max upper case letters (`max_upper_case`)
+- Added `group_confirm_reactions` option to admin configuration, when toggled to true it will respond to !join and !leave group commands with only a reaction
+- Added the ability to "snooze" reminders via reactions
+- Added statistics around message latency
+- Added a channel mention within the `SPAM_DEBUG` modlog event
+
+### Bugfixes
+
+- Fixed the response text of the `seen` command (thanks @OGNova)
+- Fixed the infractions tab not showing up in the sidebar when viewing the config (thanks @OGNova)
+- Fixed carrige returns not being counted as new lines in spam (thanks @liampwll)
+- Fixed a bug with `mute` that would not allow a mute with no duration or reason to be applied
+- Fixed case where long message deletions would not be properly logged (they are now truncated properly by the modlog)
+
 ## V1.2.0
 
 ### Features
