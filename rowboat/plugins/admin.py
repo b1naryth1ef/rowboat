@@ -1122,9 +1122,10 @@ class AdminPlugin(Plugin):
         if emojis.value:
             emojis = list(emojis.value)
 
-            embed.add_field(
-                name='Most Used Emoji',
-                value=u'<:{1}:{0}> (`{1}`, used {2} times)'.format(*emojis[0]))
+            if emojis:
+                embed.add_field(
+                    name='Most Used Emoji',
+                    value=u'<:{1}:{0}> (`{1}`, used {2} times)'.format(*emojis[0]))
 
         embed.thumbnail = MessageEmbedThumbnail(url=user.avatar_url)
         embed.color = get_dominant_colors_user(user)
