@@ -44,7 +44,7 @@ def with_guild(f):
 @guilds.route('/guilds/<gid>')
 @with_guild
 def guild_info(guild):
-    return render_template('guild_info.html', guild=guild)
+    return render_template('guild_info.html', guild=guild, User=User)
 
 
 @guilds.route('/api/guilds/<gid>', methods=['DELETE'])

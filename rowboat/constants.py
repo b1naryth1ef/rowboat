@@ -1,4 +1,5 @@
 import re
+import yaml
 from disco.types.user import GameType, Status
 
 # Emojis
@@ -37,3 +38,8 @@ CDN_URL = 'https://twemoji.maxcdn.com/2/72x72/{}.png'
 # Loaded from files
 with open('data/badwords.txt', 'r') as f:
     BAD_WORDS = f.readlines()
+
+# Merge in any overrides in the config
+with open('config.yaml', 'r') as f:
+    loaded = yaml.load(f.read())
+    locals().update(loaded.get('constants', {}))
