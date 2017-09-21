@@ -388,8 +388,12 @@ class UtilitiesPlugin(Plugin):
             (Reminder.remind_at < (datetime.utcnow() + timedelta(seconds=1)))
         )
 
+        waitables = []
         for reminder in reminders:
-            self.spawn(self.trigger_reminder, reminder)
+            waitables.append(self.spawn(self.trigger_reminder, reminder))
+
+        for waitable in waitables:
+            waitable.join()
 
         self.queue_reminders()
 
