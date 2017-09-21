@@ -178,7 +178,7 @@ class UtilitiesPlugin(Plugin):
         except Message.DoesNotExist:
             return event.msg.reply(u"I've never seen {}".format(user))
 
-        event.msg.reply(u'I last saw {} {} ({})'.format(
+        event.msg.reply(u'I last saw {} {} ago (at {})'.format(
             user,
             humanize.naturaldelta(datetime.utcnow() - msg.timestamp),
             msg.timestamp
