@@ -249,7 +249,7 @@ class SpamPlugin(Plugin):
         check_bucket('max_messages', 'Too Many Messages', 1)
         check_bucket('max_mentions', 'Too Many Mentions', lambda e: len(e.mentions))
         check_bucket('max_links', 'Too Many Links', lambda e: len(URL_RE.findall(e.message.content)))
-        check_bucket('max_upper_case' 'Too Many Capitals', lambda e: len(UPPER_RE.findall(e.message.content)))
+        check_bucket('max_upper_case', 'Too Many Capitals', lambda e: len(UPPER_RE.findall(e.message.content)))
         # TODO: unicode emoji too pls
         check_bucket('max_emojis', 'Too Many Emojis', lambda e: len(EMOJI_RE.findall(e.message.content)))
         check_bucket('max_newlines', 'Too Many Newlines', lambda e: e.message.content.count('\n') + e.message.content.count('\r'))

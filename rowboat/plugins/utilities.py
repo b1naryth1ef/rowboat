@@ -389,7 +389,7 @@ class UtilitiesPlugin(Plugin):
         )
 
         for reminder in reminders:
-            self.spawn(self.trigger_reminder)
+            self.spawn(self.trigger_reminder, reminder)
 
         self.queue_reminders()
 
@@ -428,7 +428,7 @@ class UtilitiesPlugin(Plugin):
         finally:
             # Cleanup
             msg.delete_reaction(SNOOZE_EMOJI)
-            msg.delete_instance(GREEN_TICK_EMOJI)
+            msg.delete_reaction(GREEN_TICK_EMOJI)
 
         if mra_event.emoji.name == SNOOZE_EMOJI:
             reminder.remind_at = datetime.utcnow() + timedelta(minutes=20)
