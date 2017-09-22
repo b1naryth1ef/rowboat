@@ -30,7 +30,8 @@ from rowboat.models.message import Command
 from rowboat.models.notification import Notification
 from rowboat.plugins.modlog import Actions
 from rowboat.constants import (
-    GREEN_TICK_EMOJI, RED_TICK_EMOJI, ROWBOAT_GUILD_ID, ROWBOAT_USER_ROLE_ID
+    GREEN_TICK_EMOJI, RED_TICK_EMOJI, ROWBOAT_GUILD_ID, ROWBOAT_USER_ROLE_ID,
+    ROWBOAT_CONTROL_CHANNEL
 )
 
 PY_CODE_BLOCK = u'```py\n{}\n```'
@@ -288,8 +289,7 @@ class CorePlugin(Plugin):
         try:
             yield embed
             self.bot.client.api.channels_messages_create(
-                290924692057882635 if ENV == 'prod' else 301869081714491393,
-                '',
+                ROWBOAT_CONTROL_CHANNEL,
                 embed=embed
             )
         except:
@@ -468,8 +468,20 @@ class CorePlugin(Plugin):
                 except CommandResponse as e:
                     event.reply(e.response)
                 except:
-                    Command.track(event, command, exception=True)
+                    tracked = Command.track(event, command, exception=True)
                     self.log.exception('Command error:')
+
+                    with self.send_control_message() as embed:
+                        embed.title = u'Command Error: {}'.format(command.name)
+                        embed.color = 0xff6961
+                        embed.add_field(
+                            name='Author', value='({}) `{}`'.format(event.author, event.author.id), inline=True)
+                        embed.add_field(name='Channel', value='({}) `{}`'.format(
+                            event.channel.name,
+                            event.channel.id
+                        ), inline=True)
+                        embed.description = '```{}```'.format(u'\n'.join(tracked.traceback.split('\n')[-8:]))
+
                     return event.reply('<:{}> something went wrong, perhaps try again later'.format(RED_TICK_EMOJI))
 
             Command.track(event, command)

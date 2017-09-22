@@ -415,7 +415,7 @@ class Command(BaseModel):
 
     @classmethod
     def track(cls, event, command, exception=False):
-        cls.create(
+        return cls.create(
             message_id=event.message.id,
             plugin=command.plugin.name,
             command=command.name,

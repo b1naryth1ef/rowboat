@@ -240,16 +240,16 @@ class SQLPlugin(Plugin):
         pool = Pool(pool)
 
         total = len(channels)
-        count = 0
         msg = event.msg.reply('Recovery Status: 0/{}'.format(total))
+        recoveries = []
 
         def updater():
-            last = count
+            last = len(recoveries)
 
             while True:
-                if last != count:
-                    last = count
-                    msg.edit('Recovery Status: {}/{}'.format(count, total))
+                if last != len(recoveries):
+                    last = len(recoveries)
+                    msg.edit('Recovery Status: {}/{}'.format(len(recoveries), total))
                 gevent.sleep(5)
 
         u = self.spawn(updater)
@@ -259,11 +259,14 @@ class SQLPlugin(Plugin):
                 pool.wait_available()
                 r = Recovery(self.log, channel, start_at)
                 pool.spawn(r.run)
-                count += 1
+                recoveries.append(r)
         finally:
+            pool.join()
             u.kill()
 
-        msg.edit('RECOVERY COMPLETED')
+        msg.edit('RECOVERY COMPLETED ({} total messages)'.format(
+            sum([i._recovered for i in recoveries])
+        ))
 
     @Plugin.command('backfill channel', '[channel:snowflake]', level=-1, global_=True)
     def command_backfill_channel(self, event, channel=None):
@@ -429,6 +432,7 @@ class Recovery(object):
         self.channel = channel
         self.start_dt = start_dt
         self.end_dt = end_dt or datetime.utcnow()
+        self._recovered = 0
 
     def run(self):
         self.log.info('Starting recovery on channel %s (%s -> %s)', self.channel.id, self.start_dt, self.end_dt)
@@ -440,7 +444,10 @@ class Recovery(object):
         )
 
         for chunk in msgs:
-            Message.from_disco_message_many(chunk, safe=True)
+            if not chunk:
+                break
+
+            self._recovered += len(Message.from_disco_message_many(chunk, safe=True))
 
             if to_datetime(chunk[-1].id) > self.end_dt:
                 break
