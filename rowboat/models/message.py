@@ -108,7 +108,7 @@ class Message(BaseModel):
 
     @classmethod
     def from_disco_message_many(cls, messages, safe=False):
-        q = cls.insert_many(map(cls.convert_message, messages))
+        q = cls.insert_many(map(cls.convert_message, messages)).returning(cls.id)
 
         if safe:
             q = q.on_conflict('DO NOTHING')
