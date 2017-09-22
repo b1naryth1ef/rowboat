@@ -643,3 +643,11 @@ class CorePlugin(Plugin):
     def guild_unwhitelist(self, event, guild):
         rdb.srem(GUILDS_WAITING_SETUP_KEY, str(guild))
         event.msg.reply('Ok, I\'ve made sure guild %s is no longer in the whitelist' % guild)
+
+    @Plugin.command('disable', '<plugin:str>', group='plugins', level=-1)
+    def plugin_disable(self, event, plugin):
+        plugin = self.bot.plugins.get(plugin)
+        if not plugin:
+            return event.msg.reply('Hmmm, it appears that plugin doesn\'t exist!?')
+        self.bot.rmv_plugin(plugin.__class__)
+        event.msg.reply('Ok, that plugin has been disabled and unloaded')
