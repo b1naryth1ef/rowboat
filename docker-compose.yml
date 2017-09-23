@@ -39,3 +39,10 @@ services:
       - "7171:7171"
     depends_on:
       - web
+  workers:
+    build: .
+    command: python manage.py workers
+    volumes:
+      - .:/opt/rowboat
+    depends_on:
+      - web

@@ -533,7 +533,7 @@ class CorePlugin(Plugin):
         embed.description = BOT_INFO
         embed.add_field(name='Servers', value=str(Guild.select().count()), inline=True)
         embed.add_field(name='Uptime', value=humanize.naturaldelta(datetime.utcnow() - self.startup), inline=True)
-        event.msg.reply('', embed=embed)
+        event.msg.reply(embed=embed)
 
     @Plugin.command('uptime', level=-1)
     def command_uptime(self, event):

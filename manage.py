@@ -6,6 +6,7 @@ from gevent import wsgi
 from rowboat import ENV
 from rowboat.web import rowboat
 from rowboat.sql import init_db
+from disco.util.logging import LOG_FORMAT
 from yaml import load
 
 import os
@@ -81,6 +82,24 @@ def bot(env):
         'DSN': config['DSN'],
     })
     supervisor.run_forever()
+
+
+@cli.command()
+@click.option('--worker-id', '-w', default=0)
+def workers(worker_id):
+    from rowboat.tasks import TaskWorker
+
+    # Log things to file
+    file_handler = logging.FileHandler('worker-%s.log' % worker_id)
+    log = logging.getLogger()
+    file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    log.addHandler(file_handler)
+
+    for logname in ['peewee', 'requests']:
+        logging.getLogger(logname).setLevel(logging.INFO)
+
+    init_db(ENV)
+    TaskWorker().run()
 
 
 @cli.command('add-global-admin')

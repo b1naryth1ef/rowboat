@@ -23,6 +23,7 @@ from rowboat.models.guild import GuildEmoji, GuildVoiceSession
 from rowboat.models.channel import Channel
 from rowboat.models.message import Message, Reaction
 from rowboat.util.input import parse_duration
+from rowboat.tasks.backfill import backfill_channel, backfill_guild
 
 
 class SQLPlugin(Plugin):
@@ -271,58 +272,14 @@ class SQLPlugin(Plugin):
     @Plugin.command('backfill channel', '[channel:snowflake]', level=-1, global_=True)
     def command_backfill_channel(self, event, channel=None):
         channel = self.state.channels.get(channel) if channel else event.channel
-
-        if channel.id in self.backfills:
-            event.msg.reply(':warning: a backfill is already running for that channel')
-            return
-
-        self.backfills[channel.id] = Backfill(self, channel)
-        try:
-            self.backfills[channel.id].run()
-            event.msg.reply('Completed backfill: {} scanned / {} inserted'.format(
-                self.backfills[channel.id].scanned,
-                self.backfills[channel.id].inserted,
-            ))
-        except:
-            self.log.exception('Failed to backfill %s:', channel)
-            event.msg.reply('Failed to backfill {}'.format(channel))
-        finally:
-            del self.backfills[channel.id]
+        backfill_channel.queue(channel.id)
+        event.msg.reply(':ok_hand: enqueued channel to be backfilled')
 
     @Plugin.command('backfill guild', '[guild:guild] [concurrency:int]', level=-1, global_=True)
     def command_backfill_guild(self, event, guild=None, concurrency=1):
         guild = guild or event.guild
-
-        if concurrency < 1 or concurrency > 10:
-            return event.msg.reply(u':warning: concurrency must between 1 and 10')
-
-        p = gevent.pool.Pool(concurrency)
-        for channel in guild.channels.values():
-            if channel.id in self.backfills:
-                continue
-
-            if channel.is_voice:
-                continue
-
-            def backfill_one(channel):
-                self.backfills[channel.id] = Backfill(self, channel)
-                try:
-                    self.backfills[channel.id].run()
-                    event.msg.reply(u'Completed backfill on {}: {} scanned / {} inserted'.format(
-                        channel,
-                        self.backfills[channel.id]._scanned,
-                        self.backfills[channel.id]._inserted,
-                    ))
-                except:
-                    self.log.exception('Failed to backfill %s:', channel)
-                    event.msg.reply(u'Backfill failed on {}'.format(channel))
-                finally:
-                    del self.backfills[channel.id]
-
-            p.add(self.spawn(backfill_one, channel))
-
-        p.join()
-        event.msg.reply(u'Completed backfill on {}'.format(guild.name))
+        backfill_guild.queue(guild.id)
+        event.msg.reply(':ok_hand: enqueued guild to be backfilled')
 
     @Plugin.command('usage', '<word:str> [unit:str] [amount:int]', level=-1, group='words')
     def words_usage(self, event, word, unit='days', amount=7):
