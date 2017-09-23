@@ -136,7 +136,7 @@ class Guild(BaseModel):
             GuildBan.ensure(guild, ban.user, ban.reason)
 
     def serialize(self):
-        return {
+        base = {
             'id': self.guild_id,
             'owner_id': self.owner_id,
             'name': self.name,
@@ -146,6 +146,11 @@ class Guild(BaseModel):
             'enabled': self.enabled,
             'whitelist': self.whitelist,
         }
+
+        if hasattr(self, 'role'):
+            base['role'] = self.role
+
+        return base
 
 
 @BaseModel.register

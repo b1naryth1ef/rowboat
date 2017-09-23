@@ -1,7 +1,27 @@
 import { h, render, Component } from 'preact';
+import { Redirect } from 'react-router-dom'
+import {globalState} from '../state';
 
 export default class Login extends Component {
-  render() {
+  constructor() {
+    super();
+
+    this.state = {
+      user: globalState.user,
+    };
+
+    globalState.events.on('user.set', (user) => {
+      this.setState({user: user});
+    });
+
+    globalState.init();
+  }
+
+  render(props, state) {
+    if (this.state.user) {
+      return <Redirect to='/' />;
+    }
+
     return (
       <div class="container">
         <div class="row">
