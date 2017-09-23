@@ -52,9 +52,9 @@ class GuildsTable extends Component {
     }
 
     var rows = [];
-    for (var guild of props.guilds) {
+    Object.values(props.guilds).map((guild) => {
       rows.push(<GuildTableRow guild={guild} />);
-    }
+    });
 
     return (
       <div class="table-responsive">
