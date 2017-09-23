@@ -4,6 +4,13 @@ import {globalState} from './state';
 class Guild {
   constructor(obj) {
     this.id = obj.id;
+    this.ownerID = obj.owner_id;
+    this.name = obj.name;
+    this.icon = obj.icon;
+    this.splash = obj.splash;
+    this.region = obj.region;
+    this.enabled = obj.enabled;
+    this.whitelist = obj.whitelist;
     this.role = obj.role;
   }
 
