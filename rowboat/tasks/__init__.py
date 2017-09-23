@@ -38,12 +38,13 @@ def task(*args, **kwargs):
 
 
 class Task(object):
-    def __init__(self, name, method, max_concurrent=None, buffer_time=None, max_queue_size=25):
+    def __init__(self, name, method, max_concurrent=None, buffer_time=None, max_queue_size=25, global_lock=None):
         self.name = name
         self.method = method
         self.max_concurrent = max_concurrent
         self.max_queue_size = max_queue_size
         self.buffer_time = buffer_time
+        self.global_lock = global_lock
 
         self.log = log
 
@@ -84,10 +85,24 @@ class TaskRunner(object):
         log.info('[%s] Completed in %ss', job['id'], time.time() - start)
 
     def run(self, job):
+        lock = None
+        if self.task.global_lock:
+            lock = rdb.lock('{}:{}'.format(
+                self.task.name,
+                self.task.global_lock(
+                    *job['args'],
+                    **job['kwargs']
+                )
+            ))
+            lock.acquire()
+
         if self.task.max_concurrent:
             self.lock.acquire()
 
         self.process(job)
+
+        if lock:
+            lock.release()
 
         if self.task.max_concurrent:
             self.lock.release()
