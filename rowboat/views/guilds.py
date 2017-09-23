@@ -8,7 +8,7 @@ from rowboat.util.decos import authed
 from rowboat.models.guild import Guild, GuildConfigChange
 from rowboat.models.user import User, Infraction
 
-guilds = Blueprint('guilds', __name__)
+guilds = Blueprint('guilds', __name__, url_prefix='/api/guilds')
 
 
 def serialize_user(u):
@@ -41,13 +41,13 @@ def with_guild(f):
     return func
 
 
-@guilds.route('/guilds/<gid>')
+@guilds.route('/<gid>')
 @with_guild
-def guild_info(guild):
-    return render_template('guild_info.html', guild=guild, User=User)
+def guild_get(guild):
+    return jsonify(guild.serialize())
 
 
-@guilds.route('/api/guilds/<gid>', methods=['DELETE'])
+@guilds.route('/<gid>', methods=['DELETE'])
 @with_guild
 def guild_delete(guild):
     if not g.user.admin:
@@ -63,10 +63,44 @@ def guild_delete(guild):
     return '', 204
 
 
-@guilds.route('/guilds/<gid>/config')
+@guilds.route('/<gid>/config')
 @with_guild
 def guild_config(guild):
-    return render_template('guild_config.html', guild=guild)
+    return jsonify({
+        'contents': unicode(guild.config_raw),
+    })
+
+
+@guilds.route('/<gid>/config', methods=['POST'])
+@with_guild
+def guild_z_config_update(guild):
+    if guild.role not in ['admin', 'editor']:
+        return 'Missing Permissions', 403
+
+    # Calculate users diff
+    try:
+        data = yaml.load(request.json['config'])
+    except:
+        return 'Invalid YAML', 400
+
+    before = sorted(guild.config.get('web', {}).items(), key=lambda i: i[0])
+    after = sorted([(str(k), v) for k, v in data.get('web', {}).items()], key=lambda i: i[0])
+
+    if guild.role != 'admin' and before != after:
+        return 'Invalid Access', 403
+
+    role = data.get('web', {}).get(g.user.user_id) or data.get('web', {}).get(str(g.user.user_id))
+    if guild.role != role and not g.user.admin:
+        print g.user.admin
+        return 'Cannot change your own permissions', 400
+
+    try:
+        guild.update_config(g.user.user_id, request.json['config'])
+        return '', 200
+    except Guild.DoesNotExist:
+        return 'Invalid Guild', 404
+    except Exception as e:
+        return 'Invalid Data: %s' % e, 400
 
 
 @guilds.route('/guilds/<gid>/infractions')
@@ -184,37 +218,6 @@ def guild_infractions_list(guild):
         'recordsFiltered': filter_q.count(),
         'data': map(serialize, final_q),
     })
-
-
-@guilds.route('/api/guilds/<gid>/config/update', methods=['POST'])
-@with_guild
-def guild_config_update(guild):
-    if guild.role not in ['admin', 'editor']:
-        return 'Missing Permissions', 403
-
-    # Calculate users diff
-    try:
-        data = yaml.load(request.values.get('data'))
-    except:
-        return 'Invalid YAML', 400
-
-    before = sorted(guild.config.get('web', {}).items(), key=lambda i: i[0])
-    after = sorted([(str(k), v) for k, v in data.get('web', {}).items()], key=lambda i: i[0])
-
-    if guild.role != 'admin' and before != after:
-        return 'Invalid Access', 403
-      
-    role = data.get('web', {}).get(g.user.user_id) or data.get('web', {}).get(str(g.user.user_id))
-    if guild.role != role and not g.user.admin:
-        return 'Cannot change your own permissions', 400
-
-    try:
-        guild.update_config(g.user.user_id, request.values.get('data'))
-        return '', 200
-    except Guild.DoesNotExist:
-        return 'Invalid Guild', 404
-    except Exception as e:
-        return 'Invalid Data: %s' % e, 400
 
 
 @guilds.route('/api/guilds/<gid>/config/raw')
