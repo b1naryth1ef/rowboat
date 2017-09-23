@@ -1330,7 +1330,7 @@ class AdminPlugin(Plugin):
 
         member.add_role(role)
         if event.config.group_confirm_reactions:
-            event.msg.add_reaction(GREEN_TICK_EMOJI_ID)
+            event.msg.add_reaction(GREEN_TICK_EMOJI)
             return
         raise CommandSuccess(u'you have joined the {} group'.format(name))
 
@@ -1349,7 +1349,7 @@ class AdminPlugin(Plugin):
 
         member.remove_role(role_id)
         if event.config.group_confirm_reactions:
-            event.msg.add_reaction(GREEN_TICK_EMOJI_ID)
+            event.msg.add_reaction(GREEN_TICK_EMOJI)
             return
         raise CommandSuccess(u'you have left the {} group'.format(name))
 
