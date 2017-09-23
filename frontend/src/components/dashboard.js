@@ -11,8 +11,10 @@ class DashboardGuildsList extends Component {
   }
 
   componentWillMount() {
-    globalState.user.getGuilds((guilds) => {
-      this.setState({guilds});
+    globalState.getCurrentUser().then((user) => {
+      user.getGuilds().then((guilds) => {
+        this.setState({guilds});
+      });
     });
   }
 

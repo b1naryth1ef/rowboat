@@ -1,6 +1,7 @@
 import EventEmitter from 'eventemitter3';
+import axios from 'axios';
 
-import {getCurrentUser} from './user';
+import User from './models/user';
 
 class State {
   constructor() {
@@ -10,23 +11,56 @@ class State {
   }
 
   init() {
-    getCurrentUser().then((user) => {
-      this.setUser(user);
-    }).catch((err) => {
-      this.setUser(null);
+    if (this.ready) return;
+
+    this.getCurrentUser().then((user) => {
+      this.ready = true;
+      this.events.emit('ready');
+      user.getGuilds();
     });
   }
 
-  setUser(user) {
-    this.user = user;
-    this.events.emit('user.set', user);
-
-    if (!this.ready) {
-      this.ready = true;
-      this.events.emit('ready');
-    }
+  getGuild(guildID) {
+    return new Promise((resolve, reject) => {
+      this.getCurrentUser().then((user) => {
+        user.getGuilds().then((guilds) => {
+          console.log(guildID, guilds);
+          if (guildID in guilds) {
+            resolve(guilds[guildID]);
+          } else {
+            reject(null);
+          }
+        });
+      });
+    });
   }
 
+  getCurrentUser(refresh = false) {
+    // If the user is already set, just fire the callback
+    if (this.user && !refresh) {
+      return new Promise((resolve) => {
+        resolve(this.user);
+      });
+    }
+
+    return new Promise((resolve) => {
+      axios.get('/api/users/@me').then((res) => {
+        this.user = new User(res.data);
+        this.events.emit('user.set', this.user);
+        resolve(this.user);
+      });
+    });
+  }
+
+  logout() {
+    return new Promise((resolve) => {
+      axios.post('/api/auth/logout').then((res) => {
+        this.user = null;
+        this.events.emit('user.set', this.user);
+        resolve();
+      });
+    });
+  }
 };
 
 export var globalState = new State;

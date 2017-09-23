@@ -1,8 +1,11 @@
 import axios from 'axios';
-import {globalState} from './state';
+import {globalState} from '../state';
+import BaseModel from './base';
 
-class Guild {
+export default class Guild extends BaseModel {
   constructor(obj) {
+    super();
+
     this.id = obj.id;
     this.ownerID = obj.owner_id;
     this.name = obj.name;
@@ -12,9 +15,17 @@ class Guild {
     this.enabled = obj.enabled;
     this.whitelist = obj.whitelist;
     this.role = obj.role;
+
+    this.config = null;
   }
 
-  getConfig() {
+  getConfig(refresh = false) {
+    if (this.config && !refresh) {
+      return new Promise((resolve) => {
+        resolve(this.config);
+      });
+    }
+
     return new Promise((resolve, reject) => {
       axios.get(`/api/guilds/${this.id}/config`).then((res) => {
         resolve(res.data);
@@ -33,15 +44,4 @@ class Guild {
       });
     });
   }
-}
-
-
-export function getGuild(guildID) {
-  return new Promise((resolve, reject) => {
-    axios.get(`/api/guilds/${guildID}`).then((res) => {
-      resolve(new Guild(res.data));
-    }).catch((err) => {
-      reject();
-    });
-  });
 }

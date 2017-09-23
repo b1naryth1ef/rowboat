@@ -1,6 +1,5 @@
 import { h, Component } from 'preact';
 import AceEditor from 'react-ace';
-import {getGuild} from '../guild';
 import {globalState} from '../state';
 
 import 'brace/mode/yaml'
@@ -22,8 +21,8 @@ export default class GuildConfigEdit extends Component {
   }
 
   componentWillMount() {
-    getGuild(this.props.params.gid).then((guild) => {
-      guild.getConfig().then((config) => {
+    globalState.getGuild(this.props.params.gid).then((guild) => {
+      guild.getConfig(true).then((config) => {
         this.initialConfig = config.contents;
 
         this.setState({
@@ -31,6 +30,8 @@ export default class GuildConfigEdit extends Component {
           contents: config.contents,
         });
       });
+    }).catch((err) => {
+      console.error('Failed to find guild for config edit', this.props.params.gid);
     });
   }
 

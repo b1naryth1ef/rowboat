@@ -29,6 +29,20 @@ class User(BaseModel):
             (('user_id', 'username', 'discriminator'), True),
         )
 
+    def serialize(self, us=False):
+        base = {
+            'id': self.user_id,
+            'username': self.username,
+            'discriminator': self.discriminator,
+            'avatar': self.avatar,
+            'bot': self.bot,
+        }
+
+        if us:
+            base['admin'] = self.admin
+
+        return base
+
     @property
     def id(self):
         return self.user_id

@@ -9,13 +9,7 @@ users = Blueprint('users', __name__, url_prefix='/api/users')
 @users.route('/@me/')
 @authed
 def users_me():
-    return jsonify({
-        'id': g.user.user_id,
-        'username': g.user.username,
-        'discriminator': g.user.discriminator,
-        'avatar': g.user.get_avatar_url(),
-        'admin': g.user.admin,
-    })
+    return jsonify(g.user.serialize(us=True))
 
 
 @users.route('/@me/guilds')

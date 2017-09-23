@@ -1,5 +1,5 @@
 import { h, render, Component } from 'preact';
-import {getGuild} from '../guild';
+import {globalState} from '../state';
 
 class GuildWidget extends Component {
   render(props, state) {
@@ -64,10 +64,10 @@ export default class GuildOverview extends Component {
   }
 
   componentWillMount() {
-    getGuild(this.props.params.gid).then((guild) => {
-      this.setState({
-        guild: guild,
-      });
+    globalState.getGuild(this.props.params.gid).then((guild) => {
+      this.setState({guild});
+    }).catch((err) => {
+      console.error('Failed to load guild', this.props.params.gid);
     });
   }
 
@@ -75,8 +75,6 @@ export default class GuildOverview extends Component {
     if (!state.guild) {
       return <h3>Loading...</h3>;
     }
-
-    console.log('rendering', state);
 
     return (<div>
       <div class="row">
