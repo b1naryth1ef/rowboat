@@ -44,28 +44,26 @@ class Subscription(BaseModel):
         guild.premium_sub_id = sub.sub_id
         guild.save()
 
-    @classmethod
-    def deactivate(cls, sub_id):
+    def cancel(self, reason, force=True):
+        if force:
+            r = requests.delete(
+                'https://api.fastspring.com/subscriptions/{}'.format(self.sub_id),
+                auth=(fastspring['username'], fastspring['password']),
+            )
+            r.raise_for_status()
+
+        Guild.update(premium_sub_id=None).where(
+            (Guild.guild_id == self.guild_id)
+        ).execute()
+
         Subscription.update(
+            cancel_reason=reason,
             cancelled_at=datetime.utcnow()
         ).where(
             (Subscription.sub_id == sub_id)
         ).execute()
 
-    def cancel(self, reason):
-        r = requests.delete(
-            'https://api.fastspring.com/subscriptions/{}'.format(self.sub_id),
-            auth=(fastspring['username'], fastspring['password']),
-        )
-        r.raise_for_status()
-
-        Guild.update(premium_sub_id=None).where(
-            (Guild.guild_id == self.sub_id)
-        ).execute()
-
-        self.cancel_reason = reason
-        self.cancelled_at = datetime.utcnow()
-        self.save()
+        Guild.with_id(self.guild_id).emit_update()
 
     def serialize(self, user=None, guild=None):
         return {

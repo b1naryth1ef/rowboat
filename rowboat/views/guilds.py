@@ -3,6 +3,7 @@ import json
 import functools
 import operator
 
+from peewee import JOIN
 from flask import Blueprint, request, g, jsonify
 
 from rowboat.util.decos import authed
@@ -27,12 +28,21 @@ def with_guild(f):
     def func(*args, **kwargs):
         try:
             if g.user.admin:
-                guild = Guild.get(Guild.guild_id == kwargs.pop('gid'))
+                guild = Guild.select(Guild, Subscription).join(
+                    Subscription, JOIN.LEFT_OUTER, on=(
+                        Guild.premium_sub_id == Subscription.sub_id
+                    ).alias('subscription')
+                ).where(Guild.guild_id == kwargs.pop('gid')).get()
                 guild.role = 'admin'
             else:
                 guild = Guild.select(
                     Guild,
+                    Subscription,
                     Guild.config['web'][str(g.user.user_id)].alias('role')
+                ).join(
+                    Subscription, JOIN.LEFT_OUTER, on=(
+                        Guild.premium_sub_id == Subscription.sub_id
+                    ).alias('subscription')
                 ).where(
                     (Guild.guild_id == kwargs.pop('gid')) &
                     (~(Guild.config['web'][str(g.user.user_id)] >> None))
@@ -41,6 +51,12 @@ def with_guild(f):
         except Guild.DoesNotExist:
             return 'Invalid Guild', 404
     return func
+
+
+@guilds.route('/<gid>')
+@with_guild
+def guild_get(guild):
+    return jsonify(guild.serialize(premium_subscription=guild.subscription))
 
 
 @guilds.route('/<gid>/config')

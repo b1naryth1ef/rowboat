@@ -22,7 +22,7 @@ def billing_webhook_activate():
         Subscription.activate(
             sub_id=event['data']['id'],
             user_id=int(event['data']['tags']['user_id']),
-            guild_id=int(event['data']['tags']['guild_id']),
+            guild_id=int(event['data']['tags']['guild_idll']),
         )
     return 'OK', 200
 
@@ -30,5 +30,5 @@ def billing_webhook_activate():
 @billing.route('/webhook/deactivate', methods=['POST'])
 def billing_webhook_deactivate():
     for event in get_fastspring_payload()['events']:
-        Subscription.deactivate(event['data']['id'])
+        Subscription.get(sub_id=event['data']['id']).cancel('automatic - webhook', force=False)
     return 'OK', 200
