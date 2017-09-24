@@ -8,6 +8,7 @@ from flask import Blueprint, request, g, jsonify
 from rowboat.util.decos import authed
 from rowboat.models.guild import Guild, GuildConfigChange
 from rowboat.models.user import User, Infraction
+from rowboat.models.billing import Subscription
 
 guilds = Blueprint('guilds', __name__, url_prefix='/api/guilds')
 
@@ -161,7 +162,7 @@ def guild_infractions(guild):
     return jsonify([i.serialize(guild=guild, user=i.user, actor=i.actor) for i in q])
 
 
-@guilds.route('/api/guilds/<gid>/config/history')
+@guilds.route('/<gid>/config/history')
 @with_guild
 def guild_config_history(guild):
     def serialize(gcc):
@@ -179,3 +180,14 @@ def guild_config_history(guild):
     ).paginate(int(request.values.get('page', 1)), 25)
 
     return jsonify(map(serialize, q))
+
+
+@guilds.route('/<gid>/premium/cancel', methods=['POST'])
+@with_guild
+def guild_premium_cancel(guild):
+    sub = Subscription.get(sub_id=guild.premium_sub_id)
+    if sub.user_id != g.user.id and not g.user.admin:
+        return 'Invalid User', 403
+
+    sub.cancel('User Requested %s' % sub.user_id)
+    return '', 204
