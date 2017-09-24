@@ -35,9 +35,7 @@ class GuildOverviewInfoTable extends Component {
   }
 
   onCancel() {
-    this.props.guild.cancelPremium().then(() => {
-      this.props.history.push('/');
-    });
+    this.props.guild.cancelPremium();
   }
 
   render() {
@@ -113,10 +111,11 @@ export default class GuildOverview extends Component {
 
   componentWillMount() {
     globalState.getGuild(this.props.params.gid).then((guild) => {
+      guild.events.on('update', (guild) => this.setState({guild}));
       globalState.currentGuild = guild;
       this.setState({guild});
     }).catch((err) => {
-      console.error('Failed to load guild', this.props.params.gid);
+      console.error('Failed to load guild', this.props.params.gid, err);
     });
   }
 

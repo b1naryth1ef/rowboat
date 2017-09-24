@@ -5,7 +5,11 @@ import BaseModel from './base';
 export default class Guild extends BaseModel {
   constructor(obj) {
     super();
+    this.fromData(obj);
+    this.config = null;
+  }
 
+  fromData(obj) {
     this.id = obj.id;
     this.ownerID = obj.owner_id;
     this.name = obj.name;
@@ -16,8 +20,18 @@ export default class Guild extends BaseModel {
     this.whitelist = obj.whitelist;
     this.premium = obj.premium;
     this.role = obj.role;
+    this.events.emit('update', this);
+  }
 
-    this.config = null;
+  update() {
+    return new Promise((resolve, reject) => {
+      axios.get(`/api/guilds/${this.id}`).then((res) => {
+        this.fromData(res.data);
+        resolve(res.data);
+      }).catch((err) => {
+        reject(err.response.data);
+      });
+    });
   }
 
   getConfig(refresh = false) {
@@ -69,9 +83,7 @@ export default class Guild extends BaseModel {
   cancelPremium() {
     return new Promise((resolve, reject) => {
       axios.post(`/api/guilds/${this.id}/premium/cancel`).then((res) => {
-        resolve(res.data);
-        // HACK
-        this.premium = {'active': false, 'info': null};
+        this.update().then(() => { resolve(); });
       }).catch((err) => {
         reject(err.response.data);
       });

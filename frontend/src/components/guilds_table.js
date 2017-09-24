@@ -12,6 +12,9 @@ class GuildTableRowActions extends Component {
         <Link to={`/guilds/${this.props.guild.id}/config`} style={{paddingLeft: '4px'}}>
           <button type="button" className="btn btn-info btn-circle"><i className="fa fa-edit"></i></button>
         </Link>
+        <Link to={`/guilds/${this.props.guild.id}/config`} style={{paddingLeft: '4px'}}>
+          <button type="button" className="btn btn-danger btn-circle"><i className="fa fa-ban"></i></button>
+        </Link>
       </div>
     );
   }
@@ -34,6 +37,7 @@ class GuildTableRow extends Component {
     return (
       <tr>
         <td>{this.props.guild.id}</td>
+        <td>{this.props.guild.premium.active ? 'Yes' : 'No'}</td>
         <td>{this.props.guild.name}</td>
         <td><GuildTableRowActions guild={this.props.guild} /></td>
       </tr>
@@ -58,6 +62,7 @@ class GuildsTable extends Component {
           <thead>
             <tr>
               <th>ID</th>
+              <th>Premium</th>
               <th>Name</th>
               <th>Actions</th>
             </tr>
