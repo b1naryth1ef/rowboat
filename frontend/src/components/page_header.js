@@ -1,11 +1,11 @@
-import { h, render, Component } from 'preact';
+import React, { Component } from 'react';
 
 class PageHeader extends Component {
-  render(props, state) {
+  render() {
 		return (
-			<div class="row">
-				<div class="col-lg-12">
-					<h1 class="page-header">{props.name}</h1>
+			<div className="row">
+				<div className="col-lg-12">
+					<h1 className="page-header">{this.props.name}</h1>
 				</div>
 			</div>
     );

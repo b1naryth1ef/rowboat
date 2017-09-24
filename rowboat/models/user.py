@@ -31,7 +31,7 @@ class User(BaseModel):
 
     def serialize(self, us=False):
         base = {
-            'id': self.user_id,
+            'id': str(self.user_id),
             'username': self.username,
             'discriminator': self.discriminator,
             'avatar': self.avatar,
@@ -138,10 +138,10 @@ class Infraction(BaseModel):
 
     def serialize(self, guild=None, user=None, actor=None, include_metadata=False):
         base = {
-            'id': self.id,
-            'guild': (guild and guild.serialize()) or {'id': self.guild_id},
-            'user': (user and user.serialize()) or {'id': self.user_id},
-            'actor': (actor and actor.serialize()) or {'id': self.actor_id},
+            'id': str(self.id),
+            'guild': (guild and guild.serialize()) or {'id': str(self.guild_id)},
+            'user': (user and user.serialize()) or {'id': str(self.user_id)},
+            'actor': (actor and actor.serialize()) or {'id': str(self.actor_id)},
             'reason': self.reason,
             'expires_at': self.expires_at,
             'created_at': self.created_at,

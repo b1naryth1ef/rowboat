@@ -32,7 +32,7 @@ module.exports = {
 						'es2015'
 					],
 					plugins: [
-						['transform-react-jsx', { pragma: 'h' }]
+						['transform-react-jsx']
 					]
 				}
 			}
@@ -62,12 +62,12 @@ module.exports = {
     }
 	},
 
-	resolve: {
-			alias: {
-					'react': 'preact-compat',
-					'react-dom': 'preact-compat',
-					// Not necessary unless you consume a module using `createClass`
-					'create-react-class': 'preact-compat/lib/create-react-class'
-			}
-	}
+	// resolve: {
+	// 		alias: {
+	// 				'react': 'preact-compat',
+	// 				'react-dom': 'preact-compat',
+	// 				// Not necessary unless you consume a module using `createClass`
+	// 				'create-react-class': 'preact-compat/lib/create-react-class'
+	// 		}
+	// }
 };

@@ -1,4 +1,4 @@
-import { h, render, Component } from 'preact';
+import React, { Component } from 'react';
 import { Redirect } from 'react-router-dom'
 import {globalState} from '../state';
 
@@ -17,7 +17,7 @@ export default class Login extends Component {
     globalState.init();
   }
 
-  render(props, state) {
+  render() {
     if (this.state.user) {
       return <Redirect to='/' />;
     }

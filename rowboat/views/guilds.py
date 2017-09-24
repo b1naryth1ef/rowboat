@@ -1,5 +1,7 @@
 import yaml
+import json
 import functools
+import operator
 
 from flask import Blueprint, request, g, jsonify
 
@@ -80,11 +82,23 @@ def guild_z_config_update(guild):
         return 'Invalid Data: %s' % e, 400
 
 
+CAN_FILTER = ['id', 'user_id', 'actor_id', 'type', 'reason']
+CAN_SORT = ['id', 'user_id', 'actor_id', 'created_at', 'expires_at', 'type']
+
+
 @guilds.route('/<gid>/infractions')
 @with_guild
 def guild_infractions(guild):
     user = User.alias()
     actor = User.alias()
+
+    page = int(request.values.get('page', 1))
+    if page < 1:
+        page = 1
+
+    limit = int(request.values.get('limit', 1000))
+    if limit < 1 or limit > 1000:
+        limit = 1000
 
     q = Infraction.select(Infraction, user, actor).join(
         user,
@@ -92,9 +106,57 @@ def guild_infractions(guild):
     ).switch(Infraction).join(
         actor,
         on=((Infraction.actor_id == actor.user_id).alias('actor'))
-    ).where(
-        (Infraction.guild_id == guild.guild_id)
-    ).order_by(Infraction.id.desc()).limit(50000)
+    )
+
+    queries = []
+    if 'filtered' in request.values:
+        filters = json.loads(request.values['filtered'])
+
+        for f in filters:
+            if f['id'] not in CAN_FILTER:
+                continue
+
+            if f['id'] == 'type':
+                queries.append(Infraction.type_ == Infraction.Types.get(f['value']))
+            elif f['id'] == 'reason':
+                queries.append(Infraction.reason ** f['value'].lower())
+            else:
+                queries.append(getattr(Infraction, f['id']) == f['value'])
+
+    if queries:
+        q = q.where(
+            (Infraction.guild_id == guild.guild_id) &
+            reduce(operator.and_, queries)
+        )
+    else:
+        q = q.where((Infraction.guild_id == guild.guild_id))
+
+    sorted_fields = []
+    if 'sorted' in request.values:
+        sort = json.loads(request.values['sorted'])
+
+        for s in sort:
+            if s['id'] not in CAN_SORT:
+                continue
+
+            if s['desc']:
+                sorted_fields.append(
+                    getattr(Infraction, s['id']).desc()
+                )
+            else:
+                sorted_fields.append(
+                    getattr(Infraction, s['id'])
+                )
+
+    if sorted_fields:
+        q = q.order_by(*sorted_fields)
+    else:
+        q = q.order_by(Infraction.id.desc())
+
+    q = q.paginate(
+        page,
+        limit,
+    )
 
     return jsonify([i.serialize(guild=guild, user=i.user, actor=i.actor) for i in q])
 

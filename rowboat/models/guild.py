@@ -137,8 +137,8 @@ class Guild(BaseModel):
 
     def serialize(self):
         base = {
-            'id': self.guild_id,
-            'owner_id': self.owner_id,
+            'id': str(self.guild_id),
+            'owner_id': str(self.owner_id),
             'name': self.name,
             'icon': self.icon,
             'splash': self.splash,

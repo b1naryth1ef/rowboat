@@ -1,4 +1,5 @@
-import { h, render, Component } from 'preact';
+import React, { Component } from 'react';
+
 import PageHeader from './page_header';
 import GuildsTable from './guilds_table';
 import {globalState} from '../state';
@@ -18,14 +19,14 @@ class DashboardGuildsList extends Component {
     });
   }
 
-  render(props, state) {
+  render() {
     return (
-      <div class="panel panel-default">
-        <div class="panel-heading">
+      <div className="panel panel-default">
+        <div className="panel-heading">
           Guilds
         </div>
-        <div class="panel-body">
-          <GuildsTable guilds={state.guilds}/>
+        <div className="panel-body">
+          <GuildsTable guilds={this.state.guilds}/>
         </div>
       </div>
     );
@@ -33,12 +34,12 @@ class DashboardGuildsList extends Component {
 }
 
 class Dashboard extends Component {
-  render(props, state) {
+  render() {
 		return (
       <div>
         <PageHeader name="Dashboard" />
-        <div class="row">
-          <div class="col-lg-12">
+        <div className="row">
+          <div className="col-lg-12">
             <DashboardGuildsList />
           </div>
         </div>

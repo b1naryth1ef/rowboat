@@ -1,4 +1,5 @@
-import { h, render, Component } from 'preact';
+import React, { Component } from 'react';
+import debounce from 'lodash/debounce';
 import {globalState} from '../state';
 import ReactTable from "react-table";
 
@@ -12,28 +13,42 @@ class GuildInfractionsTable extends Component {
     };
   }
 
-  render(props, state) {
-    console.log('Rerendering;', state);
+  render() {
     return (
       <ReactTable
-        data={state.data}
+        data={this.state.data}
         columns={[
           {Header: "ID", accessor: "id"},
           {Header: "User", columns: [
-            {Header: "ID", accessor: "user.id"},
-            {Header: "Tag", id: "user.tag", accessor: d => d.user.username + d.user.discriminator}
+            {Header: "ID", accessor: "user.id", id: "user_id"},
+            {
+              Header: "Tag",
+              id: "user_tag",
+              accessor: d => d.user.username + '#' + d.user.discriminator,
+              filterable: false,
+              sortable: false,
+            }
           ]},
           {Header: "Actor", columns: [
-            {Header: "ID", accessor: "actor.id"},
-            {Header: "Tag", id: "actor.tag", accessor: d => d.actor.username + d.actor.discriminator}
+            {Header: "ID", accessor: "actor.id", id: "actor_id"},
+            {
+              Header: "Tag",
+              id: "actor_tag",
+              accessor: d => d.actor.username + '#' + d.actor.discriminator,
+              filterable: false,
+              sortable: false,
+            }
           ]},
-          {Header: "Type", accessor: "type.name"},
-          {Header: "Reason", accessor: "reason"}
+          {Header: "Created At", accessor: "created_at", filterable: false},
+          {Header: "Expires At", accessor: "expires_at", filterable: false},
+          {Header: "Type", accessor: "type.name", id: "type"},
+          {Header: "Reason", accessor: "reason", sortable: false},
+          {Header: "Active", id: "active", accessor: d => d.active ? 'Active' : 'Inactive', sortable: false, filterable: false},
         ]}
-        pages={-1}
-        loading={state.loading}
+        pages={10000}
+        loading={this.state.loading}
         manual
-        onFetchData={this.onFetchData.bind(this)}
+        onFetchData={debounce(this.onFetchData.bind(this), 500)}
         filterable
         className="-striped -highlight"
       />
@@ -43,10 +58,7 @@ class GuildInfractionsTable extends Component {
   onFetchData(state, instance) {
     this.setState({loading: true});
 
-    console.log(state.sorted);
-    console.log(state.filtered);
-
-    this.props.guild.getInfractions(state.page, state.pageSize).then((data) => {
+    this.props.guild.getInfractions(state.page, state.pageSize, state.sorted, state.filtered).then((data) => {
       this.setState({
         data: data,
         loading: false,
@@ -77,18 +89,18 @@ export default class GuildInfractions extends Component {
     globalState.currentGuild = null;
   }
 
-  render(props, state) {
-    if (!state.guild) {
+  render() {
+    if (!this.state.guild) {
       return <h3>Loading...</h3>;
     }
 
     return (
-      <div class="row">
-        <div class="col-lg-12">
-          <div class="panel panel-default">
-            <div class="panel-heading">Infractions</div>
-            <div class="panel-body">
-              <GuildInfractionsTable guild={state.guild} />
+      <div className="row">
+        <div className="col-lg-12">
+          <div className="panel panel-default">
+            <div className="panel-heading">Infractions</div>
+            <div className="panel-body">
+              <GuildInfractionsTable guild={this.state.guild} />
             </div>
           </div>
         </div>

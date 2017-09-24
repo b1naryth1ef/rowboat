@@ -1,4 +1,4 @@
-import { h, render, Component } from 'preact';
+import React, { Component } from 'react';
 import { state, VIEWS } from '../state';
 import { Link } from 'react-router-dom'
 
@@ -6,16 +6,12 @@ class GuildTableRowActions extends Component {
   render(props, state) {
     return (
       <div>
-        <a style="padding-left: 4px">
-          <Link to={`/guilds/${props.guild.id}`}>
-            <button type="button" class="btn btn-success btn-circle"><i class="fa fa-info"></i></button>
-          </Link>
-        </a>
-			  <a style="padding-left: 4px">
-          <Link to={`/guilds/${props.guild.id}/config`}>
-            <button type="button" class="btn btn-info btn-circle"><i class="fa fa-edit"></i></button>
-          </Link>
-        </a>
+        <Link to={`/guilds/${this.props.guild.id}`} style={{paddingLeft: '4px'}}>
+          <button type="button" className="btn btn-success btn-circle"><i className="fa fa-info"></i></button>
+        </Link>
+        <Link to={`/guilds/${this.props.guild.id}/config`} style={{paddingLeft: '4px'}}>
+          <button type="button" className="btn btn-info btn-circle"><i className="fa fa-edit"></i></button>
+        </Link>
       </div>
     );
   }
@@ -34,31 +30,31 @@ class GuildTableRowActions extends Component {
 }
 
 class GuildTableRow extends Component {
-  render(props, state) {
+  render() {
     return (
       <tr>
-        <td>{props.guild.id}</td>
-        <td>{props.guild.name}</td>
-        <td><GuildTableRowActions guild={props.guild} /></td>
+        <td>{this.props.guild.id}</td>
+        <td>{this.props.guild.name}</td>
+        <td><GuildTableRowActions guild={this.props.guild} /></td>
       </tr>
     );
   }
 }
 
 class GuildsTable extends Component {
-  render(props, state) {
-    if (!props.guilds) {
+  render() {
+    if (!this.props.guilds) {
       return <h3>Loading...</h3>;
     }
 
     var rows = [];
-    Object.values(props.guilds).map((guild) => {
-      rows.push(<GuildTableRow guild={guild} />);
+    Object.values(this.props.guilds).map((guild) => {
+      rows.push(<GuildTableRow guild={guild} key={guild.id} />);
     });
 
     return (
-      <div class="table-responsive">
-        <table class="table table-sriped table-bordered table-hover">
+      <div className="table-responsive">
+        <table className="table table-sriped table-bordered table-hover">
           <thead>
             <tr>
               <th>ID</th>
