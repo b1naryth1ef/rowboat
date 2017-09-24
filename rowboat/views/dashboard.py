@@ -1,14 +1,11 @@
 import json
 import subprocess
 
-from flask import Blueprint, render_template, request, g, make_response
+from flask import Blueprint, g, make_response
 from datetime import datetime
 
 from rowboat.redis import rdb
-from rowboat.models.message import Message, MessageArchive
-from rowboat.models.guild import Guild
-from rowboat.models.user import User
-from rowboat.models.channel import Channel
+from rowboat.models.message import MessageArchive
 from rowboat.util.decos import authed
 
 dashboard = Blueprint('dash', __name__)
@@ -38,38 +35,6 @@ class ServerSentEvent(object):
             return ""
         lines = ["%s: %s" % (v, k) for k, v in self.desc_map.iteritems() if k]
         return "%s\n\n" % "\n".join(lines)
-
-
-@dashboard.route('/')
-def dash_index():
-    if g.user:
-        if g.user.admin:
-            stats = json.loads(rdb.get('web:dashboard:stats') or '{}')
-
-            if not stats or 'refresh' in request.args:
-                stats['messages'] = pretty_number(Message.select().count())
-                stats['guilds'] = pretty_number(Guild.select().count())
-                stats['users'] = pretty_number(User.select().count())
-                stats['channels'] = pretty_number(Channel.select().count())
-
-                rdb.setex('web:dashboard:stats', json.dumps(stats), 300)
-
-            guilds = Guild.select().order_by(Guild.guild_id)
-        else:
-            stats = {}
-            guilds = Guild.select(
-                Guild, Guild.config['web'][str(g.user.user_id)].alias('role')
-            ).where(
-                (Guild.enabled == 1) &
-                (~(Guild.config['web'][str(g.user.user_id)] >> None))
-            )
-
-        return render_template(
-            'dashboard.html',
-            stats=stats,
-            guilds=guilds,
-        )
-    return render_template('login.html')
 
 
 @dashboard.route('/archive/<aid>.<fmt>')

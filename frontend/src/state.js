@@ -8,6 +8,17 @@ class State {
     this.events = new EventEmitter();
     this.user = null;
     this.ready = false;
+
+    this._currentGuild = null;
+  }
+
+  set currentGuild(guild) {
+    this._currentGuild = guild;
+    this.events.emit('currentGuild.set', guild);
+  }
+
+  get currentGuild() {
+    return this._currentGuild;
   }
 
   init() {
@@ -24,7 +35,6 @@ class State {
     return new Promise((resolve, reject) => {
       this.getCurrentUser().then((user) => {
         user.getGuilds().then((guilds) => {
-          console.log(guildID, guilds);
           if (guildID in guilds) {
             resolve(guilds[guildID]);
           } else {

@@ -136,6 +136,28 @@ class Infraction(BaseModel):
             (('guild_id', 'user_id'), False),
         )
 
+    def serialize(self, guild=None, user=None, actor=None, include_metadata=False):
+        base = {
+            'id': self.id,
+            'guild': (guild and guild.serialize()) or {'id': self.guild_id},
+            'user': (user and user.serialize()) or {'id': self.user_id},
+            'actor': (actor and actor.serialize()) or {'id': self.actor_id},
+            'reason': self.reason,
+            'expires_at': self.expires_at,
+            'created_at': self.created_at,
+            'active': self.active,
+        }
+
+        base['type'] = {
+            'id': self.type_,
+            'name': next(i.name for i in Infraction.Types.attrs if i.index == self.type_)
+        }
+
+        if include_metadata:
+            base['metadata'] = self.metadata
+
+        return base
+
     @staticmethod
     def admin_config(event):
         return getattr(event.base_config.plugins, 'admin', None)

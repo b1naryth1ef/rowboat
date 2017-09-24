@@ -65,10 +65,15 @@ export default class GuildOverview extends Component {
 
   componentWillMount() {
     globalState.getGuild(this.props.params.gid).then((guild) => {
+      globalState.currentGuild = guild;
       this.setState({guild});
     }).catch((err) => {
       console.error('Failed to load guild', this.props.params.gid);
     });
+  }
+
+  componentWillUnmount() {
+    globalState.currentGuild = null;
   }
 
   render(props, state) {

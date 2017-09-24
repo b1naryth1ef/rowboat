@@ -44,4 +44,16 @@ export default class Guild extends BaseModel {
       });
     });
   }
+
+  getInfractions(page, limit) {
+    const params = {page, limit};
+
+    return new Promise((resolve, reject) => {
+      axios.get(`/api/guilds/${this.id}/infractions`, {params: params}).then((res) => {
+        resolve(res.data);
+      }).catch((err) => {
+        reject(err.response.data);
+      });
+    });
+  }
 }
