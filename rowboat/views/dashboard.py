@@ -37,7 +37,7 @@ class ServerSentEvent(object):
         return "%s\n\n" % "\n".join(lines)
 
 
-@dashboard.route('/archive/<aid>.<fmt>')
+@dashboard.route('/api/archive/<aid>.<fmt>')
 def archive(aid, fmt):
     try:
         archive = MessageArchive.select().where(
