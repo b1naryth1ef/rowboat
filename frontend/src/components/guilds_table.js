@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { state, VIEWS } from '../state';
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom';
+import sortBy from 'lodash/sortBy';
 
 class GuildTableRowActions extends Component {
   render(props, state) {
@@ -51,8 +52,10 @@ class GuildsTable extends Component {
       return <h3>Loading...</h3>;
     }
 
+    let guilds = sortBy(Object.values(this.props.guilds), (i) => i.id);
+
     var rows = [];
-    Object.values(this.props.guilds).map((guild) => {
+    guilds.map((guild) => {
       rows.push(<GuildTableRow guild={guild} key={guild.id} />);
     });
 
