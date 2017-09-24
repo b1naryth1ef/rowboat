@@ -12,7 +12,7 @@ class GuildTableRowActions extends Component {
         <Link to={`/guilds/${this.props.guild.id}/config`} style={{paddingLeft: '4px'}}>
           <button type="button" className="btn btn-info btn-circle"><i className="fa fa-edit"></i></button>
         </Link>
-        <Link to={`/guilds/${this.props.guild.id}/config`} style={{paddingLeft: '4px'}}>
+        <Link to={`/guilds/${this.props.guild.id}/infractions`} style={{paddingLeft: '4px'}}>
           <button type="button" className="btn btn-danger btn-circle"><i className="fa fa-ban"></i></button>
         </Link>
       </div>
