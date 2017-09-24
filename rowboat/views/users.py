@@ -8,7 +8,7 @@ from rowboat.util.decos import authed
 users = Blueprint('users', __name__, url_prefix='/api/users')
 
 
-@users.route('/@me/')
+@users.route('/@me')
 @authed
 def users_me():
     return jsonify(g.user.serialize(us=True))

@@ -78,6 +78,8 @@ class Sidebar extends Component {
 
     if (this.state.guilds) {
       for (let guild of Object.values(this.state.guilds)) {
+        // Only show the active guild for users with a lot of them
+        if (Object.keys(this.state.guilds).length > 10 && guild.id != this.state.currentGuildID) continue;
         sidebarLinks.push(<GuildLinks guild={guild} active={guild.id == this.state.currentGuildID} key={guild.id} />);
       }
     }

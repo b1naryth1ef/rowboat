@@ -22,7 +22,7 @@ def billing_webhook_activate():
         Subscription.activate(
             sub_id=event['data']['id'],
             user_id=int(event['data']['tags']['user_id']),
-            guild_id=int(event['data']['tags']['guild_idll']),
+            guild_id=int(event['data']['tags']['guild_id']),
         )
     return 'OK', 200
 
