@@ -63,7 +63,8 @@ class GuildOverviewInfoTable extends Component {
 
       premium = (<span>{parts}</span>);
     } else {
-      premium = <a href='#' onClick={this.onPurchase.bind(this)}>Purchase Rowboat Premium</a>;
+      // premium = <a href='#' onClick={this.onPurchase.bind(this)}>Purchase Rowboat Premium</a>;
+      premium = <i>Premium Coming Soon</i>;
     }
 
     return (

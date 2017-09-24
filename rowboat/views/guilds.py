@@ -136,7 +136,7 @@ def guild_infractions(guild):
             if f['id'] == 'type':
                 queries.append(Infraction.type_ == Infraction.Types.get(f['value']))
             elif f['id'] == 'reason':
-                queries.append(Infraction.reason ** f['value'].lower())
+                queries.append(Infraction.reason ** ('%' + f['value'].lower().replace('%', '') + '%'))
             else:
                 queries.append(getattr(Infraction, f['id']) == f['value'])
 

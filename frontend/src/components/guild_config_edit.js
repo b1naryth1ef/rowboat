@@ -104,7 +104,7 @@ export default class GuildConfigEdit extends Component {
                   <i className="fa fa-check"></i>
                 </button>
               }
-              { this.state.hasUnsavedChanges && <i style="padding-left: 10px;">Unsaved Changes!</i>}
+              { this.state.hasUnsavedChanges && <i style={{paddingLeft: '10px'}}>Unsaved Changes!</i>}
             </div>
           </div>
         </div>

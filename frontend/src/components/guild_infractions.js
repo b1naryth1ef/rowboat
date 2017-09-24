@@ -58,7 +58,7 @@ class GuildInfractionsTable extends Component {
   onFetchData(state, instance) {
     this.setState({loading: true});
 
-    this.props.guild.getInfractions(state.page, state.pageSize, state.sorted, state.filtered).then((data) => {
+    this.props.guild.getInfractions(state.page + 1, state.pageSize, state.sorted, state.filtered).then((data) => {
       this.setState({
         data: data,
         loading: false,
