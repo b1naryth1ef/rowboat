@@ -1,15 +1,15 @@
-import { h, render, Component } from 'preact';
+import React, { Component } from 'react';
 import { Link } from 'react-router-dom'
 import {globalState} from '../state';
 
 class SidebarLink extends Component {
-  render (props, state) {
-    const iconClass = `fa fa-${props.icon} fa-fw`;
+  render () {
+    const iconClass = `fa fa-${this.props.icon} fa-fw`;
 
     return (
       <li>
-        <Link to={props.to}>
-          <i class={iconClass}></i> {props.text}
+        <Link to={this.props.to}>
+          <i className={iconClass}></i> {this.props.text}
         </Link>
       </li>
     );
@@ -18,29 +18,29 @@ class SidebarLink extends Component {
 
 
 class GuildLinks extends Component {
-  render(props, state) {
+  render() {
     let links = [];
 
-    if (props.active) {
+    if (this.props.active) {
       links.push(
-        <SidebarLink icon='info' to={'/guilds/' + props.guild.id} text='Information' />
+        <SidebarLink icon='info' to={'/guilds/' + this.props.guild.id} text='Information' key='info' />
       );
 
       links.push(
-        <SidebarLink icon='cog' to={'/guilds/' + props.guild.id + '/config'} text='Config' />
+        <SidebarLink icon='cog' to={'/guilds/' + this.props.guild.id + '/config'} text='Config' key='config' />
       );
 
       links.push(
-        <SidebarLink icon='ban' to={'/guilds/' + props.guild.id + '/infractions'} text='Infractions' />
+        <SidebarLink icon='ban' to={'/guilds/' + this.props.guild.id + '/infractions'} text='Infractions' key='infractions' />
       );
     }
 
     return (
       <li>
-        <Link to={'/guilds/' + props.guild.id}>
-          {props.guild.name}
+        <Link to={'/guilds/' + this.props.guild.id}>
+          {this.props.guild.name}
         </Link>
-        <ul class="nav nav-second-level collapse in">
+        <ul className="nav nav-second-level collapse in">
           {links}
         </ul>
       </li>
@@ -69,22 +69,22 @@ class Sidebar extends Component {
     });
   }
 
-  render(props, state) {
+  render() {
     let sidebarLinks = [];
 
     sidebarLinks.push(
-      <SidebarLink icon='dashboard' to='/' text='Dashboard' />
+      <SidebarLink icon='dashboard' to='/' text='Dashboard' key='dashboard' />
     );
 
-    if (state.guilds) {
-      for (let guild of Object.values(state.guilds)) {
-        sidebarLinks.push(<GuildLinks guild={guild} active={guild.id == state.currentGuildID} />);
+    if (this.state.guilds) {
+      for (let guild of Object.values(this.state.guilds)) {
+        sidebarLinks.push(<GuildLinks guild={guild} active={guild.id == this.state.currentGuildID} key={guild.id} />);
       }
     }
 
-    return (<div class="navbar-default sidebar" role="navigation">
-      <div class="sidebar-nav navbar-collapse">
-        <ul class="nav in" id="side-menu">
+    return (<div className="navbar-default sidebar" role="navigation">
+      <div className="sidebar-nav navbar-collapse">
+        <ul className="nav in" id="side-menu">
           {sidebarLinks}
         </ul>
       </div>

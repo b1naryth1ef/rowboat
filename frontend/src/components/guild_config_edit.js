@@ -1,4 +1,4 @@
-import { h, Component } from 'preact';
+import React, { Component } from 'react';
 import AceEditor from 'react-ace';
 import {globalState} from '../state';
 
@@ -79,32 +79,32 @@ export default class GuildConfigEdit extends Component {
     }, 5000);
   }
 
-  render(props, state) {
+  render() {
     return (<div>
-      {state.message && <div class={"alert alert-" + state.message.type}>{state.message.contents}</div>}
-      <div class="row">
-        <div class="col-md-12">
-          <div class="panel panel-default">
-            <div class="panel-heading">
+      {this.state.message && <div className={"alert alert-" + this.state.message.type}>{this.state.message.contents}</div>}
+      <div className="row">
+        <div className="col-md-12">
+          <div className="panel panel-default">
+            <div className="panel-heading">
               Configuration Editor
             </div>
-            <div class="panel-body">
+            <div className="panel-body">
               <AceEditor
                 mode="yaml"
                 theme="monokai"
                 width="100%"
-                value={state.contents == null ? '' : state.contents}
+                value={this.state.contents == null ? '' : this.state.contents}
                 onChange={(newValue) => this.onEditorChange(newValue)}
               />
             </div>
-            <div class="panel-footer">
+            <div className="panel-footer">
               {
-                state.guild && state.guild.role != 'viewer' &&
-                  <button onClick={() => this.onSave()} type="button" class="btn btn-success btn-circle btn-lg">
-                  <i class="fa fa-check"></i>
+                this.state.guild && this.state.guild.role != 'viewer' &&
+                  <button onClick={() => this.onSave()} type="button" className="btn btn-success btn-circle btn-lg">
+                  <i className="fa fa-check"></i>
                 </button>
               }
-              { state.hasUnsavedChanges && <i style="padding-left: 10px;">Unsaved Changes!</i>}
+              { this.state.hasUnsavedChanges && <i style="padding-left: 10px;">Unsaved Changes!</i>}
             </div>
           </div>
         </div>

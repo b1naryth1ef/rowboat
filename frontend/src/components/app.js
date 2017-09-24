@@ -1,4 +1,4 @@
-import { h, Component } from 'preact';
+import React, { Component } from 'react';
 
 import {globalState} from '../state';
 import Topbar from './topbar';
@@ -35,12 +35,12 @@ class AppWrapper extends Component {
     }
   }
 
-  render(props, state) {
-    if (!state.ready) {
+  render() {
+    if (!this.state.ready) {
       return <div><h1>Loading...</h1></div>;
     }
 
-    if (state.ready && !state.user) {
+    if (this.state.ready && !this.state.user) {
       return <Redirect to='/login' />;
     }
 
@@ -48,7 +48,7 @@ class AppWrapper extends Component {
       <div id="wrapper">
         <Topbar />
         <div id="page-wrapper">
-          <props.view params={props.params} />
+          <this.props.view params={this.props.params} />
         </div>
       </div>
     );
