@@ -22,6 +22,8 @@ export default class GuildConfigEdit extends Component {
 
   componentWillMount() {
     globalState.getGuild(this.props.params.gid).then((guild) => {
+      globalState.currentGuild = guild;
+
       guild.getConfig(true).then((config) => {
         this.initialConfig = config.contents;
 
@@ -33,6 +35,10 @@ export default class GuildConfigEdit extends Component {
     }).catch((err) => {
       console.error('Failed to find guild for config edit', this.props.params.gid);
     });
+  }
+
+  componentWillUnmount() {
+    globalState.currentGuild = null;
   }
 
   onEditorChange(newValue) {
