@@ -1,12 +1,12 @@
 import React, { Component } from 'react';
 import Sidebar from './sidebar';
 import {globalState} from '../state';
-import {browserHistory} from 'react-router';
+import {withRouter} from 'react-router';
 
 class Topbar extends Component {
   onLogoutClicked() {
     globalState.logout().then(() => {
-      browserHistory.push('/login');
+      this.props.history.push('/login');
     });
   }
 
@@ -18,7 +18,7 @@ class Topbar extends Component {
 				</div>
 
 				<ul className="nav navbar-top-links navbar-right">
-					<li><a onClick={this.onLogoutClicked}><i className="fa fa-sign-out fa-fw"></i></a></li>
+					<li><a onClick={this.onLogoutClicked.bind(this)}><i className="fa fa-sign-out fa-fw"></i></a></li>
 				</ul>
 
         <Sidebar />
@@ -27,4 +27,4 @@ class Topbar extends Component {
   }
 }
 
-export default Topbar;
+export default withRouter(Topbar);

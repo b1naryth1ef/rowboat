@@ -14,6 +14,7 @@ export default class Guild extends BaseModel {
     this.region = obj.region;
     this.enabled = obj.enabled;
     this.whitelist = obj.whitelist;
+    this.premium = obj.premium;
     this.role = obj.role;
 
     this.config = null;
@@ -59,6 +60,18 @@ export default class Guild extends BaseModel {
     return new Promise((resolve, reject) => {
       axios.get(`/api/guilds/${this.id}/infractions`, {params: params}).then((res) => {
         resolve(res.data);
+      }).catch((err) => {
+        reject(err.response.data);
+      });
+    });
+  }
+
+  cancelPremium() {
+    return new Promise((resolve, reject) => {
+      axios.post(`/api/guilds/${this.id}/premium/cancel`).then((res) => {
+        resolve(res.data);
+        // HACK
+        this.premium = {'active': false, 'info': null};
       }).catch((err) => {
         reject(err.response.data);
       });

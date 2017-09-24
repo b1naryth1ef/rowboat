@@ -28,6 +28,9 @@ class State {
       this.ready = true;
       this.events.emit('ready');
       user.getGuilds();
+    }).catch(() => {
+      this.ready = true;
+      this.events.emit('ready');
     });
   }
 
@@ -53,11 +56,13 @@ class State {
       });
     }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       axios.get('/api/users/@me').then((res) => {
         this.user = new User(res.data);
         this.events.emit('user.set', this.user);
         resolve(this.user);
+      }).catch((err) => {
+        reject();
       });
     });
   }

@@ -15,6 +15,7 @@ export default class User extends BaseModel {
     this.admin = obj.admin;
 
     this.guilds = null;
+    this.guildsPromise = null;
   }
 
   getGuilds(refresh = false) {
@@ -22,7 +23,11 @@ export default class User extends BaseModel {
       return new Promise((resolve) => resolve(this.guilds));
     }
 
-    return new Promise((resolve) => {
+    if (this.guildsPromise) {
+      return new Promise((resolve) => this.guildsPromise.then((guilds) => resolve(guilds)));
+    }
+
+    this.guildsPromise = new Promise((resolve) => {
       axios.get('/api/users/@me/guilds').then((res) => {
         let guilds = res.data.map((guildData) => {
           return new Guild(guildData);
@@ -35,8 +40,10 @@ export default class User extends BaseModel {
 
         this.events.emit('guilds.set', this.guilds);
         resolve(this.guilds);
+        this.guildsPromise = null;
       });
     });
+    return this.guildsPromise;
   }
 }
 
