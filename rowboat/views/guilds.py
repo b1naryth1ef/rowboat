@@ -10,6 +10,7 @@ from rowboat.util.decos import authed
 from rowboat.models.guild import Guild, GuildConfigChange
 from rowboat.models.user import User, Infraction
 from rowboat.models.billing import Subscription
+from rowboat.models.message import Message
 
 guilds = Blueprint('guilds', __name__, url_prefix='/api/guilds')
 
@@ -22,35 +23,45 @@ def serialize_user(u):
     }
 
 
-def with_guild(f):
-    @authed
-    @functools.wraps(f)
-    def func(*args, **kwargs):
-        try:
-            if g.user.admin:
-                guild = Guild.select(Guild, Subscription).join(
-                    Subscription, JOIN.LEFT_OUTER, on=(
-                        Guild.premium_sub_id == Subscription.sub_id
-                    ).alias('subscription')
-                ).where(Guild.guild_id == kwargs.pop('gid')).get()
-                guild.role = 'admin'
-            else:
-                guild = Guild.select(
-                    Guild,
-                    Subscription,
-                    Guild.config['web'][str(g.user.user_id)].alias('role')
-                ).join(
-                    Subscription, JOIN.LEFT_OUTER, on=(
-                        Guild.premium_sub_id == Subscription.sub_id
-                    ).alias('subscription')
-                ).where(
-                    (Guild.guild_id == kwargs.pop('gid')) &
-                    (~(Guild.config['web'][str(g.user.user_id)] >> None))
-                ).get()
-            return f(guild, *args, **kwargs)
-        except Guild.DoesNotExist:
-            return 'Invalid Guild', 404
-    return func
+def with_guild(f=None, premium=False):
+    def deco(f):
+        @authed
+        @functools.wraps(f)
+        def func(*args, **kwargs):
+            try:
+                if g.user.admin:
+                    guild = Guild.select(Guild, Subscription).join(
+                        Subscription, JOIN.LEFT_OUTER, on=(
+                            Guild.premium_sub_id == Subscription.sub_id
+                        ).alias('subscription')
+                    ).where(Guild.guild_id == kwargs.pop('gid')).get()
+                    guild.role = 'admin'
+                else:
+                    guild = Guild.select(
+                        Guild,
+                        Subscription,
+                        Guild.config['web'][str(g.user.user_id)].alias('role')
+                    ).join(
+                        Subscription, JOIN.LEFT_OUTER, on=(
+                            Guild.premium_sub_id == Subscription.sub_id
+                        ).alias('subscription')
+                    ).where(
+                        (Guild.guild_id == kwargs.pop('gid')) &
+                        (~(Guild.config['web'][str(g.user.user_id)] >> None))
+                    ).get()
+
+                if not guild.subscription and premium:
+                    return 'Requires Premium', 400
+
+                return f(guild, *args, **kwargs)
+            except Guild.DoesNotExist:
+                return 'Invalid Guild', 404
+        return func
+
+    if f and callable(f):
+        return deco(f)
+
+    return deco
 
 
 @guilds.route('/<gid>')
@@ -222,3 +233,42 @@ def guild_premium_cancel(guild):
 
     sub.cancel('User Requested %s' % sub.user_id)
     return '', 204
+
+
+@guilds.route('/<gid>/stats/messages', methods=['GET'])
+@with_guild(premium=True)
+def guild_stats_messages(guild):
+    unit = request.values.get('unit', 'days')
+    amount = int(request.values.get('amount', 7))
+
+    sql = '''
+        SELECT date, coalesce(count, 0) AS count
+        FROM
+            generate_series(
+                NOW() - interval %s,
+                NOW(),
+                %s
+            ) AS date
+        LEFT OUTER JOIN (
+            SELECT date_trunc(%s, timestamp) AS dt, count(*) AS count
+            FROM messages
+            WHERE
+                timestamp >= (NOW() - interval %s) AND
+                timestamp < (NOW()) AND
+                guild_id=%s AND
+            GROUP BY dt
+        ) results
+        ON (date_trunc(%s, date) = results.dt);
+    '''
+
+    tuples = list(Message.raw(
+        sql,
+        '{} {}'.format(amount, unit),
+        '1 {}'.format(unit),
+        unit,
+        '{} {}'.format(amount, unit),
+        guild.guild_id,
+        unit
+    ).tuples())
+
+    return jsonify(tuples)

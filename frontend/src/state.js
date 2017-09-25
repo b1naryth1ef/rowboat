@@ -12,6 +12,15 @@ class State {
     this._currentGuild = null;
   }
 
+  set showAllGuilds(value) {
+    window.localStorage.setItem('state.showAllGuilds', value);
+    this.events.emit('showAllGuilds.set', value);
+  }
+
+  get showAllGuilds() {
+    return JSON.parse(window.localStorage.getItem('state.showAllGuilds') || 'false');
+  }
+
   set currentGuild(guild) {
     this._currentGuild = guild;
     this.events.emit('currentGuild.set', guild);
