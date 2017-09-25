@@ -66,11 +66,11 @@ export default function router() {
   return (
     <BrowserRouter>
       <Switch>
-        <Route path='/login' component={Login} />
-        <Route path='/guilds/:gid/infractions' component={wrapped(GuildInfractions)} />
-        <Route path='/guilds/:gid/config' component={wrapped(GuildConfigEdit)} />
-        <Route path='/guilds/:gid' component={wrapped(GuildOverview)} />
-        <Route path='/' component={wrapped(Dashboard)} />
+        <Route exact path='/login' component={Login} />
+        <Route exact path='/guilds/:gid/infractions' component={wrapped(GuildInfractions)} />
+        <Route exact path='/guilds/:gid/config' component={wrapped(GuildConfigEdit)} />
+        <Route exact path='/guilds/:gid' component={wrapped(GuildOverview)} />
+        <Route exact path='/' component={wrapped(Dashboard)} />
       </Switch>
     </BrowserRouter>
   );

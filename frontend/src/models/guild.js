@@ -80,9 +80,20 @@ export default class Guild extends BaseModel {
     });
   }
 
+  givePremium() {
+    return new Promise((resolve, reject) => {
+      axios.post(`/api/guilds/${this.id}/premium`).then((res) => {
+        this.update().then(() => { resolve() });
+      }).catch((err) => {
+        reject(err.response.data);
+      });
+    });
+
+  }
+
   cancelPremium() {
     return new Promise((resolve, reject) => {
-      axios.post(`/api/guilds/${this.id}/premium/cancel`).then((res) => {
+      axios.delete(`/api/guilds/${this.id}/premium`).then((res) => {
         this.update().then(() => { resolve(); });
       }).catch((err) => {
         reject(err.response.data);

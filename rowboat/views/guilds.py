@@ -198,7 +198,22 @@ def guild_config_history(guild):
     return jsonify(map(serialize, q))
 
 
-@guilds.route('/<gid>/premium/cancel', methods=['POST'])
+@guilds.route('/<gid>/premium', methods=['POST'])
+@with_guild
+def guild_premium_give(guild):
+    if not g.user.admin:
+        return '', 403
+
+    Subscription.activate(
+        Subscription.random_id(),
+        g.user.user_id,
+        guild.guild_id,
+    )
+
+    return '', 204
+
+
+@guilds.route('/<gid>/premium', methods=['DELETE'])
 @with_guild
 def guild_premium_cancel(guild):
     sub = Subscription.get(sub_id=guild.premium_sub_id)

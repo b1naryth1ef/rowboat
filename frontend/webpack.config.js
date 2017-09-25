@@ -62,6 +62,12 @@ module.exports = {
     }
 	},
 
+  resolve: {
+    alias: {
+      config: path.join(__dirname, 'src', 'config', process.env.NODE_ENV || 'development')
+    }
+  }
+
 	// resolve: {
 	// 		alias: {
 	// 				'react': 'preact-compat',
