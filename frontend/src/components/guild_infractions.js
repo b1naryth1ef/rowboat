@@ -3,6 +3,66 @@ import debounce from 'lodash/debounce';
 import {globalState} from '../state';
 import ReactTable from "react-table";
 
+class InfractionTable extends Component {
+  render() {
+    const inf = this.props.infraction;
+
+    return (
+      <table className="table table-striped table-bordered table-hover">
+        <thead>
+          <tr>
+            <th className="col-xs-1"></th>
+            <th className="col-xs-11"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ID</td>
+            <td>{inf.id}</td>
+          </tr>
+          <tr>
+            <td>Target User</td>
+            <td>{inf.user.username}#{inf.user.discriminator} ({inf.user.id})</td>
+          </tr>
+          <tr>
+            <td>Actor User</td>
+            <td>{inf.actor.username}#{inf.actor.discriminator} ({inf.actor.id})</td>
+          </tr>
+          <tr>
+            <td>Created At</td>
+            <td>{inf.created_at}</td>
+          </tr>
+          <tr>
+            <td>Expires At</td>
+            <td>{inf.expires_at}</td>
+          </tr>
+          <tr>
+            <td>Type</td>
+            <td>{inf.type.name}</td>
+          </tr>
+          <tr>
+            <td>Reason</td>
+            <td>{inf.reason}</td>
+          </tr>
+        </tbody>
+      </table>
+    );
+  }
+}
+
+class GuildInfractionInfo extends Component {
+  render() {
+    return (
+      <div className="panel panel-default">
+        <div className="panel-heading">Infraction Info</div>
+        <div className="panel-body">
+          <InfractionTable infraction={this.props.infraction} />
+        </div>
+      </div>
+    );
+  }
+}
+
 class GuildInfractionsTable extends Component {
   constructor() {
     super();
@@ -51,6 +111,13 @@ class GuildInfractionsTable extends Component {
         onFetchData={debounce(this.onFetchData.bind(this), 500)}
         filterable
         className="-striped -highlight"
+        getTdProps={(state, rowInfo, column, instance) => {
+          return {
+            onClick: () => {
+              this.props.onSelectInfraction(rowInfo.original);
+            }
+          };
+        }}
       />
     );
   }
@@ -73,6 +140,7 @@ export default class GuildInfractions extends Component {
 
     this.state = {
       guild: null,
+      infraction: null,
     };
   }
 
@@ -89,6 +157,11 @@ export default class GuildInfractions extends Component {
     globalState.currentGuild = null;
   }
 
+  onSelectInfraction(infraction) {
+    console.log('Set infraction', infraction);
+    this.setState({infraction});
+  }
+
   render() {
     if (!this.state.guild) {
       return <h3>Loading...</h3>;
@@ -100,9 +173,10 @@ export default class GuildInfractions extends Component {
           <div className="panel panel-default">
             <div className="panel-heading">Infractions</div>
             <div className="panel-body">
-              <GuildInfractionsTable guild={this.state.guild} />
+              <GuildInfractionsTable guild={this.state.guild} onSelectInfraction={this.onSelectInfraction.bind(this)} />
             </div>
           </div>
+          {this.state.infraction && <GuildInfractionInfo infraction={this.state.infraction} />}
         </div>
       </div>
     );
