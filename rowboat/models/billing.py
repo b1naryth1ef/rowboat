@@ -1,4 +1,6 @@
 import requests
+import random
+import string
 
 from peewee import (
     BigIntegerField, TextField, DateTimeField
@@ -23,6 +25,12 @@ class Subscription(BaseModel):
     class Meta:
         db_table = 'subscriptions'
 
+    @staticmethod
+    def random_id():
+        return 'rb-{}'.format(
+            ''.join([random.choice(string.ascii_letters) for _ in range(32)])
+        )
+
     @classmethod
     def activate(cls, sub_id, user_id, guild_id):
         sub = Subscription.create(
@@ -45,7 +53,7 @@ class Subscription(BaseModel):
         guild.save()
 
     def cancel(self, reason, force=True):
-        if force:
+        if force and not self.sub_id.startswith('rb-'):
             r = requests.delete(
                 'https://api.fastspring.com/subscriptions/{}'.format(self.sub_id),
                 auth=(fastspring['username'], fastspring['password']),
@@ -60,7 +68,7 @@ class Subscription(BaseModel):
             cancel_reason=reason,
             cancelled_at=datetime.utcnow()
         ).where(
-            (Subscription.sub_id == sub_id)
+            (Subscription.sub_id == self.sub_id)
         ).execute()
 
         Guild.with_id(self.guild_id).emit_update()

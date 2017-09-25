@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import {globalState} from '../state';
 import {withRouter} from 'react-router';
+import {PREMIUM_ENABLED} from 'config';
 
 class GuildWidget extends Component {
   render() {
@@ -11,15 +12,23 @@ class GuildWidget extends Component {
 
 class GuildIcon extends Component {
   render() {
-    const source = `https://cdn.discordapp.com/icons/${this.props.guildID}/${this.props.guildIcon}.png`;
-    return <img src={source} alt="No Icon" />;
+    if (this.props.guildIcon) {
+      const source = `https://cdn.discordapp.com/icons/${this.props.guildID}/${this.props.guildIcon}.png`;
+      return <img src={source} alt="No Icon" />;
+    } else {
+      return <i>No Icon</i>;
+    }
   }
 }
 
 class GuildSplash extends Component {
   render() {
-    const source = `https://cdn.discordapp.com/splashes/${this.props.guildID}/${this.props.guildSplash}.png`;
-    return <img src={source} alt="No Splash" />;
+    if (this.props.guildSplash) {
+      const source = `https://cdn.discordapp.com/splashes/${this.props.guildID}/${this.props.guildSplash}.png`;
+      return <img src={source} alt="No Splash" />;
+    } else {
+      return <i>No Splash</i>;
+    }
   }
 }
 
@@ -34,16 +43,18 @@ class GuildOverviewInfoTable extends Component {
     fastspring.builder.checkout();
   }
 
+  onGive() {
+    this.props.guild.givePremium();
+  }
+
   onCancel() {
     this.props.guild.cancelPremium();
   }
 
   render() {
-    let premium = null;
+    let parts = [];
 
     if (this.props.guild.premium.active) {
-      let parts = [];
-
       parts.push(
         <b key='active'>Active!</b>
       );
@@ -60,12 +71,26 @@ class GuildOverviewInfoTable extends Component {
           <a key='cancel' href='#' onClick={this.onCancel.bind(this)}>Cancel Premium</a>
         );
       }
-
-      premium = (<span>{parts}</span>);
     } else {
-      // premium = <a href='#' onClick={this.onPurchase.bind(this)}>Purchase Rowboat Premium</a>;
-      premium = <i>Premium Coming Soon</i>;
+      if (PREMIUM_ENABLED) {
+        parts.push(
+          <a key='purchase' href='#' onClick={this.onPurchase.bind(this)}>Purchase Rowboat Premium</a>
+        );
+
+        if (globalState.user.admin) {
+          parts.push(<br key='br3' />);
+          parts.push(
+            <a key='give' href='#' onClick={this.onGive.bind(this)}>Give Premium</a>
+          );
+        }
+      } else {
+        parts.push(
+          <i key='soon'>Premium Coming Soon</i>
+        );
+      }
     }
+
+    const premium = (<span>{parts}</span>);
 
     return (
       <table className="table table-striped table-bordered table-hover">
@@ -110,7 +135,7 @@ export default class GuildOverview extends Component {
     };
   }
 
-  componentWillMount() {
+  ensureGuild() {
     globalState.getGuild(this.props.params.gid).then((guild) => {
       guild.events.on('update', (guild) => this.setState({guild}));
       globalState.currentGuild = guild;
@@ -125,7 +150,8 @@ export default class GuildOverview extends Component {
   }
 
   render() {
-    if (!this.state.guild) {
+    if (!this.state.guild || this.state.guild.id != this.props.params.gid) {
+      this.ensureGuild();
       return <h3>Loading...</h3>;
     }
 

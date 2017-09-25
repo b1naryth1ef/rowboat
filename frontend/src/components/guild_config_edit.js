@@ -5,6 +5,7 @@ import {globalState} from '../state';
 import 'brace/mode/yaml'
 import 'brace/theme/monokai'
 
+
 export default class GuildConfigEdit extends Component {
   constructor() {
     super();
