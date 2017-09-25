@@ -41,7 +41,7 @@ class CensorSubConfig(SlottedModel):
     blocked_tokens = ListField(lower, default=[])
 
     @cached_property
-    def blocked_words_re(self):
+    def blocked_re(self):
         return re.compile(u'({})'.format(u'|'.join(
             map(re.escape, self.blocked_tokens) +
             map(lambda k: u'\\b{}\\b'.format(re.escape(k)), self.blocked_words)
@@ -160,7 +160,7 @@ class CensorPlugin(Plugin):
                     if config.filter_domains:
                         self.filter_domains(event, config)
 
-                    if config.blocked_words:
+                    if config.blocked_words or config.blocked_tokens:
                         self.filter_blocked_words(event, config)
             except Censorship as c:
                 self.call(
@@ -244,7 +244,7 @@ class CensorPlugin(Plugin):
                 })
 
     def filter_blocked_words(self, event, config):
-        blocked_words = config.blocked_words_re.findall(event.content)
+        blocked_words = config.blocked_re.findall(event.content)
 
         if blocked_words:
             raise Censorship(CensorReason.WORD, event, ctx={
