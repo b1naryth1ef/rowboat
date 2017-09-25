@@ -7,6 +7,7 @@ import Login from './login';
 import GuildOverview from './guild_overview';
 import GuildConfigEdit from './guild_config_edit';
 import GuildInfractions from './guild_infractions';
+import GuildStats from './guild_stats';
 import { BrowserRouter, Route, Switch, Redirect } from 'react-router-dom'
 
 class AppWrapper extends Component {
@@ -67,6 +68,7 @@ export default function router() {
     <BrowserRouter>
       <Switch>
         <Route exact path='/login' component={Login} />
+        <Route exact path='/guilds/:gid/stats' component={wrapped(GuildStats)} />
         <Route exact path='/guilds/:gid/infractions' component={wrapped(GuildInfractions)} />
         <Route exact path='/guilds/:gid/config' component={wrapped(GuildConfigEdit)} />
         <Route exact path='/guilds/:gid' component={wrapped(GuildOverview)} />

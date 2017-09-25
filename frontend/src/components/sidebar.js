@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom'
 import {globalState} from '../state';
+import {STATS_ENABLED} from 'config';
 
 class SidebarLink extends Component {
   render () {
@@ -33,6 +34,12 @@ class GuildLinks extends Component {
       links.push(
         <SidebarLink icon='ban' to={'/guilds/' + this.props.guild.id + '/infractions'} text='Infractions' key='infractions' />
       );
+
+      if (STATS_ENABLED) {
+        links.push(
+          <SidebarLink icon='bar-chart-o' to={'/guilds/' + this.props.guild.id + '/stats'} text='Stats' key='stats' />
+        );
+      }
     }
 
     return (
@@ -56,7 +63,10 @@ class Sidebar extends Component {
     this.state = {
       guilds: null,
       currentGuildID: globalState.currentGuild ? globalState.currentGuild.id : null,
+      showAllGuilds: globalState.showAllGuilds,
     };
+
+    globalState.events.on('showAllGuilds.set', (value) => this.setState({showAllGuilds: value}));
 
     globalState.getCurrentUser().then((user) => {
       user.getGuilds().then((guilds) => {
@@ -79,7 +89,11 @@ class Sidebar extends Component {
     if (this.state.guilds) {
       for (let guild of Object.values(this.state.guilds)) {
         // Only show the active guild for users with a lot of them
-        if (Object.keys(this.state.guilds).length > 10 && guild.id != this.state.currentGuildID) continue;
+        if (
+          !this.state.showAllGuilds &&
+          Object.keys(this.state.guilds).length > 10 &&
+          guild.id != this.state.currentGuildID
+        ) continue;
         sidebarLinks.push(<GuildLinks guild={guild} active={guild.id == this.state.currentGuildID} key={guild.id} />);
       }
     }
