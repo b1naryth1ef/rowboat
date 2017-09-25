@@ -1,5 +1,11 @@
 var path = require('path');
 
+let proxyURL = 'http://localhost:8686';
+
+if (process.env.NODE_ENV == 'docker') {
+  proxyURL = 'http://web:8686';
+}
+
 module.exports = {
 	// entry file - starting point for the app
 	entry: './src',
@@ -56,7 +62,7 @@ module.exports = {
 
     proxy: {
       '/api': {
-        target: 'http://localhost:8686',
+        target: proxyURL,
         secure: false
       }
     }
