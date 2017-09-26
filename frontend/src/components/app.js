@@ -8,7 +8,7 @@ import GuildOverview from './guild_overview';
 import GuildConfigEdit from './guild_config_edit';
 import GuildInfractions from './guild_infractions';
 import GuildStats from './guild_stats';
-import { BrowserRouter, Route, Switch, Redirect } from 'react-router-dom'
+import { BrowserRouter, Route, Switch, Redirect } from 'react-router-dom';
 
 class AppWrapper extends Component {
   constructor() {

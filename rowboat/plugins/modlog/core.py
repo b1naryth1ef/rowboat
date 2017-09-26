@@ -217,7 +217,7 @@ class ModLogPlugin(Plugin):
         config._custom = None
         if config.custom:
             rowboat_guild = self.call('CorePlugin.get_guild', guild.id)
-            if rowboat_guild and rowboat_guild.is_whitelisted(Guild.WhitelistFlags.MODLOG_CUSTOM_FORMAT):
+            if rowboat_guild and rowboat_guild.is_whitelisted(Guild.WhitelistFlags.MODLOG_CUSTOM_FORMAT) or rowboat_guild.premium_sub_id:
                 custom = {}
                 for action, override in config.custom.items():
                     action = Actions.get(action)
