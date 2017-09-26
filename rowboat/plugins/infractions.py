@@ -358,7 +358,7 @@ class InfractionsPlugin(Plugin):
                 inf.expires_at.isoformat()
             ))
 
-    @Plugin.command('reason', '<infraction:int> <reason:str...>', level=CommandLevels.MOD)
+    @Plugin.command('reason', '<infraction:int> <reason:str...>', group='infractions', level=CommandLevels.MOD)
     def reason(self, event, infraction, reason):
         try:
             inf = Infraction.get(id=infraction)
