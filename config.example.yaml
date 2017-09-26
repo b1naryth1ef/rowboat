@@ -12,6 +12,7 @@ bot:
     - rowboat.plugins.core
     - rowboat.plugins.modlog
     - rowboat.plugins.admin
+    - rowboat.plugins.infractions
     - rowboat.plugins.spam
     - rowboat.plugins.censor
     - rowboat.plugins.reddit
