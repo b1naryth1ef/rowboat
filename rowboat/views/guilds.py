@@ -3,13 +3,11 @@ import json
 import functools
 import operator
 
-from peewee import JOIN
 from flask import Blueprint, request, g, jsonify
 
 from rowboat.util.decos import authed
 from rowboat.models.guild import Guild, GuildConfigChange
 from rowboat.models.user import User, Infraction
-from rowboat.models.billing import Subscription
 from rowboat.models.message import Message
 
 guilds = Blueprint('guilds', __name__, url_prefix='/api/guilds')
@@ -23,35 +21,23 @@ def serialize_user(u):
     }
 
 
-def with_guild(f=None, premium=False):
+def with_guild(f=None):
     def deco(f):
         @authed
         @functools.wraps(f)
         def func(*args, **kwargs):
             try:
                 if g.user.admin:
-                    guild = Guild.select(Guild, Subscription).join(
-                        Subscription, JOIN.LEFT_OUTER, on=(
-                            Guild.premium_sub_id == Subscription.sub_id
-                        ).alias('subscription')
-                    ).where(Guild.guild_id == kwargs.pop('gid')).get()
+                    guild = Guild.select().where(Guild.guild_id == kwargs.pop('gid')).get()
                     guild.role = 'admin'
                 else:
                     guild = Guild.select(
                         Guild,
-                        Subscription,
                         Guild.config['web'][str(g.user.user_id)].alias('role')
-                    ).join(
-                        Subscription, JOIN.LEFT_OUTER, on=(
-                            Guild.premium_sub_id == Subscription.sub_id
-                        ).alias('subscription')
                     ).where(
                         (Guild.guild_id == kwargs.pop('gid')) &
                         (~(Guild.config['web'][str(g.user.user_id)] >> None))
                     ).get()
-
-                if not guild.subscription and premium:
-                    return 'Requires Premium', 400
 
                 return f(guild, *args, **kwargs)
             except Guild.DoesNotExist:
@@ -67,7 +53,7 @@ def with_guild(f=None, premium=False):
 @guilds.route('/<gid>')
 @with_guild
 def guild_get(guild):
-    return jsonify(guild.serialize(premium_subscription=guild.subscription))
+    return jsonify(guild.serialize())
 
 
 @guilds.route('/<gid>/config')
@@ -209,34 +195,8 @@ def guild_config_history(guild):
     return jsonify(map(serialize, q))
 
 
-@guilds.route('/<gid>/premium', methods=['POST'])
-@with_guild
-def guild_premium_give(guild):
-    if not g.user.admin:
-        return '', 403
-
-    Subscription.activate(
-        Subscription.random_id(),
-        g.user.user_id,
-        guild.guild_id,
-    )
-
-    return '', 204
-
-
-@guilds.route('/<gid>/premium', methods=['DELETE'])
-@with_guild
-def guild_premium_cancel(guild):
-    sub = Subscription.get(sub_id=guild.premium_sub_id)
-    if sub.user_id != g.user.id and not g.user.admin:
-        return 'Invalid User', 403
-
-    sub.cancel('User Requested %s' % sub.user_id)
-    return '', 204
-
-
 @guilds.route('/<gid>/stats/messages', methods=['GET'])
-@with_guild(premium=True)
+@with_guild()
 def guild_stats_messages(guild):
     unit = request.values.get('unit', 'days')
     amount = int(request.values.get('amount', 7))

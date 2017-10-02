@@ -38,7 +38,6 @@ class GuildTableRow extends Component {
     return (
       <tr>
         <td>{this.props.guild.id}</td>
-        <td>{this.props.guild.premium.active ? 'Yes' : 'No'}</td>
         <td>{this.props.guild.name}</td>
         <td><GuildTableRowActions guild={this.props.guild} /></td>
       </tr>
@@ -65,7 +64,6 @@ class GuildsTable extends Component {
           <thead>
             <tr>
               <th>ID</th>
-              <th>Premium</th>
               <th>Name</th>
               <th>Actions</th>
             </tr>

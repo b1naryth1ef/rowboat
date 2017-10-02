@@ -39,8 +39,6 @@ class Guild(BaseModel):
     enabled = BooleanField(default=True)
     whitelist = BinaryJSONField(default=[])
 
-    premium_sub_id = TextField(null=True)
-
     added_at = DateTimeField(default=datetime.utcnow)
 
     # SQL = '''
@@ -137,7 +135,7 @@ class Guild(BaseModel):
         for ban in bans.values():
             GuildBan.ensure(guild, ban.user, ban.reason)
 
-    def serialize(self, premium_subscription=None):
+    def serialize(self):
         base = {
             'id': str(self.guild_id),
             'owner_id': str(self.owner_id),
@@ -146,11 +144,7 @@ class Guild(BaseModel):
             'splash': self.splash,
             'region': self.region,
             'enabled': self.enabled,
-            'whitelist': self.whitelist,
-            'premium': {
-                'active': self.premium_sub_id is not None,
-                'info': premium_subscription and premium_subscription.serialize()
-            },
+            'whitelist': self.whitelist
         }
 
         if hasattr(self, 'role'):
