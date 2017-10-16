@@ -1,8 +1,6 @@
 import time
 
 from datadog import initialize, statsd
-from collections import defaultdict
-from disco.types.user import Status
 
 from rowboat import ENV
 from rowboat.plugins import BasePlugin as Plugin
@@ -49,31 +47,6 @@ class StatsPlugin(Plugin):
             metadata['guild_id'] = event.guild.id
 
         statsd.increment('gateway.events.received', tags=to_tags(metadata))
-
-    @Plugin.schedule(120, init=False)
-    def track_state(self):
-        # Track presence across all our guilds
-        for guild in self.state.guilds.values():
-            member_status = defaultdict(int)
-            for member in guild.members.values():
-                if member.user.presence and member.user.presence.status:
-                    member_status[member.user.presence.status] += 1
-                else:
-                    member_status[Status.OFFLINE] += 1
-
-            for k, v in member_status.items():
-                statsd.gauge('guild.presence.{}'.format(str(k).lower()), v, tags=to_tags({'guild_id': guild.id}))
-
-            statsd.gauge('guild.members', len(guild.members),  tags=to_tags({
-                'guild_id': guild.id,
-            }))
-
-        # Track some information about discos internal state
-        statsd.gauge('disco.state.dms', len(self.state.dms))
-        statsd.gauge('disco.state.guilds', len(self.state.guilds))
-        statsd.gauge('disco.state.channels', len(self.state.channels))
-        statsd.gauge('disco.state.users', len(self.state.users))
-        statsd.gauge('disco.state.voice_states', len(self.state.voice_states))
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
