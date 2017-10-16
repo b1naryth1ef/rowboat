@@ -263,10 +263,6 @@ class CorePlugin(Plugin):
     def on_guild_update(self, event):
         self.log.info('Got guild update for guild %s (%s)', event.guild.id, event.guild.channels)
 
-    @Plugin.listen('GuildMembersChunk')
-    def on_guild_members_chunk(self, event):
-        self.log.info('Got members chunk for guild %s', event.guild_id)
-
     @Plugin.listen('GuildBanAdd')
     def on_guild_ban_add(self, event):
         GuildBan.ensure(self.client.state.guilds.get(event.guild_id), event.user)
