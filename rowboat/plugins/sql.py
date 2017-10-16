@@ -32,11 +32,36 @@ class SQLPlugin(Plugin):
     def load(self, ctx):
         self.models = ctx.get('models', {})
         self.backfills = {}
+        self.user_updates = gevent.queue.LifoQueue(maxsize=4096)
         super(SQLPlugin, self).load(ctx)
 
     def unload(self, ctx):
         ctx['models'] = self.models
         super(SQLPlugin, self).unload(ctx)
+
+    @Plugin.schedule(15, init=False)
+    def update_users(self):
+        already_updated = set()
+
+        while True:
+            # Only update so many at a time
+            if len(already_updated) > 10000:
+                return
+
+            try:
+                user_id, data = self.user_updates.get_nowait()
+            except gevent.queue.Empty:
+                return
+
+            if user_id in already_updated:
+                continue
+
+            already_updated.add(user_id)
+
+            try:
+                User.update(**data).where(User.user_id == user_id).execute()
+            except:
+                self.log.exception('Failed to update user %s: ', user_id)
 
     @Plugin.listen('VoiceStateUpdate', priority=Priority.BEFORE)
     def on_voice_state_update(self, event):
@@ -59,7 +84,7 @@ class SQLPlugin(Plugin):
         if not updates:
             return
 
-        User.update(**updates).where((User.user_id == event.user.id)).execute()
+        self.user_updates.put((event.user.id, updates))
 
     @Plugin.listen('MessageCreate')
     def on_message_create(self, event):
@@ -228,8 +253,19 @@ class SQLPlugin(Plugin):
             for users in message.get_reactors(reaction.emoji, bulk=True):
                 Reaction.from_disco_reactors(message.id, reaction, (i.id for i in users))
 
-    @Plugin.command('global', '<duration:str> [pool:int]', level=-1, global_=True, context={'mode': 'global'}, group='recover')
-    @Plugin.command('here', '<duration:str> [pool:int]', level=-1, global_=True, context={'mode': 'here'}, group='recover')
+    @Plugin.command(
+        'global',
+        '<duration:str> [pool:int]',
+        level=-1,
+        global_=True,
+        context={'mode': 'global'},
+        group='recover')
+    @Plugin.command('here',
+            '<duration:str> [pool:int]',
+            level=-1,
+            global_=True,
+            context={'mode': 'here'},
+            group='recover')
     def command_recover(self, event, duration, pool=4, mode=None):
         if mode == 'global':
             channels = list(self.state.channels.values())
