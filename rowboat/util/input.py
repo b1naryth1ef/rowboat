@@ -25,7 +25,7 @@ def parse_duration(raw, source=None, negative=False, safe=False):
             digits += char
             continue
 
-        if char not in UNITS:
+        if char not in UNITS or not digits:
             if safe:
                 return None
             raise CommandError('Invalid duration')
