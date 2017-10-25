@@ -1,6 +1,5 @@
 import os
 import json
-import gevent
 import pprint
 import signal
 import inspect
@@ -49,8 +48,7 @@ class CorePlugin(Plugin):
 
         self.startup = ctx.get('startup', datetime.utcnow())
         self.guilds = ctx.get('guilds', {})
-
-        self.emitter = Emitter(gevent.spawn)
+        self.events = Emitter()
 
         super(CorePlugin, self).load(ctx)
 
@@ -116,16 +114,13 @@ class CorePlugin(Plugin):
 
                 # Refresh config, mostly to validate
                 try:
-                    config = self.guilds[data['id']].get_config(refresh=True)
+                    self.guilds[data['id']].get_config(refresh=True)
 
                     # Reload the guild entirely
                     self.guilds[data['id']] = Guild.with_id(data['id'])
 
                     # Update guild access
                     self.update_rowboat_guild_access()
-
-                    # Finally, emit the event
-                    self.emitter.emit('GUILD_CONFIG_UPDATE', self.guilds[data['id']], config)
                 except:
                     self.log.exception(u'Failed to reload config for guild %s', self.guilds[data['id']].name)
                     continue

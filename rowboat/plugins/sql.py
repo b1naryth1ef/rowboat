@@ -5,6 +5,7 @@ import markovify
 import pygal
 import cairosvg
 
+from gevent.queue import LifoQueue
 from gevent.pool import Pool
 from holster.emitter import Priority
 from datetime import datetime
@@ -32,7 +33,7 @@ class SQLPlugin(Plugin):
     def load(self, ctx):
         self.models = ctx.get('models', {})
         self.backfills = {}
-        self.user_updates = gevent.queue.LifoQueue(maxsize=4096)
+        self.user_updates = LifoQueue(maxsize=4096)
         super(SQLPlugin, self).load(ctx)
 
     def unload(self, ctx):
@@ -96,11 +97,15 @@ class SQLPlugin(Plugin):
 
     @Plugin.listen('MessageDelete')
     def on_message_delete(self, event):
-        Message.update(deleted=True).where(Message.id == event.id).execute()
+        event.rowboat_message = next(Message.update(deleted=True).where(
+            Message.id == event.id
+        ).returning(Message).execute(), None)
 
     @Plugin.listen('MessageDeleteBulk')
     def on_message_delete_bulk(self, event):
-        Message.update(deleted=True).where((Message.id << event.ids)).execute()
+        event.rowboat_messages = list(Message.update(deleted=True).where(
+            (Message.id << event.ids)
+        ).returning(Message).execute())
 
     @Plugin.listen('MessageReactionAdd', priority=Priority.BEFORE)
     def on_message_reaction_add(self, event):

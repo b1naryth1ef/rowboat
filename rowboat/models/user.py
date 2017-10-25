@@ -14,8 +14,8 @@ class User(BaseModel):
     avatar = TextField(null=True)
     bot = BooleanField()
 
+    settings = BinaryJSONField(null=True, default=None)
     created_at = DateTimeField(default=datetime.utcnow)
-
     admin = BooleanField(default=False)
 
     SQL = '''

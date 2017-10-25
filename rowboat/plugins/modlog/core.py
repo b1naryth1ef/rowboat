@@ -505,47 +505,45 @@ class ModLogPlugin(Plugin):
                 before=filter_urls(msg.content),
                 after=filter_urls(event.with_proper_mentions))
 
-    @Plugin.listen('MessageDelete')
+    @Plugin.listen('MessageDelete', priority=Priority.AFTER)
     def on_message_delete(self, event):
         if event.guild.id in self.hushed:
             return
 
-        try:
-            msg = Message.get(Message.id == event.id)
-        except Message.DoesNotExist:
-            return
-
-        channel = self.state.channels.get(msg.channel_id)
-        if not channel or not msg.author:
+        channel = self.state.channels.get(event.rowboat_message.channel_id)
+        if not channel or not event.rowboat_message.author:
             return
 
         debounce = self.debounces.find(event, message_id=event.id)
         if debounce:
             return
 
-        if msg.author.id == self.state.me.id:
+        if event.rowboat_message.author_id == self.state.me.id:
             return
 
-        if msg.author.id in event.config.ignored_users:
+        if event.rowboat_message.author_id in event.config.ignored_users:
             return
 
-        if msg.channel_id in event.config.ignored_channels:
+        if event.rowboat_message.channel_id in event.config.ignored_channels:
             return
 
         # Truncate/limit the size of contents
-        contents = filter_urls(msg.content)
+        contents = filter_urls(event.rowboat_message.content)
         if len(contents) > 1750:
             contents = contents[:1750] + u'... ({} more characters)'.format(
                 len(contents) - 1750
             )
 
+        attachments = u''
+        if event.rowboat_message.attachments:
+            attachments = u'({})'.format(', '.join(u'<{}>'.format(i) for i in event.rowboat_message.attachments))
+
         self.log_action(Actions.MESSAGE_DELETE, event,
-                author=msg.author,
-                author_id=msg.author.id,
+                author=event.rowboat_message.author,
+                author_id=event.rowboat_message.author_id,
                 channel=channel,
                 msg=contents,
-                attachments='' if not msg.attachments else u'({})'.format(
-                    ', '.join(u'<{}>'.format(i) for i in msg.attachments)))
+                attachments=attachments)
 
     @Plugin.listen('MessageDeleteBulk')
     def on_message_delete_bulk(self, event):

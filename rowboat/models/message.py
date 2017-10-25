@@ -6,7 +6,7 @@ import traceback
 
 from peewee import (
     BigIntegerField, ForeignKeyField, TextField, DateTimeField,
-    BooleanField, UUIDField
+    BooleanField, UUIDField, CompositeKey
 )
 from datetime import datetime, timedelta
 from playhouse.postgres_ext import BinaryJSONField, ArrayField
@@ -422,4 +422,17 @@ class Command(BaseModel):
             version=REV,
             success=not exception,
             traceback=traceback.format_exc() if exception else None,
+        )
+
+
+@BaseModel.register
+class Highlight(BaseModel):
+    word = TextField()
+    user_id = BigIntegerField()
+
+    class Meta:
+        db_table = 'highlights'
+        primary_key = CompositeKey('word', 'user_id')
+        indexes = (
+            (('word', ), False),
         )
