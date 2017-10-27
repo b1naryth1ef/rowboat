@@ -5,6 +5,7 @@ import markovify
 import pygal
 import cairosvg
 
+from gevent.queue import LifoQueue, Empty
 from gevent.pool import Pool
 from holster.emitter import Priority
 from datetime import datetime
@@ -32,7 +33,7 @@ class SQLPlugin(Plugin):
     def load(self, ctx):
         self.models = ctx.get('models', {})
         self.backfills = {}
-        self.user_updates = gevent.queue.LifoQueue(maxsize=4096)
+        self.user_updates = LifoQueue(maxsize=4096)
         super(SQLPlugin, self).load(ctx)
 
     def unload(self, ctx):
@@ -50,7 +51,7 @@ class SQLPlugin(Plugin):
 
             try:
                 user_id, data = self.user_updates.get_nowait()
-            except gevent.queue.Empty:
+            except Empty:
                 return
 
             if user_id in already_updated:

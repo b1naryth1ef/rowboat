@@ -83,10 +83,10 @@ class Guild(BaseModel):
             after_raw=raw)
 
         self.update(config=parsed, config_raw=raw).where(Guild.guild_id == self.guild_id).execute()
-        self.emit_update()
+        self.emit('GUILD_UPDATE')
 
-    def emit_update(self):
-        emit('GUILD_UPDATE', id=self.guild_id)
+    def emit(self, action, **kwargs):
+        emit(action, id=self.guild_id, **kwargs)
 
     def sync(self, guild):
         updates = {}

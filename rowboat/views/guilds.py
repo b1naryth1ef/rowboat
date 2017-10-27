@@ -56,6 +56,16 @@ def guild_get(guild):
     return jsonify(guild.serialize())
 
 
+@guilds.route('/<gid>', methods=['DELETE'])
+@with_guild
+def guild_delete(guild):
+    if not g.user.admin:
+        return '', 401
+
+    guild.emit('GUILD_DELETE')
+    return '', 204
+
+
 @guilds.route('/<gid>/config')
 @with_guild
 def guild_config(guild):

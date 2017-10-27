@@ -1,34 +1,53 @@
 import React, { Component } from 'react';
 import { state, VIEWS } from '../state';
 import { Link } from 'react-router-dom';
+import {globalState} from '../state';
 import sortBy from 'lodash/sortBy';
 
 class GuildTableRowActions extends Component {
   render(props, state) {
+    let parts = [];
+
+    parts.push(
+      <Link key="1" to={`/guilds/${this.props.guild.id}`} style={{paddingLeft: '4px'}}>
+        <button type="button" className="btn btn-success btn-circle">
+        <i className="fa fa-info"></i></button>
+      </Link>
+    );
+
+    parts.push(
+      <Link key="2" to={`/guilds/${this.props.guild.id}/config`} style={{paddingLeft: '4px'}}>
+        <button type="button" className="btn btn-info btn-circle">
+        <i className="fa fa-edit"></i></button>
+      </Link>
+    );
+
+    parts.push(
+      <Link key="3" to={`/guilds/${this.props.guild.id}/infractions`} style={{paddingLeft: '4px'}}>
+        <button type="button" className="btn btn-warning btn-circle">
+        <i className="fa fa-ban"></i></button>
+      </Link>
+    );
+
+    if (globalState.user && globalState.user.admin) {
+      parts.push(
+        <a key="4" href="#" style={{paddingLeft: '4px'}} onClick={this.onDelete.bind(this)}>
+          <button type="button" className="btn btn-danger btn-circle">
+          <i className="fa fa-trash-o"></i></button>
+        </a>
+      );
+    }
+
     return (
       <div>
-        <Link to={`/guilds/${this.props.guild.id}`} style={{paddingLeft: '4px'}}>
-          <button type="button" className="btn btn-success btn-circle"><i className="fa fa-info"></i></button>
-        </Link>
-        <Link to={`/guilds/${this.props.guild.id}/config`} style={{paddingLeft: '4px'}}>
-          <button type="button" className="btn btn-info btn-circle"><i className="fa fa-edit"></i></button>
-        </Link>
-        <Link to={`/guilds/${this.props.guild.id}/infractions`} style={{paddingLeft: '4px'}}>
-          <button type="button" className="btn btn-danger btn-circle"><i className="fa fa-ban"></i></button>
-        </Link>
+        {parts}
       </div>
     );
   }
 
-  onInfo(guild) {
-    state.setView(VIEWS.GUILD_OVERVIEW, {
-      guild: guild,
-    });
-  }
-
-  onEdit(guild) {
-    state.setView(VIEWS.GUILD_CONFIG_EDIT, {
-      guild: guild,
+  onDelete() {
+    this.props.guild.delete().then(() => {
+      window.location.reload();
     });
   }
 }

@@ -132,6 +132,15 @@ class CorePlugin(Plugin):
             elif data['type'] == 'RESTART':
                 self.log.info('Restart requested, signaling parent')
                 os.kill(os.getppid(), signal.SIGUSR1)
+            elif data['type'] == 'GUILD_DELETE' and data['id'] in self.guilds:
+                with self.send_control_message() as embed:
+                    embed.color = 0xff6961
+                    embed.title = u'Guild Force Deleted {}'.format(
+                        self.guilds[data['id']].name,
+                    )
+
+                self.log.info(u'Leaving guild %s', self.guilds[data['id']].name)
+                self.guilds[data['id']].leave()
 
     def unload(self, ctx):
         ctx['guilds'] = self.guilds

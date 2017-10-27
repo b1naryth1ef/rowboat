@@ -78,4 +78,14 @@ export default class Guild extends BaseModel {
       });
     });
   }
+
+  delete() {
+    return new Promise((resolve, reject) => {
+      axios.delete(`/api/guilds/${this.id}`).then((res) => {
+        resolve();
+      }).catch((err) => {
+        reject(err.response.data);
+      })
+    });
+  }
 }
