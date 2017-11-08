@@ -22,7 +22,11 @@ def is_star_event(e):
 
 
 class ChannelConfig(SlottedModel):
+    # If specified, the only channels to allow stars from
     sources = ListField(ChannelField, default=[])
+
+    # Channels to ignore
+    ignored_channels = ListField(ChannelField, default=[])
 
     # Delete the star when the message is deleted
     clear_on_delete = Field(bool, default=True)
@@ -57,8 +61,13 @@ class StarboardConfig(PluginConfig):
             return (None, None)
 
         for starboard, config in self.channels.items():
-            if not config.sources or channel_id in config.sources:
-                return (starboard, config)
+            if channel_id in config.ignored_channels:
+                continue
+
+            if config.sources and channel_id in config.sources:
+                continue
+
+            return (starboard, config)
         return (None, None)
 
 
@@ -324,13 +333,23 @@ class StarboardPlugin(Plugin):
         self.locks[event.guild.id] = True
         event.msg.reply(':white_check_mark: starboard has been locked')
 
-    @Plugin.command('unlock', group='stars', level=CommandLevels.ADMIN)
-    def unlock_stars(self, event):
-        if event.guild.id in self.locks:
-            del self.locks[event.guild.id]
-            event.msg.reply(':white_check_mark: starboard has been unlocked')
+    @Plugin.command('unlock', '[block:bool]', group='stars', level=CommandLevels.ADMIN)
+    def unlock_stars(self, event, block=False):
+        if event.guild.id not in self.locks:
+            event.msg.reply(':warning: starboard is not locked')
             return
-        event.msg.reply(':warning: starboard is not locked')
+
+        # If the user does not wish to have the messages starred during the lock
+        #  duration posted, block them entirely and unflag them as dirty.
+        if block:
+            StarboardEntry.update(dirty=False, blocked=True).join(Message).where(
+                (StarboardEntry.dirty == 1) &
+                (Message.guild_id == event.guild.id) &
+                (Message.timestamp > (datetime.utcnow() - timedelta(hours=32)))
+            ).execute()
+
+        del self.locks[event.guild.id]
+        event.msg.reply(':white_check_mark: starboard has been unlocked')
 
     def queue_update(self, guild_id, config):
         if guild_id in self.locks:
