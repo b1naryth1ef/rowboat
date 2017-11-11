@@ -9,39 +9,56 @@ from datetime import datetime
 
 class Eventual(object):
     """
-    A function that will be triggered eventually.
+    A class which wraps a function which will be called at somepoint in the future.
     """
+    def __init__(self, function):
+        self.function = function
 
-    def __init__(self, func):
-        self.func = func
-        self._next = None
-        self._t = None
+        self._next_execution_time = None
+        self._waiter_greenlet = None
+        self._mutex = Semaphore()
 
-    def wait(self, nxt):
-        def f():
-            wait_time = (self._next - datetime.utcnow())
-            gevent.sleep(wait_time.seconds + (wait_time.microseconds / 1000000.0))
-            self._next = None
-            gevent.spawn(self.func)
+    def _execute(self):
+        """
+        Executes the Eventual function, guarded by a lock.
+        """
+        with self._mutex:
+            if self._waiter_greenlet:
+                self._waiter_greenlet.kill()
+                self._waiter_greenlet = None
 
-        if self._t:
-            self._t.kill()
+            self.function()
+            self._next_execution_time = None
 
-        self._next = nxt
-        self._t = gevent.spawn(f)
+    def _waiter(self):
+        # Calculate the time we have to wait before next_execute_time
+        wait_duration = (self._next_execution_time - datetime.utcnow())
 
-    def trigger(self):
-        if self._t:
-            self._t.kill()
-        self._next = None
-        gevent.spawn(self.func)
+        # Now start sleeping, we may not wake up if someone interrupts us with
+        #  a more recent next_execution_time
+        gevent.sleep(
+            (wait_duration.seconds) + (wait_duration.microseconds / 1000000.0)
+        )
+
+        # Finally execute the function, spawn this so when we kill our waiter
+        #  within _execute we don't die
+        gevent.spawn(self._execute)
 
     def set_next_schedule(self, date):
+        # If the date has already passed, kill our waiter and execute the function
         if date < datetime.utcnow():
-            return gevent.spawn(self.trigger)
+            gevent.spawn(self._execute)
+            return
 
-        if not self._next or date < self._next:
-            self.wait(date)
+        # Otherwise if we aren't waiting yet, OR if the time is newer than
+        #  our current next_execute_time we need to kill the waiter and spawn
+        #  a new one
+        if not self._next_execution_time or date < self._next_execution_time:
+            with self._mutex:
+                if self._waiter_greenlet:
+                    self._waiter_greenlet.kill()
+                self._next_execution_time = date
+                self._waiter_greenlet = gevent.spawn(self._waiter)
 
 
 class Debounce(object):
